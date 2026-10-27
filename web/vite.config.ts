@@ -33,6 +33,6 @@ export default defineConfig({
       return `export default ${JSON.stringify(result)}`
     },
   }],
-  server: { host: '127.0.0.1', port: 5173, strictPort: true, proxy: { '/api': 'http://127.0.0.1:8000' } },
+  server: { host: '127.0.0.1', port: 5173, strictPort: true, proxy: { '/api': { target: 'http://127.0.0.1:8000', changeOrigin: false } } /* keep Host = 127.0.0.1:5173 so the API's Origin/Host check passes in dev */ },
   preview: { host: '127.0.0.1', port: 4173, strictPort: true },
 })
