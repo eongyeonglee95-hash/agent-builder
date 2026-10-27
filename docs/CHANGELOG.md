@@ -1,6 +1,7 @@
 # CHANGELOG
 
 ## 2026-10-27
+- docs/wiki/ 후속 조사(Sonnet 에이전트 4개): 10장 미확인 항목 중 22건 해결 — ACE 미국30년 듀레이션, RISE Enhanced 차입 구조, 종합원자재 ETF 없음, KIS 토큰·상품코드, 키움 연금 근거 없음, KRX Open API 조건, 감독규정 개정 없음, IRP 70% 완화 공식 문서 없음, 적격 TDF 기준 2026-04 개정, 조특법·소득세법 부칙. 수정 제안 추가(청년 IRP 15% 정정 등). YAML·RULES 변경 없음. DECISIONS: 구글 로그인은 다른 사람이 쓰게 될 때(방향)
 - Codex: 컨셉 React 화면 구현 중. 사용자 추가 요청으로 PROFILE-01/ASSET-01(만 나이·성별·아내/남편 역할, 실제 자산 수동 등록·수정·삭제)을 우선 연결. DEV_HANDOFF로 기존 Claude에 담당 경로 전달, 추가 수신 확인 대기. Python/FastAPI 기반 및 의존성 추가.
 - (코드) SAFE-01: 입력·저장·계좌 검증 — CSV 행별 검증(양의 정수·중복·계좌 ID 형식), 합계 대조를 수량×가격 기준으로(ReconcileResult, 화면 합계 없으면 검증 불가), 저장은 등록·활성 계좌만·빈 표 거부·경로 이탈 차단, 미등록·비활성 계좌면 주문표 중단. 테스트 5개. REBALANCING §3 한 줄
 - AGENT_DESIGN §0: DATA/FLOW/RETIRE/SHARE를 보류했다가 사용자 번복으로 대기(계속 진행)로 복원. DECISIONS에 두 결정 모두 기록

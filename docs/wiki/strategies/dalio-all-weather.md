@@ -1,5 +1,5 @@
 # 레이 달리오 올웨더(All Weather) — 원형의 투자 룰
-기준일: 2026-10-26 · 상태: 초안
+기준일: 2026-10-27 · 상태: 초안
 
 ## 요약 (5줄 이내)
 - "올웨더"는 두 가지가 섞여 불린다. ① Bridgewater가 1996년부터 운용하는 원래 **All Weather**(리스크 패리티, 레버리지 사용, 비율 비공개·가변) ② 달리오가 Tony Robbins 책 『Money: Master the Game』(2014) 인터뷰에서 개인용으로 단순화해 준 **All Seasons**(레버리지 없음, 고정 비율 30/40/15/7.5/7.5).
@@ -92,7 +92,7 @@ all_weather:
 4. **원자재 7.5%의 국내 대체**: 광범위 원자재 지수(S&P GSCI 전체 등) ETF가 연금저축에서 가능한지, 원유·농산물 단품 선물 ETF로 쪼갤지, 금에 합칠지(2019 기사 사례처럼) — 사용자 결정.
 5. **환헤지**: 원형은 미국 투자자 기준(달러). 국내 상품은 (H) 헤지형/비헤지형이 갈린다. 원형에 환 규정은 없음.
 6. **Bridgewater 원래 All Weather의 비율**은 공개된 고정값이 없다. "원형"이라는 이름을 YAML에 쓸 때 All Seasons라고 적는 게 정확.
-7. CNBC 2018-12-11 기사, Validea 글은 접속 실패(403/리다이렉트)로 미열람. Dalio 본인의 LinkedIn 글은 검색으로 찾지 못함.
+7. CNBC 2018-12-11 기사, Validea 글, Dalio 본인 LinkedIn/Principles 글: 2026-10-27 재시도, 미확인. CNBC는 URL 두 가지(heres-ray-dalios-all-weather-portfolio, ray-dalio-this-investment-strategy-is-good-in-a-financial-crisis) 모두 403, Validea 지정 URL은 Page Not Found, 아카이브 도메인은 도구에서 차단. LinkedIn·Principles 사이트의 All Weather 설명 글은 검색에 나오지 않음. 값 변경 없음(비율은 [R1] 그대로).
 
 ## 출처 (열어본 페이지만, 날짜)
 
@@ -115,4 +115,5 @@ Robbins 공식
 열어봤으나 내용 확인 못함(출처로 쓰지 않음): ACE 미국30년국채액티브(H) 453850 상품 페이지(데이터 미로드), KODEX 미국30년국채액티브(H) 상품 페이지(데이터 미로드), CNBC 2018-12-11(403), validea.com(리다이렉트 후 내용 없음), 삼성자산운용 "연금, Kodex하다" 2026-1Q PDF(텍스트 추출 실패).
 
 ## 변경 이력
+- 2026-10-27: 후속 조사 — CNBC·Validea·아카이브·Dalio 본인 글 재시도, 모두 미확인. 본문·값 변경 없음
 - 2026-10-26: 초기 작성
