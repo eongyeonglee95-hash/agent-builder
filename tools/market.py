@@ -55,3 +55,23 @@ def fetch_prices(codes: list[str], pause: float = 0.2) -> dict[str, int]:
         out[c] = fetch_price(c)
         time.sleep(pause)
     return out
+
+
+_UP_CODES, _DOWN_CODES = {"1", "2"}, {"4", "5"}   # 상한·상승 / 하한·하락 (네이버 compareToPreviousPrice.code)
+
+
+def parse_quote(item: dict) -> dict:
+    """네이버 실시간 시세 한 건 → {price, prev_close, change, change_rate, market_status, traded_at}. 계산 없이 받은 값만 정리한다."""
+    num = lambda v: int(str(v).replace(",", "")) if v not in (None, "") else None
+    price = num(item.get("closePrice"))
+    diff = num(item.get("compareToPreviousClosePrice")) or 0
+    code = str((item.get("compareToPreviousPrice") or {}).get("code", "3"))
+    change = abs(diff) if code in _UP_CODES else -abs(diff) if code in _DOWN_CODES else 0
+    return {"price": price, "prev_close": price - change if price is not None else None, "change": change,
+            "market_status": item.get("marketStatus"), "traded_at": item.get("localTradedAt")}
+
+
+def fetch_quote(code: str) -> dict:
+    data = _get_json(_PRICE.format(code=code))
+    return parse_quote(data["datas"][0])
+

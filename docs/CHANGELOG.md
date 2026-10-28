@@ -52,3 +52,12 @@
 
 - (코드·문서, Codex UX-01) 자산 우선 등록·목표 선택·자동 기본 분류·저장 전 확인, 실제 홈 간소화·자료 갱신, 등록 버튼 단일화, 공동 소유 지분, 계좌 총액/세부 한 출처 집계와 사진/파일 재등록 연결. SQLite·메모리 시트·브라우저 검증, UX_REVIEW 실행 기록 갱신.
 - (코드) REG-01 보완(사용자 피드백): 등록 때 계좌를 먼저 고르지 않는다. 캡처 전부를 한 번에 올리면 캡처 상단 계좌 이름으로 나누고(`parse_captures`, 다중 계좌 스키마) 등록 계좌에 이름으로 맞춘다(`match_account`). 모르는 계좌는 캡처 이름·증권사·종류를 미리 채운 '새 계좌로 추가'로 그 자리에서 만든다. 파일은 파일 이름으로 맞춰 본다
+- (문서) SCREEN_REFERENCE에 자산 등록 확인 화면 기준 추가: 증권사 잔고 화면 레퍼런스, 자산군별 묶음, 나중에 자산군 음영(사용자 요청)
+- (코드) REG-01 확인 화면 v2: 시안(증권사 잔고 화면 순서 + 평평한 꾸밈)대로 — 계좌별 평가금액·손익·합계 대조, 자산군 비중 막대, 자산군별 묶음, '주식을 나눠 보기'(국내·미국·신흥국·테마·배당·리츠), 종목은 읽기 전용 두 줄이고 누르면 그 줄만 고침. 매입금액·주식 구분 저장(스냅샷 buy_value, asset_map stock_group, 시트 보유종목 buy_value 열). 버그 수정: 저장 때 종목 역할을 core로 덮어쓰던 것 → 보내지 않으면 기존 역할 유지, TIGER 차이나휴머노이드로봇 satellite 복구
+- (문서) `docs/research/STOCK_APPS_REFERENCE.md` 추가: 주식 탭 고도화용 레퍼런스(Robinhood·키움·Investing.com·토스증권·카카오페이증권의 보유 화면·종목 상세·뉴스·최근 기능, 가져올 후보 표, 확인 못 한 것)
+- (문서) `docs/research/ROBINHOOD_DEEP_DIVE.md` 추가: 보유 여섯 칸, 계좌 통합(잔고 변화≠수익), 가족 허브 권한, Portfolio Digest 네 칸, Strategies 리밸런싱, 디자인 원칙과 우리 적용 후보 8개
+- (코드) Robinhood 조사 적용: 우리 자산·주식에 '종목 잔고' 패널(`web/src/holdings.tsx`, `/api/holdings`, `tools/holdings.py`). 넣은 돈/불어난 돈 분리(매입금액 아는 종목만, 추정 안 함), 현재가로 보기(공개 시세·전일 종가 → 오늘 손익), 어제 종가 이후 손익 기여·등락 상위(시세 사실만), 정렬(평가금액·오늘 손익·오늘 등락률·총 손익·수익률·이름), 자산군별 묶기, 오래된 잔고 회색(rules/holdings.yaml stale_days). 매입금액이 없는 최신 잔고는 같은 계좌 이전 등록에서 종목·수량이 같을 때만 가져오고 *로 표시. CALCULATION_RULES §7 추가
+- (코드) 엑셀처럼 입력·수정: `web/src/sheet.tsx`·`sheet.css`(보유종목·자산 두 탭 표, 붙여넣기, 키보드, 한글 IME), `/api/register/sheet`, `/api/register/template.xlsx`(빈 양식·지금 잔고 채운 양식, 고르는 칸), 파일의 계좌·자산군·주식 구분 열 읽기(한 파일 여러 계좌). 등록 방법 네 가지(사진·표로 입력·엑셀·CSV 파일·금액 직접 입력). SCREEN_REFERENCE 2026-10-28 엑셀처럼 절, DECISIONS 한 줄
+- (코드) 화면 표준 Tailwind v4 + shadcn/ui 도입(`web/src/theme.css` 토큰, Pretendard, `src/components/ui/*`, `@/` 별칭). 첫 화면을 엑셀 워크북으로(`web/src/workbook/*`, `/api/workbook/summary·rebalance·report.xlsx`): 한 줄 요약, 요약·보유종목·자산·리밸런싱 시트, 이번 달 납입 입력 칸, 보고서 엑셀. 예전 화면은 '다른 버전으로 보기'(#home), 예전 CSS는 legacy 레이어. 브라우저 테스트의 첫 화면 주소를 /#home으로
+- (문서) CLAUDE.md 시각 기준을 새 표준으로, SCREEN_REFERENCE 2026-10-28 화면 표준 절, `docs/research/UI_REFERENCES.md`(레퍼런스·토큰 근거), DECISIONS·AGENT_DESIGN UI-02·DEV_HANDOFF
+

@@ -1,11 +1,11 @@
 /* REG-01 자산 등록 · SHEET-01 구글 시트 — Claude 담당. 공통 폼·버튼은 styles.css 것을 쓴다. */
 .modal:has(.register-wide){width:min(900px,calc(100vw - 32px))}
-.register-choice{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:14px 0 10px}
+.register-choice{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:14px 0 10px}
 .register-choice button{display:flex;flex-direction:column;align-items:flex-start;gap:7px;text-align:left;padding:18px 16px 16px;border:1px solid #e3e8ef;border-radius:12px;background:#fbfcfd;min-height:150px;transition:border-color .15s,box-shadow .15s,transform .15s}
 .register-choice button:hover,.register-choice button:focus-visible{border-color:#9fb3cf;box-shadow:0 6px 18px #1b2f4a14;transform:translateY(-1px)}
 .register-choice strong{font-size:14px;color:#243247}.register-choice small{font-size:11px;color:#7d8899;line-height:1.5}
 .choice-icon{width:42px;height:42px;border-radius:11px;display:grid;place-items:center;color:#fff}
-.choice-icon.capture{background:linear-gradient(135deg,#5985ec,#42b3aa)}.choice-icon.manual{background:linear-gradient(135deg,#e6ba69,#d397b5)}.choice-icon.file{background:linear-gradient(135deg,#9583cf,#5985ec)}
+.choice-icon.capture{background:linear-gradient(135deg,#5985ec,#42b3aa)}.choice-icon.manual{background:linear-gradient(135deg,#e6ba69,#d397b5)}.choice-icon.file{background:linear-gradient(135deg,#9583cf,#5985ec)}.choice-icon.sheet{background:#217346}
 .register-back{margin-bottom:10px;gap:4px}
 .register-upload .account-pick{display:flex;gap:8px;align-items:stretch}.register-upload .account-pick select{flex:1;min-width:0}.register-upload .account-pick .secondary-button{white-space:nowrap;padding:0 12px}
 .dropzone{width:100%;display:flex;flex-direction:column;align-items:center;gap:4px;padding:26px 16px;margin:14px 0 10px;border:1.5px dashed #c6d0de;border-radius:12px;background:#f8fafc;color:#4e617a;transition:border-color .15s,background .15s}
@@ -47,3 +47,79 @@
 .group-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px;flex-wrap:wrap}.group-title strong{display:block;font-size:14px;color:#243247}.group-title small{font-size:11px;color:#7d8899}
 .group-account{display:flex;flex-direction:column;gap:3px;min-width:min(100%,320px)}.group-account select{min-height:38px;border:1px solid #dce3ec;border-radius:7px;padding:6px 10px;font:inherit;font-size:12px;background:#fff}
 .matched-tag{display:inline-flex;align-items:center;gap:4px;font-size:10px;color:#2f6b45}
+
+/* 확인 화면 v2 (2026-10-28) — 증권사 잔고 화면의 정보 순서 + 평평한 꾸밈. 배지·그림자·그라데이션 없음 */
+.rv{display:flex;flex-direction:column;color:#191f28;margin:0 -4px}
+.rv .n{font-variant-numeric:tabular-nums}
+.rv-top{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;padding:2px 4px 6px}
+.rv-top h3{margin:0;font-size:19px;font-weight:700;letter-spacing:-.02em}
+.rv-date{font-size:13px;color:#8b95a1;display:inline-flex;align-items:center;gap:6px}
+.rv-date input{font:inherit;font-size:13px;border:0;background:#f2f4f6;border-radius:8px;padding:5px 8px;color:#191f28}
+.rv-link{font:inherit;font-size:13px;color:#3182f6;background:none;border:0;padding:0;cursor:pointer;display:inline-flex;align-items:center;gap:4px}
+.rv-link:disabled{color:#b0b8c1;cursor:default}
+.rv-acct{padding:18px 4px 6px;border-top:8px solid #f2f4f6;margin-top:10px}
+.rv-acct.is-saved{opacity:.6}
+.rv-acct-line{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.rv-acct-line h4{margin:0;font-size:16px;font-weight:700}
+.rv-acct-line select{font:inherit;font-size:13px;border:0;background:#f2f4f6;border-radius:10px;padding:8px 10px;color:#191f28;max-width:100%}
+.rv-to{font-size:13px;color:#8b95a1;display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap}.rv-to b{color:#4e5968;font-weight:600}
+.rv-total{margin-top:6px}
+.rv-big{font-size:28px;font-weight:700;letter-spacing:-.025em;line-height:1.25}
+.rv-pl-line{font-size:15px;font-weight:600;margin-top:1px}
+.rv-check{font-size:13px;color:#8b95a1;margin-top:6px}.rv-check b{color:#4e5968;font-weight:600}
+.rv-check.warn{color:#c2410c}.rv-check.warn b{color:#c2410c}
+.rv-accept{display:flex;align-items:center;gap:8px;font-size:13px;color:#4e5968;margin-top:8px;cursor:pointer;width:fit-content}
+.rv-accept input,.rv-split input{width:17px;height:17px;margin:0;accent-color:#3182f6}
+.up{color:#f04452}.down{color:#3182f6}
+.rv-mix{margin-top:16px}
+.rv-bar{display:flex;height:8px;border-radius:4px;overflow:hidden;gap:2px}.rv-bar span{display:block}
+.rv-legend{display:flex;gap:6px 14px;flex-wrap:wrap;margin-top:8px;font-size:13px;color:#4e5968}
+.rv-legend i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:6px;vertical-align:1px}
+.rv-split{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:14px;color:#4e5968;cursor:pointer;width:fit-content}
+.rv-split small{font-size:12px;color:#8b95a1}
+.rv-list{margin-top:14px}
+.rv-head,.rv-row,.rv-group{display:grid;grid-template-columns:minmax(0,1fr) 128px 108px 52px;column-gap:12px}
+.rv-head{padding:0 12px 8px;font-size:12px;color:#8b95a1;text-align:right;border-bottom:1px solid #e5e8eb}.rv-head span:first-child{text-align:left}
+.rv-group{align-items:baseline;padding:16px 12px 6px;border-top:1px solid #e5e8eb}
+.rv-head+.rv-group{border-top:0}
+.rv-g-name{font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px}
+.rv-g-name i{width:4px;height:15px;border-radius:2px;display:inline-block}
+.rv-g-name small{font-size:13px;font-weight:500;color:#8b95a1}
+.rv-g-val{text-align:right;font-weight:700}.rv-g-pl{text-align:right;font-size:13px;font-weight:600}.rv-g-wt{text-align:right;font-weight:700}
+.rv-group.need .rv-g-name{color:#3182f6}
+.rv-group.sub{border-top:0;padding:10px 12px 2px 24px}
+.rv-group.sub .rv-g-name{font-size:13px;font-weight:600;color:#4e5968}.rv-group.sub .rv-g-name i{height:11px}
+.rv-group.sub .rv-g-val,.rv-group.sub .rv-g-wt{font-size:13px;font-weight:600;color:#4e5968}.rv-group.sub .rv-g-pl{font-size:12px}
+.rv-row{row-gap:2px;align-items:center;padding:12px 12px 12px 24px;border-radius:12px;cursor:pointer}
+.rv-row:hover,.rv-row.open{background:#f9fafb}
+.rv-row:focus-visible{outline:2px solid #3182f6;outline-offset:1px}
+.rv-nm{font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rv-qty{grid-column:1;font-size:13px;color:#8b95a1}
+.rv-val{grid-row:1;grid-column:2;text-align:right;font-weight:600}.rv-buy{grid-row:2;grid-column:2;text-align:right;font-size:13px;color:#8b95a1}
+.rv-pl{grid-row:1;grid-column:3;text-align:right;font-weight:600}.rv-rt{grid-row:2;grid-column:3;text-align:right;font-size:13px}
+.rv-wt{grid-row:1/3;grid-column:4;text-align:right;font-size:13px;color:#4e5968}
+.rv-edit{grid-column:1/-1;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;padding-top:12px;cursor:default}
+.rv-edit label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:#8b95a1;min-width:0}
+.rv-edit input,.rv-edit select{font:inherit;font-size:14px;color:#191f28;background:#f2f4f6;border:0;border-radius:10px;padding:9px 11px;min-width:0;width:100%}
+.rv-edit input:focus,.rv-edit select:focus{outline:2px solid #3182f6;outline-offset:0}
+.rv-edit-tools{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.rv-edit-tools .candidates{font-size:12px;color:#8b95a1}.rv-edit-tools .candidates button{font:inherit;font-size:12px;margin-left:6px;padding:3px 8px;border:0;border-radius:6px;background:#f2f4f6;color:#191f28;cursor:pointer}
+.rv-add{margin:10px 12px 0}
+.rv-notes{margin:10px 0 0;padding:10px 14px 10px 28px;border-radius:10px;background:#f9fafb;color:#4e5968;font-size:13px}
+.rv-saved{display:flex;align-items:center;gap:6px;margin:12px 0 0;font-size:13px;color:#2f6b45}
+.rv-cta{position:sticky;bottom:-1px;display:flex;flex-direction:column;align-items:center;gap:10px;padding:14px 4px 6px;margin-top:14px;background:#fff;border-top:1px solid #e5e8eb}
+.rv-save{width:100%;font:inherit;font-size:16px;font-weight:600;border:0;border-radius:14px;padding:15px;background:#142339;color:#fff;cursor:pointer}
+.rv-save:disabled{background:#e5e8eb;color:#8b95a1;cursor:default}
+@media(max-width:650px){
+  .rv-head{display:none}
+  .rv-row,.rv-group{grid-template-columns:minmax(0,1fr) auto}
+  .rv-row{padding-left:8px;padding-right:8px}.rv-group{padding-left:8px;padding-right:8px}.rv-group.sub{padding-left:16px}
+  .rv-buy,.rv-rt,.rv-wt,.rv-g-pl{display:none}
+  .rv-pl{grid-row:2;grid-column:2;font-size:13px}
+  .rv-g-wt{grid-column:2;grid-row:2;font-size:12px;font-weight:500;color:#8b95a1}
+  .rv-edit{grid-template-columns:1fr 1fr}
+  .rv-big{font-size:24px}
+}
+
+.reg-template{margin:4px 0 12px}
+.register-choice button{min-height:128px}

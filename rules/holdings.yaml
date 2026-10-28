@@ -1,0 +1,5 @@
+# 보유 종목 화면 설정 — 공식은 docs/CALCULATION_RULES.md §7
+# stale_days: 계좌 잔고 기준일이 이보다 오래되면 화면에서 회색으로 보이고 다시 등록을 안내한다 (Claude 기본값 2026-10-28, 사용자 변경 가능)
+stale_days: 31
+# quote_ttl_seconds: 공개 시세를 다시 받기 전에 재사용하는 시간
+quote_ttl_seconds: 60

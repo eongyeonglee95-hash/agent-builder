@@ -1,0 +1,64 @@
+/* 엑셀처럼 입력·수정 (Claude 담당). 엑셀의 칸 느낌만 가져온다: 회색 격자, 열 문자·줄 번호, 초록 선택 테두리, 수식 입력줄, 아래 시트 탭. 리본·메뉴는 없음 */
+.modal:has(.xl-wrap){width:min(1240px,calc(100vw - 32px))}
+.xl-wrap{display:flex;flex-direction:column;gap:0;font-family:'Malgun Gothic','맑은 고딕','Apple SD Gothic Neo','Noto Sans KR',sans-serif;color:#1f1f1f}
+.xl-bar{display:flex;align-items:center;gap:0;border:1px solid #d4d4d4;border-bottom:0;background:#fff;height:30px;font-size:12px}
+.xl-addr{width:72px;text-align:center;border-right:1px solid #d4d4d4;height:100%;display:grid;place-items:center;color:#333}
+.xl-fx{width:34px;text-align:center;color:#6b6b6b;font-style:italic;border-right:1px solid #e1e1e1;height:100%;display:grid;place-items:center}
+.xl-formula{flex:1;min-width:0;height:100%;border:0;padding:0 8px;font:inherit;font-size:12px;color:#1f1f1f;background:#fff}
+.xl-formula:focus{outline:none;background:#fbfdfb}
+.xl-err-msg{padding:0 10px;color:#c42b1c;font-size:12px;white-space:nowrap}
+.xl-scroll{overflow:auto;max-height:min(62vh,640px);border:1px solid #d4d4d4;background:#fff}
+.xl-grid{display:grid;width:max-content;min-width:100%;font-size:13px;outline:none}
+.xl-corner,.xl-colh,.xl-rowh{background:#f3f3f3;color:#5f5f5f;font-size:11px;display:grid;place-items:center;border-right:1px solid #d4d4d4;border-bottom:1px solid #d4d4d4;user-select:none}
+.xl-corner{position:sticky;left:0;top:0;z-index:3;height:22px}
+.xl-colh{position:sticky;top:0;z-index:2;height:22px}
+.xl-colh.on,.xl-rowh.on{background:#d3e7da;color:#0f5132;font-weight:600}
+.xl-rowh{position:sticky;left:0;z-index:1;height:28px;cursor:pointer}
+.xl-rowh.dirty{box-shadow:inset 3px 0 0 #217346}
+.xl-rowh.picked{background:#217346;color:#fff}
+.xl-head{position:sticky;top:22px;z-index:1;background:#fafafa;font-weight:700;font-size:12px;padding:0 8px;height:28px;display:flex;align-items:center;border-right:1px solid #e1e1e1;border-bottom:1px solid #c8c8c8;white-space:nowrap}
+.xl-head.r{justify-content:flex-end}.xl-head.calc{color:#6b6b6b}
+.xl-cell{height:28px;padding:0 8px;display:flex;align-items:center;border-right:1px solid #e1e1e1;border-bottom:1px solid #e1e1e1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:cell;position:relative;font-variant-numeric:tabular-nums}
+.xl-cell.r{justify-content:flex-end}
+.xl-cell.calc{background:#f7f7f7;color:#555}
+.xl-cell.lock:not(.calc){background:#fafafa;color:#9a9a9a}
+.xl-cell.ro{color:#9a9a9a}
+.xl-cell.del{text-decoration:line-through;color:#b0b0b0;background:#fbf3f3}
+.xl-cell.picked{background:#e8f2ec}
+.xl-cell.on{outline:2px solid #217346;outline-offset:-2px;z-index:1}
+.xl-cell.bad{box-shadow:inset 0 -2px 0 #c42b1c}
+.xl-cell.bad::after{content:"";position:absolute;top:0;right:0;border-style:solid;border-width:0 6px 6px 0;border-color:transparent #c42b1c transparent transparent}
+.xl-cell.up{color:var(--up,#d22030)}.xl-cell.down{color:var(--down,#1b64da)}
+.xl-cell select{width:100%;height:100%;border:0;padding:0;margin:0;font:inherit;background:#fff;color:#1f1f1f;outline:none}
+.xl-cell .xl-edit{position:absolute;inset:0;width:100%;height:100%;border:0;padding:0 8px;margin:0;font:inherit;background:#fff;color:#1f1f1f;outline:none}
+.xl-cell .xl-typer{position:absolute;inset:0;width:100%;height:100%;border:0;padding:0;margin:0;opacity:0;background:transparent;color:transparent;caret-color:transparent;outline:none;cursor:cell}
+.xl-cell.r .xl-edit{text-align:right}
+.xl-tabs{display:flex;align-items:stretch;gap:0;border:1px solid #d4d4d4;border-top:0;background:#f3f3f3;height:30px;font-size:12px}
+.xl-tabs button{font:inherit;font-size:12px;border:0;border-right:1px solid #d4d4d4;padding:0 18px;background:transparent;color:#444;cursor:pointer}
+.xl-tabs button.on{background:#fff;color:#217346;font-weight:700;box-shadow:inset 0 -2px 0 #217346}
+.xl-hint{margin-left:auto;align-self:center;padding:0 10px;color:#7a7a7a;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.xl-notice{margin:8px 0 0;font-size:12px;color:#217346}
+.xl-foot{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:12px;flex-wrap:wrap}
+.xl-links{display:flex;gap:14px;flex-wrap:wrap}
+.xl-links a{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:#217346;text-decoration:none}
+.xl-links a:hover{text-decoration:underline}
+.xl-status{font-size:12px;color:#6b6b6b;margin-left:auto}
+.xl-save{font:inherit;font-weight:700;font-size:14px;border:0;border-radius:6px;padding:9px 22px;background:#217346;color:#fff;cursor:pointer}
+.xl-save:disabled{background:#d9d9d9;color:#8a8a8a;cursor:default}
+.xl-wrap .new-account{margin:8px 0}
+@media(max-width:650px){.xl-hint{display:none}.xl-scroll{max-height:58vh}.xl-foot{flex-direction:column;align-items:stretch}.xl-status{margin-left:0}}
+.xl-embedded .xl-scroll{max-height:none;flex:1;min-height:0}
+.xl-embedded{height:100%;font-family:var(--font-sans,inherit)}
+.xl-embedded .xl-foot{margin-top:0;padding:10px 12px;border:1px solid #d4d4d4;border-top:0;background:#fff}
+/* 워크북 읽기 표 — 머리 칸·구역 제목·칸 안 데이터 막대(엑셀 조건부 서식 막대처럼) */
+.xl-hcell{background:var(--sheet-head,#f9fafb);font-weight:600;font-size:12px;color:var(--sheet-head-text,#6b7684)}
+.xl-section{font-weight:700;font-size:13px;color:#191f28;background:#fff;border-bottom-color:#c8c8c8}
+.xl-databar{position:absolute;left:4px;top:7px;bottom:7px;border-radius:2px;opacity:.55}
+.xl-cell .relative{position:relative}
+.xl-input{background:#fffdf3}
+.xl-input .xl-edit{position:absolute;inset:0;padding:0 8px;border:0;background:transparent;font:inherit;outline:none}
+.xl-input .xl-edit:focus{background:#fff}
+.wb .xl-wrap{font-family:var(--font-sans)}
+.wb .xl-bar,.wb .xl-scroll,.wb .xl-tabs{border-left:0;border-right:0}
+.wb .xl-scroll{max-height:none}
+.wb-back{position:fixed;left:16px;bottom:16px;z-index:60;font:600 13px var(--font-sans,sans-serif);padding:8px 14px;border-radius:8px;border:1px solid #d1d6db;background:#fff;color:#191f28;box-shadow:0 4px 12px #0000001a;cursor:pointer}

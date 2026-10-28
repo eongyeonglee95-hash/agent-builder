@@ -36,7 +36,7 @@ export function StockWorkspace({ assets, isDemo, hidden, onDemo, onRegister, onS
   const profit = positions.reduce((n, p) => n + (p.price - p.average) * p.quantity, 0)
   const show = (value: number) => hidden ? '••••••' : money(value)
   const news = stories.filter(story => filter === 'all' || story.type === filter)
-  if (!isDemo) return <section className="panel actual-workspace"><div><span className="editorial-kicker">OUR INVESTMENT JOURNAL</span><h2>등록한 주식형 자산</h2><strong>{show(total)}</strong><p>현재는 등록 금액 기준입니다. 종목별 수량·평단가·자동 시세는 연결 전이에요.</p></div><div className="actual-workspace-actions"><button className="primary-button" onClick={onRegister}>자산 등록 <CirclePlus size={14}/></button><button className="text-link" onClick={onDemo}>종목·뉴스 화면 예시 <ArrowRight size={13}/></button></div></section>
+  if (!isDemo) return <section className="panel actual-workspace"><div><span className="editorial-kicker">OUR INVESTMENT JOURNAL</span><h2>등록한 주식형 자산</h2><strong>{show(total)}</strong><p>직접 입력한 총액까지 합친 주식형 자산이에요. 사진·파일로 등록한 종목의 손익과 현재가는 위 ‘보유 주식’에서 볼 수 있어요.</p></div><div className="actual-workspace-actions"><button className="primary-button" onClick={onRegister}>자산 등록 <CirclePlus size={14}/></button><button className="text-link" onClick={onDemo}>종목·뉴스 화면 예시 <ArrowRight size={13}/></button></div></section>
   return <div className="stock-workspace">
     <section className="portfolio-hero">
       <div className="portfolio-copy"><span className="editorial-kicker"><span/>OUR INVESTMENT JOURNAL</span><h2>숫자로 살펴보고,<br/><em>근거로 판단해요.</em></h2><p>얼마에 샀는지부터, 어제 무슨 일이 있었는지까지.<br/>우리의 투자에 필요한 이야기를 한곳에.</p><button onClick={onRegister}><CirclePlus size={15}/>자산 등록 <ArrowRight size={15}/></button></div>

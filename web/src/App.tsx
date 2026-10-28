@@ -12,6 +12,7 @@ import { AccountManager } from './accounts'
 import { AssetForm, DeleteAsset, ProfileForm, personRole } from './forms'
 import { RegisterModal } from './register'   // REG-01 자산 등록 한 곳 (Claude 담당)
 import { GoogleSheetPanel, SheetBadge } from './google'   // SHEET-01 구글 시트 (Claude 담당)
+import { HoldingsPanel } from './holdings'   // 종목 잔고·손익 (Claude 담당)
 
 type ModalKind = 'about' | 'goal' | 'family' | 'import' | 'strategy' | 'house' | 'tax' | 'notifications' | 'help' | 'profile' | 'delete' | 'manual' | 'sheets' | null
 const pageNames: Record<Page, string> = { home: '우리의 오늘', assets: '우리 자산', pension: '은퇴 계획', stocks: '주식', property: '부동산', rebalance: '리밸런싱' }
@@ -112,6 +113,7 @@ export default function App() {
         </> : <>
           <div className="page-heading"><div><span className="eyebrow">OUR NEXT CHAPTER</span><h1>{pageNames[page]}</h1><p>{page === 'assets' ? '두 사람의 자산, 같은 기준으로 투명하게.' : page === 'pension' ? '앞으로의 시간을, 우리의 속도로 준비해요.' : page === 'stocks' ? '보유 주식과 연금 안의 주식형 자산을 함께 살펴봐요.' : page === 'property' ? '우리 집의 지분과 다음 집의 목표를 살펴봐요.' : '시장의 방향보다, 우리가 정한 원칙을 따라가요.'}</p></div><label className="owner-select"><Users size={16}/><select aria-label="자산 소유자 선택" value={owner} onChange={e => setOwner(e.target.value as Owner)}>{Object.entries(ownerLabels).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select><ChevronDown size={14}/></label></div>
           <div className="demo-notice"><Info size={16}/><span>{isDemo ? '화면을 살펴보기 위한 예시 데이터입니다. 실제 계좌와 연결되어 있지 않습니다.' : '직접 등록한 금액입니다. 증권사 자동 연동 전이며, 자산별 기준일을 확인해 주세요.'}</span></div>
+          {(page === 'assets' || page === 'stocks') && !isDemo && <HoldingsPanel key={`${owner}:${page}`} owner={owner} hidden={hidden} stockOnly={page === 'stocks'} onRegister={beginRegistration} onChanged={local.refresh}/>}
           {page === 'stocks' && <StockWorkspace key={`${owner}:${isDemo}`} assets={snapshot.assets.filter(a => a.assetClass === 'stock')} isDemo={isDemo} hidden={hidden} onDemo={() => setIsDemo(true)} onRegister={beginRegistration} onSelect={setSelectedAsset}/>}
           {page === 'property' && <PropertyPlan onRegister={beginRegistration} value={display(snapshot.property)} registered={snapshot.assets.some(a => a.pocket === 'property')} isDemo={isDemo} onPreview={() => setModal('house')} onDemo={() => setIsDemo(true)}/>}
           {(page === 'assets' || page === 'stocks' || page === 'property') && <details className="ledger-disclosure" open={page === 'assets' || undefined}><summary>{isDemo ? '예시 자산 원장 보기' : '등록한 자산 내역 · 금액 갱신'}</summary>

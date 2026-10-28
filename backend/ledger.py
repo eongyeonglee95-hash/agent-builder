@@ -103,7 +103,7 @@ class SheetStore:
     @staticmethod
     def _norm_holding(r: dict) -> dict:
         out = {c: r.get(c, "") for c in HOLDING_COLUMNS}
-        out["qty"] = _int(out["qty"]); out["price"] = _int(out["price"])
+        out["qty"] = _int(out["qty"]); out["price"] = _int(out["price"]); out["buy_value"] = _int(out.get("buy_value"), 0) or None
         out["as_of"] = _date_text(out["as_of"])
         t = str(out.get("ticker") or "").strip()
         out["ticker"] = t.zfill(6) if t.isdigit() and len(t) < 6 else t
@@ -202,7 +202,7 @@ class SheetStore:
         keep = [r for r in current if r["account_id"] != account_id]
         stamp = now()
         new = [{"account_id": account_id, "ticker_name": r["ticker_name"], "ticker": r.get("ticker") or "", "qty": int(r["qty"]),
-                "price": int(r["price"]), "as_of": as_of, "updated_at": stamp} for r in rows]
+                "price": int(r["price"]), "as_of": as_of, "updated_at": stamp, "buy_value": r.get("buy_value") or ""} for r in rows]
         self._write(HOLDING_TAB, keep + new)
         return len(new)
 

@@ -12,13 +12,15 @@ from pydantic import ValidationError
 import yaml
 
 from backend.strategies import StrategyDisplay, load_strategy_display
-from backend import storage, rebalance, registration, google_api
+from backend import storage, rebalance, registration, google_api, holdings, workbook
 
 app = FastAPI(title="둘이서은퇴 · 로컬 API", version="0.1.0", docs_url="/api/docs",
               redoc_url=None, openapi_url="/api/openapi.json")
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=["127.0.0.1", "localhost", "[::1]"])
 app.include_router(registration.router)   # REG-01 자산 등록(사진·파일) — Claude 담당
 app.include_router(google_api.router)     # SHEET-01 구글 시트 연결 — Claude 담당
+app.include_router(holdings.router)       # 보유 종목 손익 — Claude 담당 (CALCULATION_RULES §7)
+app.include_router(workbook.router)       # 엑셀처럼 보는 첫 화면·한 줄 요약·보고서 — Claude 담당
 
 
 @app.middleware("http")

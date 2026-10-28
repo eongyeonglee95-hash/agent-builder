@@ -1,0 +1,52 @@
+/* 종목 잔고 (Claude 담당) — 증권사 잔고 화면의 순서 + 평평한 꾸밈. 배지·그림자·그라데이션 없음. 상승 빨강·하락 파랑 */
+.hp{display:flex;flex-direction:column;gap:14px;color:#191f28;margin-bottom:19px}
+.hp .n{font-variant-numeric:tabular-nums}
+.hp .up{color:#f04452}.hp .down{color:#3182f6}
+.hp-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+.hp-top h2{margin:0;font-size:16px;font-weight:700}
+.hp-top p{margin:2px 0 0;font-size:12px;color:#8b95a1}
+.hp-live,.hp-check{display:inline-flex;align-items:center;gap:7px;font-size:13px;color:#4e5968;cursor:pointer}
+.hp-live input,.hp-check input{width:16px;height:16px;margin:0;accent-color:#3182f6}
+.hp-sum{display:flex;flex-direction:column;gap:4px}
+.hp-big{font-size:28px;font-weight:700;letter-spacing:-.025em;line-height:1.25}
+.hp-split{display:flex;gap:6px 18px;flex-wrap:wrap;font-size:14px;color:#4e5968}.hp-split b{font-weight:700;color:#191f28}
+.hp-today{font-size:14px;color:#4e5968}.hp-today b{font-weight:700}
+.hp-note{margin:4px 0 0;font-size:12px;color:#8b95a1;line-height:1.55}.hp-note.warn{color:#c2410c}
+.hp-accounts{display:flex;flex-direction:column;border-top:1px solid #e5e8eb}
+.hp-acct{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 2px;border-bottom:1px solid #f2f4f6}
+.hp-acct strong{display:block;font-size:14px;font-weight:600}.hp-acct small{font-size:12px;color:#8b95a1;display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap}
+.hp-acct-num{text-align:right}.hp-acct-num b{display:block;font-weight:700}.hp-acct-num small{font-size:12px}
+.hp-acct.stale strong,.hp-acct.stale .hp-acct-num b{color:#8b95a1}
+.hp-movers{display:grid;grid-template-columns:1fr 1fr;gap:6px 24px;background:#f9fafb;border-radius:12px;padding:14px 16px}
+.hp-movers h3{margin:0 0 6px;font-size:13px;font-weight:600;color:#4e5968}
+.hp-movers p{display:flex;justify-content:space-between;gap:10px;margin:0;padding:4px 0;font-size:13px}
+.hp-movers p span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hp-movers small{grid-column:1/-1;font-size:12px;color:#8b95a1;margin-top:4px}
+.hp-tools{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.hp-tools label:first-child{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:#4e5968}
+.hp-tools select{font:inherit;font-size:13px;border:0;background:#f2f4f6;border-radius:8px;padding:6px 10px;color:#191f28}
+.hp-head,.hp-row{display:grid;grid-template-columns:minmax(0,1fr) 124px 116px 84px;column-gap:12px}
+.hp-head{padding:0 8px 8px;font-size:12px;color:#8b95a1;text-align:right;border-bottom:1px solid #e5e8eb}.hp-head span:first-child{text-align:left}
+.hp-group{display:flex;justify-content:space-between;align-items:baseline;padding:14px 8px 4px;font-size:14px;font-weight:700}
+.hp-group span{display:flex;align-items:center;gap:8px}.hp-group i{width:4px;height:14px;border-radius:2px;display:inline-block}.hp-group small{font-size:12px;font-weight:500;color:#8b95a1}
+.hp-row{row-gap:2px;padding:10px 8px;border-radius:10px;align-items:center}
+.hp-row:hover{background:#f9fafb}
+.hp-row.stale{color:#8b95a1}
+.hp-nm{font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hp-sub{grid-column:1;font-size:12px;color:#8b95a1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hp-val{grid-row:1;grid-column:2;text-align:right;font-weight:600}.hp-buy{grid-row:2;grid-column:2;text-align:right;font-size:12px;color:#8b95a1}
+.hp-pl{grid-row:1;grid-column:3;text-align:right;font-weight:600}.hp-rt{grid-row:2;grid-column:3;text-align:right;font-size:12px}
+.hp-wt{grid-row:1;grid-column:4;text-align:right;font-size:13px}.hp-wt2{grid-row:2;grid-column:4;text-align:right;font-size:12px}
+.hp-row .hp-wt:not(.up):not(.down){grid-row:1/3;color:#4e5968}
+.hp-empty h2{margin:0;font-size:16px}.hp-empty p{margin:0;font-size:13px;color:#4e5968}.hp-empty .primary-button{align-self:flex-start}
+@media(max-width:650px){
+  .hp-head{display:none}
+  .hp-row{grid-template-columns:minmax(0,1fr) auto}
+  .hp-buy,.hp-rt,.hp-wt,.hp-wt2{display:none}
+  .hp-pl{grid-row:2;grid-column:2;font-size:12px}
+  .hp-movers{grid-template-columns:1fr}
+  .hp-big{font-size:24px}
+}
+.hp-actions{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.hp-sheet-btn{font:inherit;font-size:13px;display:inline-flex;align-items:center;gap:6px;border:1px solid #d4d4d4;border-radius:6px;padding:6px 10px;background:#fff;color:#217346;cursor:pointer}
+.hp-sheet-btn:hover{background:#f3f9f5}

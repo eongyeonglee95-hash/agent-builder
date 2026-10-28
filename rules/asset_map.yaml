@@ -1,5 +1,6 @@
 # 종목 ↔ 자산군 매핑 — 비중 계산에 쓰이는 분류의 단일 원천. 입력 화면에서 저장하면 이 파일이 다시 쓰인다.
 # asset_class: stock / long_bond / mid_bond / gold / commodity / cash · role: core(핵심) | satellite(위성, 테마) · status: proposed | confirmed
+# stock_group(주식만, 화면 표시용): kr 국내 | us 미국 | em 신흥국·테마 | income 배당·리츠. 리밸런싱은 stock 하나로 맞춘다
 # class_defaults: 자산군 기본 종목 (보유 없는 자산군을 살 때). 선택 규칙은 docs/REBALANCING_RULES.md §1-2
 assets:
   KODEX 차이나휴머노이:
@@ -8,6 +9,7 @@ assets:
     asset_class: stock
     role: core
     status: confirmed
+    stock_group: em
   TIGER KRX금현물:
     ticker: 0072R0
     asset_class: gold
@@ -18,33 +20,38 @@ assets:
     asset_class: stock
     role: core
     status: confirmed
+    stock_group: us
   ACE 미국나스닥100:
     ticker: '367380'
     asset_class: stock
     role: core
     status: confirmed
+    stock_group: us
   KODEX 인도타타그룹:
     ticker: '477730'
     asset_class: stock
     role: core
     status: confirmed
+    stock_group: em
   TIGER 차이나휴머노이:
     ticker: 0053L0
     full_name: TIGER 차이나휴머노이드로봇
     asset_class: stock
     role: satellite
     status: confirmed
+    stock_group: em
   ACE 종합채권(AA-이상):
     ticker: '356540'
     full_name: ACE 종합채권(AA-이상)액티브
     asset_class: mid_bond
     role: core
-    status: proposed
+    status: confirmed
   ACE 미국S&P500:
     ticker: '360200'
     asset_class: stock
     role: core
     status: confirmed
+    stock_group: us
   ACE KRX금현물:
     ticker: '411060'
     asset_class: gold

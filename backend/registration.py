@@ -19,7 +19,7 @@ from pydantic import Field, field_validator
 
 from backend import ledger, storage
 from backend.storage import InputModel
-from tools.assets import load_accounts, load_asset_map, load_accounts_list, load_pools, save_accounts, upsert_asset_tags
+from tools.assets import STOCK_GROUPS, guess_stock_group, load_accounts, load_asset_map, load_accounts_list, load_pools, save_accounts, upsert_asset_tags
 from tools.parse_balance import ACCOUNT_ID_RE, HOLDING_COLUMNS, reconcile, validate_holdings
 from tools.strategy import ASSET_CLASSES, CLASS_LABELS, TICKER_RE
 from tools import store as snapshots
@@ -111,7 +111,11 @@ def _preview(df: pd.DataFrame, meta: dict, account_id: str | None, label: str, s
         rows.append({"ticker_name": r["ticker_name"], "ticker": r.get("ticker") or None, "qty": int(r["qty"]) if pd.notna(r["qty"]) else None,
                      "price": int(r["price"]) if pd.notna(r["price"]) else None, "value": int(r.get("value") or 0) or None,
                      "buy_value": int(r.get("buy_value") or 0) or None,
-                     "asset_class": entry.get("asset_class") if entry.get("asset_class") in ASSET_CLASSES else None,
+                     "asset_class": (r.get("asset_class") if r.get("asset_class") in (*ASSET_CLASSES, "mixed") else None)
+                                    or (entry.get("asset_class") if entry.get("asset_class") in ASSET_CLASSES else None),
+                     "stock_group": (r.get("stock_group") if r.get("stock_group") in STOCK_GROUPS else None)
+                                    or (entry.get("stock_group") if entry.get("stock_group") in STOCK_GROUPS else guess_stock_group(r["ticker_name"])),
+                     "role": entry.get("role") if entry.get("role") in ("core", "satellite") else None,
                      "confirmed": entry.get("status") == "confirmed", "candidates": []})
     for name, cands in meta.get("unresolved", []) or []:
         for row in rows:
@@ -121,7 +125,7 @@ def _preview(df: pd.DataFrame, meta: dict, account_id: str | None, label: str, s
     return {"account_id": account_id, "account_label": label, "source": source, "rows": rows, "computed_total": computed,
             "screen_total": meta.get("screen_total_value") or None, "verified": bool(meta.get("verified")),
             "reconciled": bool(meta.get("reconciled")), "diff": meta.get("diff", 0), "value_diff": meta.get("value_diff"),
-            "errors": list(meta.get("errors") or []), "class_labels": CLASS_LABELS}
+            "errors": list(meta.get("errors") or []), "class_labels": CLASS_LABELS, "stock_groups": STOCK_GROUPS}
 
 
 def _norm_label(s: str) -> str:
@@ -252,12 +256,95 @@ async def file_import(file: Annotated[UploadFile, File()], account_id: Annotated
     if df.empty and not meta["errors"]:
         raise HTTPException(422, "읽을 수 있는 종목 행이 없어요.")
     stem = Path(file.filename or "").stem
+    labels = [x for x in df["account_label"].fillna("").unique() if x] if "account_label" in df and not account_id else []
+    if labels:   # 엑셀 양식처럼 '계좌' 열이 있으면 한 파일에 여러 계좌
+        out = []
+        for lab in labels:
+            part = df[df["account_label"] == lab]
+            matched = match_account(lab, accts)
+            sub_meta = {**meta, "verified": False, "reconciled": False, "screen_total_value": 0, "diff": 0, "value_diff": None,
+                        "errors": meta["errors"] if lab == labels[0] else []}
+            pv = _preview(part, sub_meta, matched, lab, "file")
+            pv["matched_label"] = accts[matched].get("label") if matched else None
+            pv["suggested"] = suggest_account(lab, owner or "me")
+            out.append(pv)
+        return {"groups": out}
     label = (acct.get("label") if acct else None) or stem or "파일"
     matched = account_id or match_account(stem, accts)
     preview = _preview(df, meta, matched, label, "file")
     preview["matched_label"] = accts[matched].get("label") if matched else None
     preview["suggested"] = suggest_account(stem, owner or "me")
     return {"groups": [preview]}
+
+
+# ---------- 엑셀 양식 (진짜 엑셀로 입력) ----------
+
+TEMPLATE_COLUMNS = ["계좌", "종목명", "종목코드", "보유수량", "현재가", "매입금액", "자산군", "주식 구분"]
+CLASS_LABEL_LIST = ["주식", "장기채", "중기채", "금", "원자재", "현금", "혼합·미분류"]
+GROUP_LABEL_LIST = list(STOCK_GROUPS.values())
+
+
+@router.get("/template.xlsx")
+def template(prefill: bool = False, owner: Literal["together", "me", "partner"] = "together"):
+    """엑셀 양식. prefill=1이면 지금 잔고를 채워 준다 — 엑셀에서 고쳐 '파일'로 다시 올리면 된다.
+    계좌·자산군·주식 구분은 엑셀 안에서 고르는 칸(데이터 유효성)."""
+    import io
+    from fastapi.responses import Response
+    from openpyxl import Workbook
+    from openpyxl.styles import Alignment, Font, PatternFill
+    from openpyxl.worksheet.datavalidation import DataValidation
+    accts = load_accounts(accounts_path())
+    labels = [a.get("label") or k for k, a in accts.items() if a.get("active", True) is not False]
+    wb = Workbook(); ws = wb.active; ws.title = "보유종목"
+    ws.append(TEMPLATE_COLUMNS)
+    for c in ws[1]:
+        c.font = Font(bold=True); c.fill = PatternFill("solid", fgColor="F2F2F2"); c.alignment = Alignment(horizontal="center")
+    if prefill:
+        from backend.holdings import load_rows
+        accounts, rows = load_rows(owner)
+        name_of = {a.id: a.label for a in accounts}
+        cls_label = {"stock": "주식", "long_bond": "장기채", "mid_bond": "중기채", "gold": "금", "commodity": "원자재", "cash": "현금", "mixed": "혼합·미분류"}
+        for h in rows:
+            ws.append([name_of.get(h.account_id, h.account_id), h.ticker_name, h.ticker or "", h.qty, h.price, h.buy_value or None,
+                       cls_label.get(h.asset_class or "", ""), STOCK_GROUPS.get(h.stock_group or "", "")])
+    for col, w in zip("ABCDEFGH", [22, 28, 11, 11, 12, 14, 12, 12]):
+        ws.column_dimensions[col].width = w
+    for col in "DEF":
+        for cell in ws[col][1:400]:
+            cell.number_format = "#,##0"
+    ws.freeze_panes = "A2"
+    lists = wb.create_sheet("목록")
+    for i, v in enumerate(labels, 1): lists.cell(i, 1, v)
+    for i, v in enumerate(CLASS_LABEL_LIST, 1): lists.cell(i, 2, v)
+    for i, v in enumerate(GROUP_LABEL_LIST, 1): lists.cell(i, 3, v)
+    lists.sheet_state = "hidden"
+    for col, src, n in (("A", "A", max(len(labels), 1)), ("G", "B", len(CLASS_LABEL_LIST)), ("H", "C", len(GROUP_LABEL_LIST))):
+        dv = DataValidation(type="list", formula1=f"=목록!${src}$1:${src}${n}", allow_blank=True,
+                            showErrorMessage=col != "A", errorTitle="목록에서 골라 주세요", error="목록에 있는 값만 넣을 수 있어요.")
+        ws.add_data_validation(dv); dv.add(f"{col}2:{col}500")
+    guide = wb.create_sheet("안내")
+    for line in ["채운 뒤 둘이서은퇴 → 자산 등록 → 파일로 이 파일을 올리면 계좌별로 나눠 확인 화면이 열려요.",
+                 "계좌: 목록에서 고르거나 새 이름을 적으면 확인 화면에서 새 계좌로 추가할 수 있어요.",
+                 "보유수량·현재가는 필수, 매입금액은 알면 적어요(넣은 돈·불어난 돈 계산에 써요).",
+                 "자산군·주식 구분은 비워 두면 확인 화면에서 골라요. 한 번 고르면 다음부터 안 물어요."]:
+        guide.append([line])
+    guide.column_dimensions["A"].width = 100
+    buf = io.BytesIO(); wb.save(buf)
+    name = "dulyeo_holdings.xlsx"
+    return Response(buf.getvalue(), media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    headers={"Content-Disposition": f"attachment; filename=\"{name}\"; filename*=UTF-8''%EB%91%98%EC%9D%B4%EC%84%9C%EC%9D%80%ED%87%B4_%EB%B3%B4%EC%9C%A0%EC%A2%85%EB%AA%A9.xlsx"})
+
+
+@router.get("/sheet")
+def sheet_rows(owner: Literal["together", "me", "partner"] = "together"):
+    """'엑셀처럼 고치기' 표의 보유종목 탭: 지금 잔고 행 + 고를 수 있는 계좌 목록."""
+    from backend.holdings import load_rows
+    accts = load_accounts(accounts_path())
+    accounts, rows = load_rows(owner)
+    return {"accounts": [account_view(k, v, set()) for k, v in accts.items() if v.get("active", True) is not False],
+            "rows": [{"account_id": h.account_id, "ticker_name": h.ticker_name, "ticker": h.ticker, "qty": h.qty, "price": h.price,
+                      "buy_value": h.buy_value, "asset_class": h.asset_class, "stock_group": h.stock_group} for h in rows],
+            "as_of": {a.id: a.as_of.isoformat() if a.as_of else None for a in accounts}}
 
 
 # ---------- 저장 ----------
@@ -268,7 +355,9 @@ class CommitRow(InputModel):
     qty: Annotated[int, Field(strict=True, ge=1, le=100_000_000)]
     price: Annotated[int, Field(strict=True, ge=1, le=1_000_000_000)]
     asset_class: Literal["stock", "long_bond", "mid_bond", "gold", "commodity", "cash", "mixed"]
-    role: Literal["core", "satellite"] = "core"
+    role: Literal["core", "satellite"] | None = None          # 안 보내면 매핑의 기존 역할을 그대로 둔다
+    stock_group: Literal["kr", "us", "em", "income"] | None = None
+    buy_value: Annotated[int | None, Field(ge=0, le=10**15)] = None   # 매입금액(캡처·파일에 있을 때). 손익 표시용
 
     @field_validator("ticker")
     @classmethod
@@ -296,12 +385,12 @@ def commit(data: CommitInput):
     owner = OWNER_TO_WEB.get(acct.get("owner"), "me")
     with storage.connection() as conn:
         storage.require_person(conn, owner)
-    df = pd.DataFrame([{"account_id": data.account_id, "ticker_name": r.ticker_name.strip(), "ticker": r.ticker, "qty": r.qty, "price": r.price} for r in data.rows],
-                      columns=HOLDING_COLUMNS)
+    df = pd.DataFrame([{"account_id": data.account_id, "ticker_name": r.ticker_name.strip(), "ticker": r.ticker, "qty": r.qty, "price": r.price,
+                        "buy_value": r.buy_value} for r in data.rows], columns=HOLDING_COLUMNS + ["buy_value"])
     errors = validate_holdings(df)
     if errors:
         raise HTTPException(422, " / ".join(errors))
-    rc = reconcile(df, data.screen_total)
+    rc = reconcile(df[HOLDING_COLUMNS], data.screen_total)
     if rc.verified and not rc.ok and not data.accept_diff:
         raise HTTPException(422, f"화면 합계와 {rc.diff:+,}원 차이가 있어요. 틀린 칸을 고치거나 '차이를 확인했어요'를 켜 주세요.")
     # Group reconciliation is validated before snapshots or sheet holdings are changed.
@@ -321,7 +410,7 @@ def commit(data: CommitInput):
     except ValueError as e:
         raise HTTPException(422, str(e)) from None
     # (2) 종목 꼬리표 — 사용자가 고른 자산군은 '확인됨'으로 매핑에 남아 다음부터 안 묻는다. 혼합은 남기지 않는다
-    tags = [{"ticker_name": r.ticker_name.strip(), "ticker": r.ticker, "asset_class": r.asset_class, "role": r.role}
+    tags = [{"ticker_name": r.ticker_name.strip(), "ticker": r.ticker, "asset_class": r.asset_class, "role": r.role, "stock_group": r.stock_group}
             for r in data.rows if r.asset_class != "mixed"]
     tagged = upsert_asset_tags(tags, asset_map_path()) if tags else 0
     # (3) 시트 보유종목 탭

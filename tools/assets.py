@@ -202,6 +202,23 @@ def save_asset_map(assets: dict[str, dict], class_defaults: dict[str, dict] | No
     path.write_text(ASSET_MAP_HEADER + yaml.safe_dump(data, allow_unicode=True, sort_keys=False), encoding="utf-8")
 
 
+# 주식 안의 구분 — 화면에서 주식 묶음을 나눠 보기 위한 꼬리표. 리밸런싱은 계속 stock 하나로 맞춘다 (2026-10-28 사용자).
+STOCK_GROUPS = {"kr": "국내", "us": "미국", "em": "신흥국·테마", "income": "배당·리츠"}
+_STOCK_GROUP_HINTS = [("income", ("배당", "리츠", "인프라", "커버드콜", "고배당")),
+                      ("us", ("미국", "S&P", "나스닥", "NASDAQ", "다우", "US")),
+                      ("em", ("차이나", "중국", "인도", "베트남", "신흥", "휴머노이드", "로봇", "2차전지", "반도체", "AI", "테마")),
+                      ("kr", ("200", "코스피", "KOSPI", "코스닥", "KOSDAQ", "KRX300", "국내"))]
+
+
+def guess_stock_group(name: str) -> str | None:
+    """종목명으로 주식 구분을 추측한다 (사용자가 확인·변경). 모르면 None."""
+    up = str(name or "").upper()
+    for key, words in _STOCK_GROUP_HINTS:
+        if any(w.upper() in up for w in words):
+            return key
+    return None
+
+
 def upsert_asset_tags(rows: list[dict], path: Path = ASSET_MAP_PATH) -> int:
     """rows: [{ticker_name, ticker, asset_class, role}] → asset_map에 confirmed로 넣거나 갱신. 바뀐 개수 반환."""
     amap = load_asset_map(path)
@@ -212,7 +229,11 @@ def upsert_asset_tags(rows: list[dict], path: Path = ASSET_MAP_PATH) -> int:
             continue
         cur = amap.get(name, {})
         new = dict(cur, ticker=str(r.get("ticker") or cur.get("ticker") or ""), asset_class=r["asset_class"],
-                   role=r.get("role") or cur.get("role", "core"), status="confirmed")
+                   role=r.get("role") or cur.get("role", "core"), status="confirmed")   # role을 안 주면 기존 값 유지
+        if r["asset_class"] == "stock" and r.get("stock_group") in STOCK_GROUPS:
+            new["stock_group"] = r["stock_group"]
+        elif r["asset_class"] != "stock":
+            new.pop("stock_group", None)
         if new != cur:
             amap[name] = new; changed += 1
     if changed:

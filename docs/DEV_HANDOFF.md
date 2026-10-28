@@ -102,3 +102,19 @@ Codex가 UX-01 중복 집계 검증을 마무리하기 위해 `backend/account_g
 `backend/account_groups.py` 공통 교체와 storage/ledger replace_account_assets 연결 완료. API 반환 assets는 기존대로 상세 행만, 장부에는 root도 저장한다. 기존 수동 root ID·총액·선택 보존, 새 계좌 details 선택, 재등록 시 상세 ID 유지·버전 증가, 기존 다중 root 임포트 다음 등록에 통합. 수동 상세가 있으면 가져오기 중복 방지를 위해 409이며 registration.commit에서 스냅샷/꼬리표/시트 보유종목 쓰기 전 사전 검사한다. 시트 생성 재시도는 find_request를 duplicate 검사 전에 적용. 등록 테스트의 장부 기대값은 parent_id 상세만 필터하도록 갱신. 기존 로컬 require_person 테스트 기대값은 이미 UX용으로 갱신해 통과함. 다른 담당 분기는 보존했다. Python 154·브라우저 16·빌드 통과, 실제 Google OAuth/비전 호출은 미검증.
 
 Codex 별도포트 테스트 결과 경로도 `web/test-results-8766`로 격리함. 서로 다른 포트여도 Playwright 기본 test-results를 동시에 사용하면 다른 세션이 지워 ENOENT가 나므로 port별 outputDir 설정을 추가했다.
+
+## 2026-10-28 Claude(ee15fccc) → Codex: 종목 잔고 화면 추가 (사용자 "로빈후드 제대로 조사해서 적용하자")
+
+- 새 파일(Claude): `web/src/holdings.tsx`·`holdings.css`(종목 잔고 패널), `backend/holdings.py`(`GET /api/holdings?owner=&live=&asset_class=`), `tools/holdings.py`(손익 순수 함수, CALCULATION_RULES §7), `rules/holdings.yaml`, `tests/test_holdings.py`. `tools/market.fetch_quote`(전일 종가) 추가.
+- 공용 파일 최소 수정: `App.tsx`에 import 1줄과 `우리 자산`·`주식` 페이지 실제 보기에서 `<HoldingsPanel>` 1줄(StockWorkspace 바로 위). `backend/main.py` 라우터 1줄.
+- Codex 파일의 문구만 고침: `stocks.tsx` 실제 보기 안내("종목별 수량·평단가·자동 시세는 연결 전" → 위 '보유 주식'에서 본다), `forms.tsx` 주식 총액 도움말. 구조·로직은 그대로.
+- 계약: 등록이 끝나면 `window` 이벤트 `retire:holdings-changed`를 보낸다. 다른 화면도 이 이벤트로 다시 읽을 수 있다.
+- 홈의 '넣은 돈 / 불어난 돈'과 오래된 잔고 회색 표시는 아직 이 패널 안에만 있다. 홈(HomeSummary)에 넣으려면 `/api/holdings`의 `total.buy_value·total_return`을 쓰면 된다 — 홈은 Codex 화면이라 손대지 않았다.
+
+- 2026-10-28 Claude(ee15fccc) 추가: 엑셀처럼 입력·수정(`web/src/sheet.tsx`, Claude 담당). 자산 탭은 Codex의 `/api/assets`를 그대로 쓴다(PUT 때 parent_id·valuation_source·version을 원래 값으로 보냄, 사진·파일로 들어온 행은 읽기 전용). `/api/assets` 입력 모델을 바꾸면 이 표의 열도 같이 봐 주세요. 등록 선택 화면 카드가 네 개로 바뀌었고 '금액 직접 입력'이 기존 AssetForm이다(기존 브라우저 테스트의 `/직접 입력/`은 그대로 맞는다).
+
+## 2026-10-28 Claude(ee15fccc) → Codex: 웹 화면 표준 전환 (사용자 확정) — `web/` 담당 변경
+
+- 사용자 결정: 화면 표준 = Tailwind CSS + shadcn/ui. 첫 화면 = 엑셀 워크북(요약·보유종목·자산·리밸런싱 시트), 지금 카드형 App은 '다른 버전으로 보기'로 남긴다. concept.jpg 시각 기준은 대체(DECISIONS 2026-10-28).
+- 이 전환 동안 `web/` 전체는 Claude가 맡는다(AGENT_DESIGN §0 UI-02). Codex는 `backend/storage.py`(장부)·`backend/rebalance.py`·프로필/자산 API·관련 테스트를 계속 맡는다. `web/`을 고쳐야 하면 이 문서에 먼저 한 줄 남겨 주세요.
+- 새 서버 경로(Claude): `backend/workbook.py` — `/api/workbook/summary`(한 줄 요약), `/api/workbook/rebalance`(등록 잔고로 묶음별 엔진 실행, 이번 달 납입), `/api/workbook/report.xlsx`.

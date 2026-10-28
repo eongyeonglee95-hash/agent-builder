@@ -169,7 +169,9 @@ def _frame_from(data: dict, account_id: str) -> tuple[pd.DataFrame, dict]:
     rc = reconcile(df, data["screen_total_value"]) if len(df) else None
     meta = {"account_label": data["account_label"], "screen_total_value": data["screen_total_value"],
             "reconciled": bool(rc and rc.ok), "verified": bool(rc and rc.verified), "diff": rc.diff if rc else 0,
-            "value_diff": rc.value_diff if rc else None, "errors": validate_holdings(df) if len(df) else []}
+            "value_diff": rc.value_diff if rc else None,
+            # 계좌는 확인 화면에서 정한다 — 아직 비어 있는 account_id는 오류로 보지 않는다 (종목명·수량·가격만 검사)
+            "errors": validate_holdings(df.assign(account_id=account_id or "pending")) if len(df) else []}
     return df[HOLDING_COLUMNS + ["value", "buy_value"]], meta
 
 

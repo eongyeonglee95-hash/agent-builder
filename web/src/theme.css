@@ -1,0 +1,115 @@
+/* 화면 표준 (2026-10-28 사용자 확정): Tailwind CSS + shadcn/ui. 새 화면의 색·글꼴·크기는 여기 토큰에서만 고른다.
+   값의 근거: docs/research/UI_REFERENCES.md (토스 디자인 시스템 회색·빨강·파랑, 글자 7단계, WCAG 대비 계산), 상승 빨강·하락 파랑은 한국 증권사 관례,
+   엑셀 초록은 표 선택·시트 탭에만. 강조색은 따로 두지 않고 진한 글자색(ink)을 버튼에 쓴다 — 파랑은 하락에만 쓰여 겹치지 않게. */
+/* 레이어 순서: 예전 화면 CSS(legacy)는 Tailwind 기본(base) 위, shadcn·유틸리티 아래 — 새 화면 스타일이 이기고 예전 화면은 그대로 */
+@layer theme, base, legacy, components, utilities;
+@import "tailwindcss";
+@import "./styles.css" layer(legacy);
+@import "./workspaces.css" layer(legacy);
+@import "./experience.css" layer(legacy);
+@import "tw-animate-css";
+@import "pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --radius: 0.375rem;   /* 6px, 엑셀 격자 안은 0 */
+  /* 회색 — 토스 디자인 시스템(TDS) grey50~900 그대로 (docs/research/UI_REFERENCES.md) */
+  --grey-50: #f9fafb; --grey-100: #f2f4f6; --grey-200: #e5e8eb; --grey-300: #d1d6db; --grey-400: #b0b8c1;
+  --grey-500: #8b95a1; --grey-600: #6b7684; --grey-700: #4e5968; --grey-800: #333d4b; --grey-900: #191f28;
+  /* 역할: 바탕 grey100 · 면 흰색 · 글자 grey900 · 보조 글자 grey600(흰 바탕 4.62:1) · 선 grey200 · 입력 테두리 grey300 */
+  --background: #ffffff;
+  --foreground: var(--grey-900);
+  --card: #ffffff;
+  --card-foreground: var(--grey-900);
+  --popover: #ffffff;
+  --popover-foreground: var(--grey-900);
+  --primary: var(--grey-900);           /* 주 버튼: 진한 글자색. 파랑은 하락에만 */
+  --primary-foreground: #ffffff;
+  --secondary: var(--grey-100);
+  --secondary-foreground: var(--grey-900);
+  --muted: var(--grey-100);
+  --muted-foreground: var(--grey-600);
+  --accent: var(--grey-100);
+  --accent-foreground: var(--grey-900);
+  --destructive: #d22030;
+  --border: var(--grey-200);
+  --input: var(--grey-300);
+  --ring: var(--grey-400);
+  /* 상승 빨강·하락 파랑 — TDS. 표 안 작은 숫자는 700(대비 5.3:1 이상), 큰 숫자는 500, 옅은 바탕은 50 */
+  --up: #d22030; --up-big: #f04452; --up-soft: #ffeeee;
+  --down: #1b64da; --down-big: #3182f6; --down-soft: #e8f3ff;
+  /* 자산군 6색 — 지금 화면 값 유지(출처 없음, 바꿀지는 사용자 결정) */
+  --cls-stock: #5985ec; --cls-long-bond: #42b3aa; --cls-mid-bond: #8ed2c8; --cls-gold: #e6ba69; --cls-commodity: #d397b5; --cls-cash: #b0b8c1;
+  /* 엑셀 보기 — 유일한 강조색 초록은 선택 테두리와 현재 시트 탭에만 */
+  --sheet-line: var(--grey-200); --sheet-head: var(--grey-50); --sheet-head-text: var(--grey-600);
+  --sheet-select: #217346; --sheet-select-soft: #e8f2ec;
+}
+
+/* Tailwind 기본 팔레트·글자 크기를 지운다 — 아래 토큰 밖의 색·크기는 코드에 쓸 수 없다 (지금 CSS 색 529개가 다시 생기지 않게) */
+@theme {
+  --color-*: initial;
+  --text-*: initial;
+  --color-white: #ffffff;
+  --color-black: #000000;
+  --color-transparent: transparent;
+  /* 글자 7단계 — TDS 12/13/15/17/20/22/30, 줄 높이 약 1.5배 */
+  --text-xs: 0.75rem;     --text-xs--line-height: 1.125rem;
+  --text-sm: 0.8125rem;   --text-sm--line-height: 1.21875rem;
+  --text-base: 0.9375rem; --text-base--line-height: 1.40625rem;
+  --text-lg: 1.0625rem;   --text-lg--line-height: 1.59375rem;
+  --text-xl: 1.25rem;     --text-xl--line-height: 1.8125rem;
+  --text-2xl: 1.375rem;   --text-2xl--line-height: 1.9375rem;
+  --text-3xl: 1.875rem;   --text-3xl--line-height: 2.5rem;
+}
+
+@theme inline {
+  --font-sans: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
+  --radius-xl: calc(var(--radius) + 6px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-up: var(--up);
+  --color-up-big: var(--up-big);
+  --color-up-soft: var(--up-soft);
+  --color-down: var(--down);
+  --color-down-big: var(--down-big);
+  --color-down-soft: var(--down-soft);
+  --color-sheet-line: var(--sheet-line);
+  --color-sheet-head: var(--sheet-head);
+  --color-sheet-select: var(--sheet-select);
+  --color-sheet-select-soft: var(--sheet-select-soft);
+  --color-grey-50: var(--grey-50);
+  --color-grey-100: var(--grey-100);
+  --color-grey-200: var(--grey-200);
+  --color-grey-300: var(--grey-300);
+  --color-grey-400: var(--grey-400);
+  --color-grey-500: var(--grey-500);
+  --color-grey-600: var(--grey-600);
+  --color-grey-700: var(--grey-700);
+  --color-grey-800: var(--grey-800);
+  --color-grey-900: var(--grey-900);
+}
+
+@layer base {
+  .wb, .wb *, [data-slot] { font-family: var(--font-sans); }
+  .wb { font-feature-settings: "tnum"; }
+}

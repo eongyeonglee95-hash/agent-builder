@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { parse } from 'yaml'
@@ -9,7 +10,8 @@ import { parse } from 'yaml'
 const strategyPath = fileURLToPath(new URL('../rules/strategies.yaml', import.meta.url))
 const assetMapPath = fileURLToPath(new URL('../rules/asset_map.yaml', import.meta.url))
 export default defineConfig({
-  plugins: [react(), {
+  resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
+  plugins: [react(), tailwindcss(), {
     name: 'retirement-strategy-display',
     resolveId(id) { if (id === 'virtual:retire-strategies') return '\0retire-strategies' },
     load(id) {

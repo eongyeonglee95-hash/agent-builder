@@ -230,3 +230,113 @@ def test_capture_without_account_splits_by_label_and_matches(client, env, monkey
 def test_match_account(label, expected):
     accts = {"me_new": {"label": "연금저축계좌(신)"}, "me_old": {"label": "연금저축계좌(구)"}, "me_irp": {"label": "미래에셋 IRP"}, "gone": {"label": "IRP 옛날", "active": False}}
     assert registration.match_account(label, accts) == expected
+
+
+def test_multi_capture_rows_without_account_are_not_errors():
+    """계좌를 고르기 전 캡처 행에 'account_id 비어 있음' 오류를 띄우지 않는다 (2026-10-28 사용자 화면에서 발견)."""
+    from tools.parse_balance import _frame_from
+    df, meta = _frame_from({"account_label": "연금저축계좌(신)", "screen_total_value": 70000,
+                            "rows": [{"ticker_name": "KODEX 200", "qty": 2, "price": 35000, "value": 70000, "buy_value": 0}]}, "")
+    assert meta["errors"] == [] and meta["reconciled"] is True
+    _, bad = _frame_from({"account_label": "x", "screen_total_value": 0,
+                          "rows": [{"ticker_name": "A", "qty": 0, "price": 1, "value": 0, "buy_value": 0}]}, "")
+    assert len(bad["errors"]) == 1 and "qty" in bad["errors"][0]
+
+
+
+def test_commit_keeps_existing_role_and_saves_stock_group_and_buy_value(client, env):
+    """역할을 보내지 않으면 매핑의 기존 역할(위성)을 지킨다 — 2026-10-28 위성→핵심 덮어쓰기 버그. 주식 구분·매입금액은 저장한다."""
+    import yaml
+    (env / "asset_map.yaml").write_text("assets:\n  테마 ETF:\n    ticker: '0053L0'\n    asset_class: stock\n    role: satellite\n    status: confirmed\nclass_defaults: {}\n", encoding="utf-8")
+    body = commit_body(screen_total=None, rows=[
+        {"ticker_name": "테마 ETF", "ticker": "0053L0", "qty": 2, "price": 1000, "asset_class": "stock", "stock_group": "em", "buy_value": 3000},
+        {"ticker_name": "새 채권 ETF", "ticker": "453850", "qty": 1, "price": 500, "asset_class": "long_bond", "stock_group": "us"},
+    ])
+    r = client.post("/api/register/commit", json=body)
+    assert r.status_code == 200, r.text
+    amap = yaml.safe_load((env / "asset_map.yaml").read_text(encoding="utf-8"))["assets"]
+    assert amap["테마 ETF"]["role"] == "satellite" and amap["테마 ETF"]["stock_group"] == "em"
+    assert "stock_group" not in amap["새 채권 ETF"]   # 주식이 아니면 주식 구분을 남기지 않는다
+    snap = pd.read_csv(env / "snapshots" / "me_test_pension" / f"{date.today().isoformat()}.csv", dtype={"ticker": str})
+    assert snap.loc[snap["ticker_name"] == "테마 ETF", "buy_value"].iloc[0] == 3000
+
+
+def test_preview_suggests_stock_group(client):
+    csv = "종목명,수량,현재가\nTIGER 미국S&P500,1,10\nKODEX 200,1,10\nKODEX 인도타타그룹,1,10\nSOL 미국배당다우존스,1,10\n알 수 없는 종목,1,10\n".encode("utf-8")
+    g = client.post("/api/register/file", data={"account_id": "me_test_pension"}, files={"file": ("a.csv", csv, "text/csv")}).json()["groups"][0]
+    assert [r["stock_group"] for r in g["rows"]] == ["us", "kr", "em", "income", None]
+    assert g["stock_groups"]["em"] == "신흥국·테마"
+
+
+def test_sheet_holdings_tab_accepts_old_header_without_buy_value():
+    from tools.sheets import HOLDING_COLUMNS, GoogleSheets
+    old = HOLDING_COLUMNS[:-1]
+    class FakeSession:
+        def request(self, method, url, **kw):
+            class R:
+                status_code = 200; content = b"x"
+                def json(self_inner):
+                    return {"values": [old, ["a", "KODEX 200", "069500", 1, 100, "2026-10-28", "t"]]}
+            return R()
+    rows = GoogleSheets(FakeSession(), "sid").read("보유종목")
+    assert rows[0]["ticker_name"] == "KODEX 200" and rows[0]["buy_value"] == ""
+
+
+def test_holdings_api_after_commit_offline_and_live(client, monkeypatch):
+    from backend import holdings as hapi
+    body = commit_body(rows=[{"ticker_name": "KODEX 200", "ticker": "069500", "qty": 10, "price": 35000, "asset_class": "stock", "stock_group": "kr", "buy_value": 300000},
+                             {"ticker_name": "새로운 채권 ETF", "ticker": "453850", "qty": 20, "price": 10000, "asset_class": "long_bond"}])
+    assert client.post("/api/register/commit", json=body).status_code == 200
+    off = client.get("/api/holdings").json()
+    assert off["accounts"][0]["value"] == 550_000 and off["accounts"][0]["cost_known"] == 1
+    assert off["total"]["total_return"] == 50_000 and off["live"] is False
+    k200 = next(h for h in off["holdings"] if h["ticker"] == "069500")
+    assert k200["stock_group"] == "kr" and k200["asset_class"] == "stock" and k200["avg_cost"] == 30000
+    assert client.get("/api/holdings?owner=partner").json()["accounts"] == []
+    hapi._quote_cache.clear()
+    monkeypatch.setattr(hapi, "fetch_quote", lambda c: {"price": 36000, "prev_close": 35500} if c == "069500" else (_ for _ in ()).throw(OSError("x")))
+    on = client.get("/api/holdings?live=1").json()
+    assert on["live"] is True and on["quote_failed"] == ["453850"]
+    k = next(h for h in on["holdings"] if h["ticker"] == "069500")
+    assert k["price"] == 36000 and k["today_return"] == 5000 and k["total_return"] == 60_000
+
+
+def test_holdings_fills_missing_buy_value_from_earlier_registration_only_when_qty_matches(client, env):
+    snap = env / "snapshots" / "me_test_pension"; snap.mkdir(parents=True)
+    (snap / "2026-10-20.csv").write_text("account_id,ticker_name,ticker,qty,price,buy_value\nme_test_pension,A,000001,10,100,800\nme_test_pension,B,000002,5,100,400\n", encoding="utf-8")
+    (snap / "2026-10-27.csv").write_text("account_id,ticker_name,ticker,qty,price\nme_test_pension,A,000001,10,120\nme_test_pension,B,000002,7,100\n", encoding="utf-8")
+    rows = {h["ticker_name"]: h for h in client.get("/api/holdings").json()["holdings"]}
+    assert rows["A"]["buy_value"] == 800 and rows["A"]["buy_source"] == "2026-10-20" and rows["A"]["total_return"] == 400
+    assert rows["B"]["buy_value"] is None   # 수량이 바뀌었으면 쓰지 않는다
+
+
+
+def test_excel_template_round_trip_splits_by_account(client, env):
+    """진짜 엑셀: 지금 잔고를 채운 양식을 받아 그대로 다시 올리면 계좌별로 나뉘고 자산군·주식 구분이 유지된다."""
+    import io
+    from openpyxl import load_workbook
+    assert client.post("/api/register/commit", json=commit_body(screen_total=None, rows=[
+        {"ticker_name": "KODEX 200", "ticker": "069500", "qty": 10, "price": 35000, "asset_class": "stock", "stock_group": "kr", "buy_value": 300000}])).status_code == 200
+    r = client.get("/api/register/template.xlsx?prefill=1")
+    assert r.status_code == 200 and r.headers["content-type"].startswith("application/vnd.openxmlformats")
+    wb = load_workbook(io.BytesIO(r.content))
+    ws = wb["보유종목"]
+    assert [c.value for c in ws[1]] == ["계좌", "종목명", "종목코드", "보유수량", "현재가", "매입금액", "자산군", "주식 구분"]
+    assert [c.value for c in ws[2]] == ["테스트 연금저축", "KODEX 200", "069500", 10, 35000, 300000, "주식", "국내"]
+    assert wb["목록"].sheet_state == "hidden" and ws.data_validations.dataValidation
+    ws.append(["배우자 일반계좌", "새 금 ETF", "411060", 3, 20000, None, "금", None])
+    buf = io.BytesIO(); wb.save(buf)
+    up = client.post("/api/register/file", files={"file": ("고친 잔고.xlsx", buf.getvalue(), "application/octet-stream")})
+    assert up.status_code == 200, up.text
+    groups = up.json()["groups"]
+    assert [(g["account_label"], g["account_id"]) for g in groups] == [("테스트 연금저축", "me_test_pension"), ("배우자 일반계좌", "spouse_test_general")]
+    assert groups[0]["rows"][0]["asset_class"] == "stock" and groups[0]["rows"][0]["stock_group"] == "kr" and groups[0]["rows"][0]["buy_value"] == 300000
+    assert groups[1]["rows"][0]["asset_class"] == "gold"
+
+
+def test_sheet_rows_endpoint(client):
+    assert client.post("/api/register/commit", json=commit_body(screen_total=None, rows=[
+        {"ticker_name": "KODEX 200", "ticker": "069500", "qty": 10, "price": 35000, "asset_class": "stock"}])).status_code == 200
+    d = client.get("/api/register/sheet").json()
+    assert [a["id"] for a in d["accounts"]] == ["me_test_pension", "spouse_test_general"]
+    assert d["rows"][0]["ticker_name"] == "KODEX 200" and d["rows"][0]["account_id"] == "me_test_pension"

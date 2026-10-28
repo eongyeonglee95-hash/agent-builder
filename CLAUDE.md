@@ -5,7 +5,7 @@
 ## 현재 작업 기준 — 2026-10-27 사용자 승인
 - **진행 중인 세션 간 인계**: `docs/DEV_HANDOFF.md`를 읽고 수신 확인을 남긴다. Codex가 사용자 추가 요청(내 정보·배우자 정보·수동 자산 등록)을 `web/`·`backend/`에서 구현 중. 기존 Claude는 SAFE/엔진·투자 규칙 경로를 유지하고 겹치는 파일 수정 전 인계한다.
 - 사용자가 Codex 검토 내용을 Claude의 기존 작업에 반영하고 충돌 없이 원래 컨셉대로 진행하도록 요청했다.
-- 시각 기준은 `docs/assets/concept.jpg`. 작업 순서·담당·완료 조건의 원본은 `docs/AGENT_DESIGN.md` §0. 상세 검토 근거는 `docs/ARCHITECTURE_REVIEW.md`.
+- 시각 기준(2026-10-28 사용자 확정으로 변경): 화면 표준은 Tailwind CSS + shadcn/ui, 테마 토큰은 `web/src/theme.css`(근거 `docs/research/UI_REFERENCES.md`). 첫 화면은 엑셀 워크북, 예전 카드형 화면(concept.jpg 기반)은 '다른 버전으로 보기'. 새 화면에 토큰 밖의 색·글자 크기를 쓰지 않는다. 작업 순서·담당·완료 조건의 원본은 `docs/AGENT_DESIGN.md` §0. 상세 검토 근거는 `docs/ARCHITECTURE_REVIEW.md`.
 - 목표 스택: `web/` React·TypeScript·Vite + Python·FastAPI. 기존 `app/` Streamlit은 전환 중 비교 도구. 기존 계산 로직은 검증을 보강해 재사용한다.
 - 현재 진행 중인 투자 출처·저자 리서치는 유지한다. 전략 비율·종목·투자 규칙 결정과 UI/구조 전환은 별개다. 새 비율이나 종목을 이 전환의 일부로 임의 반영하지 않는다.
 - 동시 작업 전 §0의 담당 경로와 협업 메모를 확인한다. 기존 세션의 작업을 복제하거나 다른 작업자의 변경을 되돌리지 않는다. 준비/전달/수신 확인/구현 완료를 구분한다.

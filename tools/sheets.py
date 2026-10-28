@@ -30,7 +30,7 @@ ASSET_TAB = "자산"
 ASSET_COLUMNS = ["id", "owner", "pocket", "assetClass", "name", "account", "account_id", "amount", "as_of", "source", "version", "updated_at", "request_id",
                  "parent_id", "valuation_source", "share_percent"]   # 뒤 3개: 세부 자산 연결·합산 기준·공동 지분(Codex UX-01 모델)
 HOLDING_TAB = "보유종목"
-HOLDING_COLUMNS = ["account_id", "ticker_name", "ticker", "qty", "price", "as_of", "updated_at"]
+HOLDING_COLUMNS = ["account_id", "ticker_name", "ticker", "qty", "price", "as_of", "updated_at", "buy_value"]
 TABS = {ASSET_TAB: ASSET_COLUMNS, HOLDING_TAB: HOLDING_COLUMNS}
 
 SPREADSHEET_ID_RE = re.compile(r"[-\w]{20,}")
@@ -126,7 +126,7 @@ class GoogleSheets:
             header = [str(h).strip() for h in (got.get("values") or [[]])[0]]
             if header[:len(cols)] == cols:
                 continue
-            if any(header):   # 다른 머리글이 이미 있는 탭은 덮지 않는다 — 사용자 데이터일 수 있다
+            if any(header) and header != cols[:len(header)]:   # 다른 머리글이 이미 있는 탭은 덮지 않는다 — 사용자 데이터일 수 있다
                 raise SheetsError(f"'{tab}' 탭에 다른 머리글이 있어요. 탭 이름을 바꾸거나 1행을 {', '.join(cols)} 순서로 맞춰 주세요.")
             self._call("PUT", f"{API}/{self.spreadsheet_id}/values/{tab}!A1", params={"valueInputOption": "RAW"},
                        json={"values": [cols]})
@@ -139,7 +139,7 @@ class GoogleSheets:
         if not values:
             return []
         header = [str(h).strip() for h in values[0]]
-        if header[:len(cols)] != cols:
+        if header[:len(cols)] != cols and header != cols[:len(header)]:   # 옛 양식(열이 덜 있음)은 읽는다
             raise SheetsError(f"'{tab}' 탭의 머리글이 앱 양식과 달라요. 1행을 {', '.join(cols)} 순서로 맞춰 주세요.")
         return _rows_to_dicts(cols, values[1:])
 

@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test'
 test('프로필 없이 첫 자산을 확인·저장하고 갱신·삭제하며 예시와 분리한다', async ({ page, request }) => {
   const errors: string[] = []
   page.on('pageerror', e => errors.push(e.message))
-  await page.goto('/')
+  await page.goto('/#home')
   await expect(page.getByRole('heading', { name: '자산 하나부터 시작해요.' })).toBeVisible()
   await expect(page.getByRole('button', { name: '자산 등록', exact: true })).toHaveCount(1)
   await page.screenshot({ path: test.info().outputPath('asset-first-home.png'), fullPage: true })
@@ -110,7 +110,7 @@ test('세부 합산 선택과 공동 지분이 실제 홈·모바일에 반영�
 for (const width of [1440, 1024, 390, 360]) {
   test(`홈·자산·리밸런싱 화면 ${width}px에서 가로 넘침이 없다`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 1000 })
-    await page.goto('/')
+    await page.goto('/#home')
     await page.getByRole('button', { name: '예시 보기', exact: true }).click()
     await expect(page.locator('.hero')).toBeVisible()
     await page.screenshot({ path: testInfo.outputPath(`home-${width}.png`), fullPage: true })
@@ -168,7 +168,7 @@ test('주식·부동산 메뉴는 해당 자산만 표시하고 등록 종류를
     } })
     expect(saved.ok()).toBe(true)
   }
-  await page.goto('/')
+  await page.goto('/#home')
   await page.getByRole('button', { name: '예시 보기', exact: true }).click()
   await page.getByRole('link', { name: '주식', exact: true }).click()
   await expect(page).toHaveURL(/#stocks$/)
@@ -194,7 +194,7 @@ test('주식·부동산 메뉴는 해당 자산만 표시하고 등록 종류를
 
 test('모바일 더보기에서 주식·부동산 메뉴에 접근할 수 있다', async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 800 })
-  await page.goto('/')
+  await page.goto('/#home')
   await page.getByRole('button', { name: '예시 보기', exact: true }).click()
   for (const [label, hash] of [['주식', 'stocks'], ['부동산', 'property']]) {
     await page.getByRole('button', { name: '주식·부동산 등 전체 메뉴' }).click()
@@ -288,22 +288,126 @@ test('자산 등록 한 곳: 파일(CSV)을 올리면 확인 표를 거쳐 자�
   await dialog.locator('input[type="file"]').setInputFiles({ name: '테스트 연금저축(신).csv', mimeType: 'text/csv', buffer: Buffer.from('\uFEFF' + csv, 'utf8') })
   await expect(dialog.locator('.file-list')).toContainText('테스트 연금저축(신).csv')
   await dialog.getByRole('button', { name: '표로 바꾸기' }).click()
-  await expect(dialog.locator('.reconcile-banner')).toContainText('일치')
-  await expect(dialog.locator('.register-table tbody tr')).toHaveCount(2)
+  await expect(dialog.locator('.rv-check').first()).toContainText('같아요')
+  await expect(dialog.locator('.rv-row')).toHaveCount(2)
   // 브라우저 테스트 서버의 계좌 목록은 비어 있어 파일 이름으로 채워진 새 계좌 입력이 열린다
   await expect(dialog.locator('.new-account [name="label"]')).toHaveValue('테스트 연금저축(신)')
   await dialog.getByRole('button', { name: '계좌 추가' }).click()
-  await expect(dialog.getByLabel('저장할 계좌')).toContainText('테스트 연금저축(신)')
-  await expect(dialog.getByRole('button', { name: '저장', exact: true })).toBeDisabled()   // 자산군 미선택
-  await dialog.locator('.register-table tbody tr').nth(0).getByLabel('자산군').selectOption('stock')
-  await dialog.locator('.register-table tbody tr').nth(1).getByLabel('자산군').selectOption('long_bond')
+  await expect(dialog.locator('.rv-to')).toContainText('테스트 연금저축(신)')
+  await expect(dialog.getByRole('button', { name: '자산군 2개를 골라 주세요' })).toBeDisabled()
+  await dialog.locator('.rv-row', { hasText: 'KODEX 200' }).getByLabel('자산군').selectOption('stock')
+  await dialog.locator('.rv-row', { hasText: '새 채권 ETF' }).getByLabel('자산군').selectOption('long_bond')
+  await expect(dialog.locator('.rv-group').first()).toContainText('주식')
+  await dialog.getByLabel('주식을 나눠 보기').check()
+  await expect(dialog.locator('.rv-group.sub')).toContainText('국내')
   await page.screenshot({ path: test.info().outputPath('register-review.png'), fullPage: true })
-  await dialog.getByRole('button', { name: '저장', exact: true }).click()
+  await dialog.getByRole('button', { name: /등록하기$/ }).click()
   await expect(dialog).not.toBeVisible()
   await expect(page.locator('.toast')).toContainText('2종목')
   await expect(page.locator('.asset-table-panel')).toContainText('테스트 연금저축(신) · 주식')
   await expect(page.locator('.asset-table-panel')).toContainText('테스트 연금저축(신) · 장기채')
   await page.reload()
   await expect(page.locator('.asset-table-panel')).toContainText('테스트 연금저축(신) · 장기채')
+  // 종목 잔고: 등록한 두 종목이 자산군별로 묶여 보이고, 매입금액이 없으면 추정하지 않는다
+  await expect(page.locator('.hp-big')).toContainText('40,000,000원')
+  await expect(page.locator('.hp-row')).toHaveCount(2)
+  await expect(page.locator('.hp-row', { hasText: 'KODEX 200' })).toContainText('매입 모름')
+  await page.goto('/#stocks')
+  await expect(page.locator('.hp-top h2')).toHaveText('보유 주식')
+  await expect(page.locator('.hp-row')).toHaveCount(1)
+  expect(errors).toEqual([])
+})
+
+test('엑셀처럼: 복사한 표를 붙여 넣고 키보드로 고쳐 저장하면 종목 잔고와 자산에 반영된다', async ({ page }) => {
+  const errors: string[] = []
+  page.on('pageerror', e => errors.push(e.message))
+  await page.goto('/#assets')
+  await page.getByRole('button', { name: '자산 등록', exact: true }).first().click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByRole('button', { name: /표로 입력/ }).click()
+  const grid = dialog.getByRole('grid', { name: '보유종목 표' })
+  await expect(grid).toBeVisible()
+  // 엑셀에서 머리글째 복사한 표를 첫 빈 줄에 붙여 넣는다 (계좌 열 없이). 앞 테스트가 만든 줄이 있을 수 있다
+  const width = await grid.locator('.xl-head').count()
+  const htexts = await grid.locator('.xl-cell').allTextContents()
+  const start = htexts.findIndex((t, i) => i % width === 0 && htexts.slice(i, i + width).every(x => x === ''))
+  await grid.locator('.xl-cell').nth(start + 1).click()
+  await grid.evaluate((el, tsv) => { const dt = new DataTransfer(); dt.setData('text/plain', tsv); el.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true })) },
+    '종목명\t종목코드\t보유수량\t현재가\t매입금액\t자산군\nKODEX 200\t069500\t1,000\t35,000\t30,000,000\t주식\n새 채권 ETF\t453850\t500\t10000\t\t장기채')
+  await expect(dialog.locator('.xl-notice')).toContainText('2줄을 붙여 넣었어요')
+  await expect(dialog.locator('.xl-save')).toBeDisabled()   // 계좌가 비어 빨간 칸
+  // 첫 줄 계좌: 새 계좌 만들기
+  await grid.locator('.xl-cell').nth(start).click()
+  await grid.getByLabel('계좌').selectOption('__new__')
+  await dialog.locator('.new-account [name="label"]').fill('엑셀 연금저축')
+  await dialog.getByRole('button', { name: '계좌 추가' }).click()
+  await expect(grid.locator('.xl-cell').nth(start)).toHaveText('엑셀 연금저축')
+  // 둘째 줄 계좌: 고르는 칸
+  await grid.locator('.xl-cell').nth(start + width).click()
+  await grid.getByLabel('계좌').selectOption({ label: '엑셀 연금저축' })
+  // 키보드로 수량 고치기: 둘째 줄 보유수량 칸으로 옮겨 숫자를 치고 Enter
+  await grid.locator('.xl-cell').nth(start + width + 3).click()
+  await page.keyboard.type('600')
+  await page.keyboard.press('Enter')
+  await expect(grid.locator('.xl-cell').nth(start + width + 3)).toHaveText('600')
+  await expect(grid.locator('.xl-cell').nth(start + width + 8)).toHaveText('6,000,000')   // 평가금액 칸
+  await page.screenshot({ path: test.info().outputPath('sheet-holdings.png'), fullPage: true })
+  await dialog.locator('.xl-save').click()
+  await expect(dialog).not.toBeVisible()
+  await expect(page.locator('.hp-acct', { hasText: '엑셀 연금저축' })).toContainText('41,000,000원')
+  await expect(page.locator('.hp-row', { hasText: '엑셀 연금저축' }).filter({ hasText: 'KODEX 200' })).toContainText('+5,000,000')
+  // 자산 탭: 집을 칸에 바로 입력
+  await page.getByRole('button', { name: '엑셀처럼 고치기' }).click()
+  await dialog.getByRole('tab', { name: '자산' }).click()
+  const assets = dialog.getByRole('grid', { name: '자산 표' })
+  await expect(assets).toBeVisible()
+  await expect(assets.locator('.xl-cell').first()).not.toHaveText('')
+  const aw = await assets.locator('.xl-head').count()
+  const texts = await assets.locator('.xl-cell').allTextContents()
+  const firstEmpty = texts.findIndex((t, i) => i % aw === 0 && t === '' && texts.slice(i, i + aw).every(x => x === ''))   // 첫 빈 줄
+  const base = firstEmpty
+  await assets.locator('.xl-cell').nth(base).click()
+  await page.keyboard.type('우리 집')
+  await page.keyboard.press('Tab')
+  await page.keyboard.type('공동명의 아파트')
+  await page.keyboard.press('Enter')
+  await assets.locator('.xl-cell').nth(base + 4).click()
+  await assets.getByLabel('종류').selectOption('property')
+  await assets.locator('.xl-cell').nth(base + 6).click()
+  await page.keyboard.type('900000000')
+  await page.keyboard.press('Enter')
+  await dialog.locator('.xl-save').click()
+  await expect(dialog).not.toBeVisible()
+  await expect(page.locator('.asset-table-panel')).toContainText('우리 집')
+  expect(errors).toEqual([])
+})
+
+test('첫 화면은 엑셀 워크북: 한 줄 요약·시트 탭·보고서·다른 버전 오가기', async ({ page, request }) => {
+  const errors: string[] = []
+  page.on('pageerror', e => errors.push(e.message))
+  await page.goto('/')
+  const summary = page.getByRole('grid', { name: '요약 시트' })
+  await expect(summary).toBeVisible()
+  await expect(page.getByText(/기준 순자산/)).toBeVisible()
+  await expect(summary).toContainText('순자산')
+  await page.getByRole('tab', { name: '리밸런싱' }).click()
+  await expect(page.getByRole('grid', { name: '리밸런싱 시트' })).toBeVisible()
+  await page.getByRole('tab', { name: '보유종목' }).click()
+  await expect(page.getByRole('grid', { name: '보유종목 표' })).toBeVisible()
+  await page.getByRole('tab', { name: '자산' }).click()
+  await expect(page.getByRole('grid', { name: '자산 표' })).toBeVisible()
+  const report = await request.get('/api/workbook/report.xlsx')
+  expect(report.status()).toBe(200)
+  expect(report.headers()['content-type']).toContain('spreadsheetml')
+  for (const width of [1440, 390, 360]) {
+    await page.setViewportSize({ width, height: 900 })
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  }
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.getByRole('button', { name: '다른 버전으로 보기' }).click()
+  await expect(page).toHaveURL(/#home$/)
+  await expect(page.locator('.sidebar')).toBeVisible()
+  await page.getByRole('button', { name: '엑셀 보기로' }).click()
+  await expect(page.getByRole('grid', { name: '요약 시트' })).toBeVisible()
   expect(errors).toEqual([])
 })

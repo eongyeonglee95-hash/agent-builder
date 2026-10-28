@@ -22,7 +22,20 @@ HEADER_ALIASES: dict[str, list[str]] = {
     "value": ["value", "평가금액", "평가액", "금액", "evaluation"],
     "buy_value": ["buy_value", "매입금액", "매수금액", "투자원금", "원금"],
     "account_id": ["account_id", "계좌id", "계좌 id"],
+    "account_label": ["계좌", "계좌명", "계좌이름", "account"],
+    "asset_class": ["자산군", "asset_class"],
+    "stock_group": ["주식 구분", "주식구분", "stock_group"],
 }
+# 양식·표에서 쓰는 한글 이름 → 키 (엑셀 양식의 고르는 칸과 같다)
+CLASS_BY_LABEL = {"주식": "stock", "장기채": "long_bond", "중기채": "mid_bond", "금": "gold", "원자재": "commodity", "현금": "cash", "혼합·미분류": "mixed"}
+GROUP_BY_LABEL = {"국내": "kr", "미국": "us", "신흥국·테마": "em", "배당·리츠": "income"}
+
+
+def _label_value(v, table: dict) -> str | None:
+    s = str(v or "").strip()
+    if not s or s.lower() == "nan":
+        return None
+    return table.get(s) or (s if s in table.values() else None)
 REQUIRED = ["ticker_name", "qty"]
 MAX_ROWS = 1000
 MAX_BYTES = 5 * 1024 * 1024
@@ -145,11 +158,15 @@ def holdings_from_file(data: bytes, filename: str, account_id: str) -> tuple[pd.
         if price is None or price == 0:
             errors.append(f"{n}행 {name}: 현재가(또는 평가금액÷수량)를 읽지 못했어요")
             continue
+        label = str(r[cols["account_label"]]).strip() if cols.get("account_label") else ""
         rows.append({"account_id": account_id, "ticker_name": name, "ticker": ticker, "qty": qty, "price": price,
-                     "value": value if value is not None else qty * price, "buy_value": buy_value if buy_value is not None else 0})
+                     "value": value if value is not None else qty * price, "buy_value": buy_value if buy_value is not None else 0,
+                     "account_label": "" if label.lower() == "nan" else label,
+                     "asset_class": _label_value(r[cols["asset_class"]], CLASS_BY_LABEL) if cols.get("asset_class") else None,
+                     "stock_group": _label_value(r[cols["stock_group"]], GROUP_BY_LABEL) if cols.get("stock_group") else None})
     if len(rows) > MAX_ROWS:
         raise ValueError(f"행이 {MAX_ROWS}개를 넘어요.")
-    df = pd.DataFrame(rows, columns=["account_id", "ticker_name", "ticker", "qty", "price", "value", "buy_value"])
+    df = pd.DataFrame(rows, columns=["account_id", "ticker_name", "ticker", "qty", "price", "value", "buy_value", "account_label", "asset_class", "stock_group"])
     computed = int((df["qty"] * df["price"]).sum()) if len(df) else 0
     value_total = int(df["value"].sum()) if len(df) else 0
     meta = {"account_label": None, "screen_total_value": value_total if cols.get("value") else 0,
