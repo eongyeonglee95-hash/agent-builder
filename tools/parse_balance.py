@@ -41,6 +41,14 @@ CAPTURE_SCHEMA = {
 }
 
 
+# 여러 계좌의 캡처를 한꺼번에 올릴 때 (REG-01 '전체'): 계좌별로 나눠 돌려준다
+CAPTURE_MULTI_SCHEMA = {
+    "type": "object",
+    "properties": {"accounts": {"type": "array", "items": CAPTURE_SCHEMA}},
+    "required": ["accounts"],
+    "additionalProperties": False,
+}
+
 ACCOUNT_ID_RE = re.compile(r"^[A-Za-z0-9_]{1,64}$")   # 저장 경로에 쓰이므로 경로 문자(/ . 공백) 금지
 
 
@@ -112,20 +120,23 @@ def reconcile(rows: pd.DataFrame, screen_total: int | None, tolerance: int = 5_0
     return ReconcileResult(verified, ok, computed, diff, value_total, value_diff)
 
 
-async def _parse_capture_async(image_paths: list[Path]) -> dict:
+async def _parse_capture_async(image_paths: list[Path], multi: bool = False) -> dict:
     from claude_agent_sdk import ClaudeAgentOptions, ResultMessage, query
 
     files = "\n".join(f"- {p.resolve()}" for p in image_paths)
     prompt = (
         "다음 증권사 앱 잔고 캡처 이미지를 Read 도구로 읽고, 보이는 종목 전부를 표로 옮겨라. "
         "같은 종목이 여러 이미지에 중복으로 보이면 한 번만 넣어라. 숫자는 쉼표를 빼고 정수로. "
-        "계산하거나 추정하지 말고 화면에 보이는 값만 옮겨라. 화면 합계(평가금액)도 보이면 적어라.\n" + files
+        "계산하거나 추정하지 말고 화면에 보이는 값만 옮겨라. 화면 합계(평가금액)도 보이면 적어라.\n"
+        + ("이미지에 계좌가 여러 개면 화면 상단의 계좌 이름(예: 연금저축계좌(신), IRP, ISA)으로 계좌별로 나눠라. "
+           "계좌 이름이 같은 이미지는 같은 계좌다. 계좌마다 화면 합계를 따로 적어라.\n" if multi else "")
+        + files
     )
     options = ClaudeAgentOptions(
         allowed_tools=["Read"],
         permission_mode="dontAsk",
-        max_turns=12,
-        output_format={"type": "json_schema", "schema": CAPTURE_SCHEMA},
+        max_turns=12 + (6 if multi else 0),
+        output_format={"type": "json_schema", "schema": CAPTURE_MULTI_SCHEMA if multi else CAPTURE_SCHEMA},
         system_prompt="너는 표 전사 도구다. 보이는 값만 옮긴다. 분류·판단·계산을 하지 않는다.",
     )
     result = None
@@ -149,3 +160,27 @@ def parse_capture(image_paths: list[str | Path], account_id: str) -> tuple[pd.Da
             "reconciled": rc.ok, "verified": rc.verified, "diff": rc.diff, "value_diff": rc.value_diff,
             "errors": validate_holdings(df)}
     return df[HOLDING_COLUMNS + ["value", "buy_value"]], meta
+
+
+def _frame_from(data: dict, account_id: str) -> tuple[pd.DataFrame, dict]:
+    df = pd.DataFrame(data["rows"], columns=["ticker_name", "qty", "price", "value", "buy_value"])
+    df.insert(0, "account_id", account_id)
+    df["ticker"] = None
+    rc = reconcile(df, data["screen_total_value"]) if len(df) else None
+    meta = {"account_label": data["account_label"], "screen_total_value": data["screen_total_value"],
+            "reconciled": bool(rc and rc.ok), "verified": bool(rc and rc.verified), "diff": rc.diff if rc else 0,
+            "value_diff": rc.value_diff if rc else None, "errors": validate_holdings(df) if len(df) else []}
+    return df[HOLDING_COLUMNS + ["value", "buy_value"]], meta
+
+
+def parse_captures(image_paths: list[str | Path]) -> list[tuple[pd.DataFrame, dict]]:
+    """여러 계좌의 캡처를 한꺼번에 → 계좌별 (holdings DataFrame, meta) 목록. meta['account_label']이 캡처 상단의 계좌 이름.
+    account_id 열은 비워 둔다(''). 어느 등록 계좌인지는 호출하는 쪽이 이름으로 맞춘다."""
+    paths = [Path(p) for p in image_paths]
+    data = asyncio.run(_parse_capture_async(paths, multi=True))
+    groups = []
+    for acct in data.get("accounts", []):
+        if not acct.get("rows"):
+            continue
+        groups.append(_frame_from(acct, ""))
+    return groups

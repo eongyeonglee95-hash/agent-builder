@@ -194,7 +194,11 @@ def rebalancing(view: str) -> None:
     except ValueError as e:
         st.warning("이 전략은 비율이 비어 있어요. 위 '비율 편집'에서 채우거나 다른 전략을 고르세요.")
         return
-    new_cash = NewCash(int(new_cash_amt), pool["accounts"][0]) if new_cash_amt else None
+    new_cash = None
+    if new_cash_amt:
+        # SAFE-02: 납입이 들어가는 계좌를 사용자가 고른다 (풀의 첫 계좌로 자동 지정하면 생각한 계좌와 주문 계좌가 달라질 수 있다)
+        cash_acct = st.selectbox("납입이 들어가는 계좌", pool["accounts"], format_func=lambda k: labels.get(k, k), key=f"nc_{pool_id}")
+        new_cash = NewCash(int(new_cash_amt), cash_acct)
     with st.expander("자산군 기본 종목 고르기 — 보유가 없는 자산군을 살 때 쓰는 종목 (후보 중 선택, 바꿀 수 있음)"):
         import yaml as _yaml
         from tools.assets import ASSET_MAP_PATH, load_class_defaults, save_asset_map
@@ -351,6 +355,12 @@ def input_page(view: str) -> None:
         from tools.strategy import CLASS_LABELS
         pools = load_pools()
         acct = st.selectbox("계좌", list(accounts), format_func=lambda k: accounts[k].get("label", k))
+        if "parsed" in st.session_state and st.session_state.get("parsed_account") != acct:
+            # SAFE-02: 파싱 결과는 변환한 계좌에만 속한다. 계좌를 바꾸면 이전 표를 버린다 (A 표를 B로 저장하던 문제)
+            prev = st.session_state.get("parsed_account")
+            for k in ("parsed", "parsed_meta", "parsed_account"):
+                st.session_state.pop(k, None)
+            st.info(f"계좌를 바꿔서 {accounts.get(prev, {}).get('label', prev)}의 변환 결과를 비웠어요. 이 계좌 캡처를 다시 변환하세요.")
         cur_pool = next((pv for pid, pv in pools.items() if acct in pv["accounts"]), {})
         mode = st.radio("이 계좌 운용 방식 (계좌 꼬리표)", list(MODES), index=0 if cur_pool.get("mode", "rebalance") == "rebalance" else 1,
                         format_func=lambda k: MODES[k], horizontal=True, key=f"mode_{acct}")
@@ -377,6 +387,7 @@ def input_page(view: str) -> None:
                     return
             st.session_state["parsed"] = df
             st.session_state["parsed_meta"] = meta
+            st.session_state["parsed_account"] = acct
         if "parsed" in st.session_state:
             meta = st.session_state["parsed_meta"]
             if meta.get("reconciled"):
@@ -411,13 +422,16 @@ def input_page(view: str) -> None:
                 label_to_key = {v: k for k, v in CLASS_LABELS.items()}
                 tags = [{"ticker_name": r["ticker_name"], "ticker": r.get("ticker"), "asset_class": label_to_key.get(r.get("자산군")),
                          "role": "satellite" if r.get("역할") == "위성" else "core"} for _, r in edited.iterrows()]
+                if st.session_state.get("parsed_account") != acct:
+                    st.error("변환한 계좌와 선택한 계좌가 달라요. 이 계좌 캡처를 다시 변환하세요."); return
                 try:
                     out = save_holdings(acct, edited.drop(columns=["자산군", "역할"]))
                 except ValueError as e:
                     st.error(str(e)); return
                 n = upsert_asset_tags(tags)
                 st.success(f"저장: {out.relative_to(root)} · 종목 꼬리표 {n}개 확인됨 — 리밸런싱 화면이 계좌별 최신 파일을 합쳐 씁니다.")
-                del st.session_state["parsed"]
+                for k in ("parsed", "parsed_meta", "parsed_account"):
+                    st.session_state.pop(k, None)
     with tab2:
         f = st.file_uploader("보유 내역 CSV (열: account_id, ticker_name, ticker, qty, price …)", type=["csv"], key="csv_up")
         if f is not None:
@@ -426,7 +440,7 @@ def input_page(view: str) -> None:
             if st.button("이 CSV를 보유 내역으로 저장 (계좌별로 나눠 저장)"):
                 from tools.store import save_holdings
                 try:
-                    outs = [save_holdings(a, df) for a in df["account_id"].unique()]
+                    outs = [save_holdings(a, df[df["account_id"] == a]) for a in df["account_id"].unique()]
                 except ValueError as e:
                     st.error(str(e)); return
                 st.success("저장: " + ", ".join(str(o.relative_to(root)) for o in outs))

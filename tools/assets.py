@@ -112,16 +112,53 @@ def check_constraints(holdings: pd.DataFrame, accounts: dict[str, dict] | None =
     return results
 
 
-def defaults_with_prices(holdings: pd.DataFrame, live: bool = True, instruments: dict[str, dict] | None = None) -> dict[str, dict]:
+def candidate_confirmed(ticker, name, asset_class: str, asset_map: dict[str, dict]) -> bool:
+    """후보 종목이 rules/asset_map.yaml assets에 '확인됨(confirmed)'으로 있고 종목코드·자산군이 맞는가 (SAFE-02).
+    사용자가 확인한 매핑만 수량 계산에 쓴다. 제안(proposed)·미등록·분류 불일치는 False."""
+    entry = asset_map.get(name) if name else None
+    if entry is None and ticker is not None:
+        entry = next((v for v in asset_map.values() if str(v.get("ticker")) == str(ticker)), None)
+    if not entry:
+        return False
+    return (entry.get("status") == "confirmed" and str(entry.get("ticker")) == str(ticker)
+            and entry.get("asset_class") == asset_class)
+
+
+def check_candidates(defaults: dict[str, dict], targets: dict, account_ids: list[str],
+                     accounts: dict[str, dict] | None = None) -> ConstraintResult:
+    """신규 매수 후보(보유 없는 자산군을 살 기본 종목)에도 제도 제약을 적용한다 (SAFE-02, ARCHITECTURE_REVIEW §4 P0).
+    연금저축/IRP 계좌가 있으면 레버리지·인버스 이름의 후보를 거부하고, 종목코드 형식(6자리)도 검사한다."""
+    from tools.strategy import TICKER_RE
+    accts = load_accounts() if accounts is None else accounts
+    pension = [a for a in account_ids if accts.get(a, {}).get("account_type") in ("pension_savings", "irp")]
+    problems = []
+    for cls, d in (defaults or {}).items():
+        if cls not in targets or not d or not d.get("ticker"):
+            continue
+        name = str(d.get("name") or d["ticker"])
+        if not TICKER_RE.match(str(d["ticker"])):
+            problems.append(f"{name} 종목코드 형식 오류 ({d['ticker']!r})")
+        if pension and LEVERAGE_INVERSE_PATTERN.search(name):
+            problems.append(f"{name} 연금저축/IRP 불가 (레버리지·인버스)")
+    if problems:
+        return ConstraintResult("신규 매수 후보 적격", False, " · ".join(problems))
+    return ConstraintResult("신규 매수 후보 적격", True, "통과")
+
+
+def defaults_with_prices(holdings: pd.DataFrame, live: bool = True, instruments: dict[str, dict] | None = None,
+                         asset_map: dict[str, dict] | None = None) -> dict[str, dict]:
     """기본 종목에 현재가를 붙인다. 전략이 지정한 종목(strategies.yaml instruments)이 있으면 그것, 없으면 asset_map class_defaults (REBALANCING §1-2).
-    보유 중인 종목이면 보유 가격, 아니면 공개 시세(live) 조회. 실패하면 price 없음."""
+    보유 중인 종목이면 보유 가격, 아니면 공개 시세(live) 조회. 실패하면 price 없음.
+    confirmed: asset_map assets에 확인됨으로 등록된 후보인가 (SAFE-02). False면 엔진이 수량 대신 금액만 보여 준다."""
     out = {}
     held = {str(t): int(p) for t, p in zip(holdings.get("ticker", []), holdings.get("price", []))}
+    amap = load_asset_map() if asset_map is None else asset_map
     merged = dict(load_class_defaults())
     for cls, d in (instruments or {}).items():
         merged[cls] = dict(d, source="strategy")
     for cls, d in merged.items():
-        entry = {"ticker": d.get("ticker"), "name": d.get("name"), "price": held.get(str(d.get("ticker"))), "source": d.get("source", "class_defaults")}
+        entry = {"ticker": d.get("ticker"), "name": d.get("name"), "price": held.get(str(d.get("ticker"))), "source": d.get("source", "class_defaults"),
+                 "confirmed": candidate_confirmed(d.get("ticker"), d.get("name"), cls, amap)}
         if entry["price"] is None and live and d.get("ticker"):
             try:
                 from tools.market import fetch_price

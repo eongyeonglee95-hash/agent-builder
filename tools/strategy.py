@@ -4,6 +4,8 @@
 """
 from __future__ import annotations
 
+import math
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -17,6 +19,45 @@ CLASS_LABELS = {
     "stock": "주식", "long_bond": "장기채", "mid_bond": "중기채",
     "gold": "금", "commodity": "원자재", "cash": "현금",
 }
+TICKER_RE = re.compile(r"^[0-9A-Z]{6}$")   # KRX 종목코드. 주문표·매핑 키에 쓰이므로 형식을 고정
+THRESHOLD_PP_MAX = 50.0
+MIN_TRADE_KRW_MAX = 10**12
+
+
+def _finite_number(v) -> bool:
+    return not isinstance(v, bool) and isinstance(v, (int, float)) and math.isfinite(float(v))
+
+
+def validate_strategy_fields(targets_pct: dict, threshold_pp=None, min_trade_krw=None, instruments: dict | None = None) -> list[str]:
+    """전략 값의 오류 목록. 비어 있으면 통과 (SAFE-02: 합계만 보면 -10%+110%도 저장됐다).
+    비율은 자산군 키가 알려진 것, 각 0~100의 유한한 수, 합 100. 임계치 0 초과 50 이하 %p. 최소 거래 0 이상 정수. 종목코드 6자리."""
+    errors: list[str] = []
+    if not targets_pct:
+        errors.append("targets가 비어 있음 (직접 설정은 비율을 먼저 채워야 함)")
+    else:
+        unknown = [k for k in targets_pct if k not in ASSET_CLASSES]
+        if unknown:
+            errors.append(f"알 수 없는 자산군: {sorted(unknown)}")
+        total = 0.0
+        bad = False
+        for k, v in targets_pct.items():
+            if not _finite_number(v):
+                errors.append(f"{k} 비율이 유한한 숫자가 아님: {v!r}"); bad = True; continue
+            if not 0 <= float(v) <= 100:
+                errors.append(f"{k} 비율 범위 밖 (0~100): {v}"); bad = True
+            total += float(v)
+        if not bad and abs(total - 100) > 1e-6:
+            errors.append(f"비율 합계가 100이 아님: {total}")
+    if threshold_pp is not None and (not _finite_number(threshold_pp) or not 0 < float(threshold_pp) <= THRESHOLD_PP_MAX):
+        errors.append(f"임계치 범위 밖 (0 초과 {THRESHOLD_PP_MAX:g} 이하 %p): {threshold_pp!r}")
+    if min_trade_krw is not None and (not _finite_number(min_trade_krw) or float(min_trade_krw) != int(min_trade_krw)
+                                      or not 0 <= int(min_trade_krw) <= MIN_TRADE_KRW_MAX):
+        errors.append(f"최소 거래 금액 범위 밖 (0 이상 정수, 최대 {MIN_TRADE_KRW_MAX:,}): {min_trade_krw!r}")
+    for cls, d in (instruments or {}).items():
+        t = d.get("ticker") if isinstance(d, dict) else None
+        if t is not None and not TICKER_RE.match(str(t)):
+            errors.append(f"{cls} 종목코드 형식 오류 (영문 대문자·숫자 6자리): {t!r}")
+    return errors
 
 
 @dataclass(frozen=True)
@@ -37,14 +78,10 @@ def load_strategy(strategy_id: str, path: Path = STRATEGIES_PATH) -> Strategy:
     if raw is None:
         raise KeyError(f"전략 '{strategy_id}' 이(가) {path.name}에 없음")
     targets_pct = raw.get("targets") or {}
-    if not targets_pct:
-        raise ValueError(f"전략 '{strategy_id}'의 targets가 비어 있음 (직접 설정은 비율을 먼저 채워야 함)")
-    total = sum(targets_pct.values())
-    if abs(total - 100) > 1e-6:
-        raise ValueError(f"전략 '{strategy_id}' 비율 합계가 100이 아님: {total}")
-    unknown = set(targets_pct) - set(ASSET_CLASSES)
-    if unknown:
-        raise ValueError(f"알 수 없는 자산군: {sorted(unknown)}")
+    errors = validate_strategy_fields(targets_pct, threshold_pp=raw.get("threshold_pp", 5), min_trade_krw=raw.get("min_trade_krw", 100_000),
+                                      instruments=raw.get("instruments") or {})
+    if errors:
+        raise ValueError(f"전략 '{strategy_id}' 값 오류: " + " / ".join(errors))
     return Strategy(
         id=strategy_id,
         name=raw.get("name", strategy_id),
@@ -71,10 +108,10 @@ def list_strategies(path: Path = STRATEGIES_PATH) -> list[tuple[str, str]]:
 
 def save_targets(strategy_id: str, targets_pct: dict[str, float], path: Path = STRATEGIES_PATH,
                  threshold_pp: float | None = None, source: str | None = None) -> None:
-    """화면에서 입력한 비율을 YAML에 쓴다 (합 100 검증). 주석은 유지하지 않으므로 머리 주석을 다시 붙인다."""
-    total = sum(targets_pct.values())
-    if abs(total - 100) > 1e-6:
-        raise ValueError(f"비율 합계가 100이 아님: {total}")
+    """화면에서 입력한 비율을 YAML에 쓴다 (항목별 범위·자산군·합 100·임계치 검증). 주석은 유지하지 않으므로 머리 주석을 다시 붙인다."""
+    errors = validate_strategy_fields(targets_pct, threshold_pp=threshold_pp)
+    if errors:
+        raise ValueError("전략 저장 거부: " + " / ".join(errors))
     data = yaml.safe_load(path.read_text(encoding="utf-8"))
     raw = data["strategies"].setdefault(strategy_id, {"name": strategy_id, "threshold_pp": 5, "min_trade_krw": 100000})
     raw["targets"] = {k: float(v) for k, v in targets_pct.items() if v}

@@ -23,16 +23,23 @@
 | RESEARCH-01 | 연금 관련 공신력 있는 출처·저자/채널 조사 | 완료(1차) | 기존 Claude 세션 7da8fa60: `docs/wiki/` | `docs/wiki/sources/pension-knowledge-sources.md`(944921e, e8ebf93), 박곰희 책 반영(f83f64d), 김성일 (A)/(B)/(C) 후보 — 사용자 확인 대기 |
 | BASE-01 | 합성 fixture 복구·새 환경 테스트 재현 | 완료 | 기존 Claude 세션 7da8fa60 (수락·완료) | `data/fixtures/holdings_fixture.csv`(합성 5행, 개인정보 없음)를 git에 포함, `.gitignore` `data/`→`data/*`(0567091). 새 환경(uv 0.13.5 신규 설치)에서 34 passed(227739c). 경로는 기존 테스트가 쓰는 `data/fixtures/` 유지 — `tests/fixtures/`로 옮기려면 테스트 경로 변경 필요 |
 | SAFE-01 | 저장 경로·계좌·수량·가격·합계 재검증 | 완료 | 기존 Claude 세션 7da8fa60 (수락·완료 2026-10-27) | `tests/test_safety.py` 5개가 보고서 §4 합성 입력(../outside, 수량 -2·1.9, value 전사 오류, 미등록 계좌, 0행 저장)을 재현 → 수정 후 통과. `tools/parse_balance.validate_holdings`·`ReconcileResult`, `tools/store.save_holdings`(등록·활성·형식·빈 표·경로 검사), `tools/assets.check_constraints`("계좌 등록·사용 중"). Streamlit 입력 화면은 오류 표시만 추가. 전체 55 passed |
-| SAFE-02 | 신규 매수 후보 적격·전략 범위·계좌 전환 검증 | 대기 | Claude 구현 인계 예정, 미수락 | 후보 종목도 제약 검사, 잘못된 비율 거부, 계좌 전환 시 오저장 방지 |
-| UI-01 | 컨셉 홈·공통 레이아웃·모바일을 고정 데모로 구현 | 진행 | Codex: `web/`, `scripts/dev-web.sh`, 화면 검수 기록 | 1440/1024/390px 화면, 360px 넘침 없음, 컨셉 비교와 사용자 시각 검수 |
-| PROFILE-01 | 나/배우자의 만 나이·성별·아내/남편 역할, 은퇴 목표 입력 | 진행 (사용자 추가 요청) | Codex: `web/`, `backend/`, `tests/test_local_data.py` | 저장·재조회, 나이 검증, 실제 데이터에 기본 예시를 섞지 않음 |
-| ASSET-01 | 수동 자산·대출 등록/수정/삭제, 소유자별 홈 연결 | 진행 (사용자 추가 요청) | Codex: `web/`, `backend/`, SQLite | 빈 상태 → 입력 → 새로고침 유지, 범위·합계 검증, 예시/실제 완전 분리 |
-| DATA-01 | FastAPI·입력 계약·SQLite·계좌/보유/가격 연결 | 기반 착수, 실데이터 연결 대기 | Codex: `backend/`의 읽기 전용 전략 API·로컬 실행 기반과 `pyproject.toml`/`uv.lock`. `tools/` 변경은 Claude SAFE 작업과 인계 후 | 홈/자산/상세 금액·기준일·계좌 범위 일치, 누락/오래된 자료 표시. SQLite·실보유 연결은 아직 미구현 |
-| FLOW-01 | 캡처/CSV→확인→저장→주문표→결정 기록 | 대기 (위와 같음. 연결 전까지 기능은 Streamlit `app/`) | Claude 구현 인계 예정, 미수락 | E2E 통과, 중복 제출/가격·규칙 버전/결정 사유 재조회 검증 |
+| SAFE-02 | 신규 매수 후보 적격·전략 범위·계좌 전환 검증 | 완료 | Claude 세션(ee15fccc) 수락·완료 2026-10-27 | `tests/test_safety.py` SAFE-02 8개가 보고서 §4 합성 입력(레버리지 신규 후보, 이상한 종목코드, 미확인 후보, 미등록·비활성 납입 계좌, 음수·소수 납입, -10/110 비율·임계치 0·최소거래 음수, 다른 계좌 행 섞인 저장)을 재현 → 수정 후 통과. `tools/assets.check_candidates`·`candidate_confirmed`·`defaults_with_prices(confirmed)`, `tools/strategy.validate_strategy_fields`, `tools/rebalance`(납입 계좌 검증·미확인 후보는 금액만·계좌별 현금 범위 사후 검증), `tools/store`(다른 계좌 행 거부), `app/pages.py`(납입 계좌 선택, 캡처 결과를 계좌에 묶고 전환 시 비움, CSV 계좌별 분할). asset_map에 올웨더 신규 후보 3종목을 proposed로 등록(사용자 확인 대기). 전체 103 passed |
+| UI-01 | 컨셉 홈·공통 레이아웃·모바일을 고정 데모로 구현 | 검증 대기 (사용자 시각 검수) | Codex: `web/`, 실행·브라우저 검수 | 웹 빌드 통과. Playwright 1440/1024/390/360px 홈·자산·리밸런싱 가로 넘침 없음, 홈 스크린샷 확인. 사용자 컨셉 승인 별도 |
+| PROFILE-01 | 나/배우자의 만 나이·성별·아내/남편 역할, 은퇴 목표 입력 | 완료 (로컬 범위) | Codex: `web/`, `backend/`, `tests/test_local_data.py` | HTTP 저장·재조회/버전 충돌/나이 검증 및 실제 브라우저 부부 입력·새로고침 통과. 역할 선택지 JSX·금액 반환 타입 수정. 목표 나이는 나 기준으로 일관되게 표시 |
+| ASSET-01 | 수동 자산·대출 등록/수정/삭제, 소유자별 홈 연결 | 완료 (로컬 범위) | Codex: `web/`, `backend/`, SQLite | 임시 DB로 CRUD·재접속 유지·중복 제출·버전 충돌·소유자별 합계·부채/부동산 분리 테스트. 브라우저 등록/수정/삭제·예시/실제 분리 통과 |
+| DATA-01 | FastAPI·입력 계약·SQLite·계좌/보유/가격 연결 | 진행 (로컬 장부·CSV 계산 연결) | Codex: `backend/`, `web/`, API 테스트. `tools/`·`rules/`는 Claude 영역 유지 | 수동 장부 SQLite 연결 완료. 별도 CSV 입력으로 기존 Python 엔진 호출. 계좌별 저장 스냅샷 자동 로드·현재가 갱신·수동 총액과 종목 잔고 통합은 남음 |
+| FLOW-01 | 캡처/CSV→확인→저장→주문표→결정 기록 | 진행 (CSV 드라이런만 연결) | Codex: 새 API·화면 경계, 기존 도메인은 Claude | 선택 계좌와 CSV 전체 계좌 일치, 확인된 종목 분류·가격·신규 납입 목적 계좌 검사 후 검토용 결과. 신규 후보 미확인이면 비교만 표시하고 주문표 보류. 캡처·잔고 저장·결정 기록은 후속 |
+| UX-01 | 첫 자산 등록·분류·중복 집계·간결한 홈·자료 기준 표시 | 완료 (시각 사용자 검수 대기) | Codex: `web/`, `backend/storage.py`·`account_groups.py`, 등록·시트 연결 최소 수정, API/브라우저 테스트 | 프로필/목표 선택, 한 출처 집계·재등록, 공동 지분, 실제/예시 분리. Python 154·브라우저 16·빌드 통과. 상세 범위 `UX_REVIEW.md` 실행 기록 |
+| STOCK-01 | 주식 전용 메뉴·조회/등록, 평단가·현재가·손익·종목 뉴스 | 화면 템플릿 완료, 실제 종목/시세/뉴스 연결 전 | Codex: `web/`; 시세 도메인 변경 전 Claude 인계 | 네이비 포트폴리오·평단가/현재가/손익 가상 종목 카드·기간별 흐름 예시·뉴스 요인 필터/상세. 가상 종목 평가액은 기존 예시 원장과 일치. 실제 보기에는 가상 시세/뉴스 없음. 실제 수량/평단가 저장·시세·뉴스 수집은 후속 |
+| PROPERTY-01 | 부동산 전용 메뉴·보유 지분, 향후 갈아타기 화면 구조 | 화면 템플릿 완료, 실제 데이터 연결은 향후 고도화 | Codex: `web/` | 세이지 건축 일러스트·현재 집→목표 집·가상 후보 3곳/관심 선택·이사 시점/월 저축 슬라이더로 예시 필요 자금 변화. 가정은 실제 장부와 분리, 실제 보기에서는 예시 단지/계산 숨김. 실거래/시세/뉴스/세금 계산 미연결 |
+| REG-01 | '우리 자산'의 자산 등록 한 곳: 사진(캡처)·직접 입력·파일(CSV·엑셀) → 같은 확인 표 → 저장 | 구현 완료, 검증 대기(사용자 시각 검수·실제 캡처) | Claude 세션(ee15fccc) 수락 2026-10-27: `web/src/register.tsx`·`web/src/google.tsx`·`backend/registration.py`·`backend/ledger.py`·`backend/google_api.py`·`tools/sheets.py`·`tools/import_file.py`·`tests/test_registration_api.py`·`tests/test_sheet_store.py`·`tests/test_import_file.py`. `App.tsx`·`main.py`는 연결 지점만 수정 | 캡처·파일이 표로 바뀌고 합계 대조·자산군 꼬리표 확인 뒤 저장되면 자산 표·홈 합계에 반영. 사용자 결정(2026-10-27) |
+| SHEET-01 | 구글 시트를 자산 데이터의 원천으로: OAuth 연결, 시트 생성/지정, 자산·보유종목 탭 읽기·쓰기, 로컬 장부 이관 | 구현 완료, 검증 대기(사용자가 OAuth 클라이언트를 만들어 실제 연결) | Claude 세션(ee15fccc), 위 REG-01과 같은 경로 | 연결 뒤 앱이 시트를 읽어 홈·자산 표를 그리고, 등록·수정·삭제가 시트에 쓰인다. 시트에서 고친 값이 새로고침 뒤 앱에 보인다. 미연결이면 로컬 SQLite 임시 저장. OAuth 클라이언트 생성은 사용자 몫(`docs/GOOGLE_SHEETS.md`) |
 | RETIRE-01 | 연금 목표·현금흐름·가정별 실제 시뮬레이션 | 대기 (후속) | 후속 구현 | 가정 변경 시 서버 계산·차트 갱신, 계산 테스트 |
 | SHARE-01 | 부부 인증·가구/계좌 권한·운영 준비 | 대기 (후속, 사용 범위 확인 필요) | 후속 구현, 사용 범위 확인 필요 | 권한 없는 읽기/쓰기 차단, 세션·HTTPS·복구 점검 |
 
 실행 순서: BASE-01/SAFE-01/SAFE-02로 실데이터 기반을 보강 → UI-01을 첫 시각 결과물로 제시 → DATA-01 → FLOW-01 → RETIRE-01/SHARE-01. 백엔드 전체 완료까지 홈 디자인을 미루지 않는다. 리서치는 별도 트랙으로 이어간다.
+
+검증 기록(2026-10-27 Codex): `uv run pytest -q`와 동일 환경의 `.venv/bin/python -m pytest -q` 95 passed, `npm --prefix web run build` 통과, `npm --prefix web run test:e2e` 7 passed. 테스트는 임시 DB·합성 잔고 사용. `backend/rebalance.py`는 기존 엔진을 읽어 호출하는 별도 API 경계이며 도메인 SAFE-02 완료를 뜻하지 않는다. 연금저축만 지원하며 IRP·실주문·국민연금 자동 조회는 미연결.
 
 ### 충돌 방지와 인계
 
@@ -48,6 +55,10 @@
 - 2026-10-27 Claude(7da8fa60): BASE-01 완료 기록. 같은 날 `tools/rebalance.py`(cash 지정 종목 매수), `rules/strategies.yaml`(올웨더·박곰희), `rules/asset_map.yaml`, `tests/test_rebalance.py`를 리서치·결정 트랙에서 수정·커밋함 — UI 트랙은 이 파일들을 건드리지 않는다는 §0 원칙과 일치. SAFE-01/SAFE-02/DATA-01/FLOW-01은 아직 미수락.
 - 2026-10-27 사용자(Claude 세션에서, 22시 이후): React 전체 전환은 의도가 아니었고 "지금 다 하자는 건 아니었어". **지금 범위 = UI-01 홈 화면을 고정 데모로 목업처럼 만드는 것까지.** DATA-01·FLOW-01·RETIRE-01·SHARE-01은 보류, 회의 뒤 Streamlit 유지/React 연결을 다시 정한다. 기능(등록·주문표·결정 기록)은 그때까지 Streamlit `app/`이 담당. SAFE-01/02는 엔진 검증이라 스택과 무관 — Claude가 이어서 가능.
 - 2026-10-27 사용자(같은 대화, 직후 번복): "그래도 그냥 둬볼까. 밑져야 본전이지, 일단 마무리 짓고. 화면이 그렇다고 엄청 많지도 않잖아." → **React 전환 계속 진행**. 위 보류는 취소, 작업표는 원래 순서(UI-01 → DATA-01 → FLOW-01)로. 사용자 기대: 화면 수가 적으니 끝까지 가 보고 판단. 수정 복잡도(화면+API 두 층) 우려는 기록으로만 남김.
+- 2026-10-27 Claude(ee15fccc): 사용자 “이제 또 개발 진행해야지” → SAFE-02 수락·구현·완료(위 표). `backend/rebalance.py`는 건드리지 않음 — 도메인이 같은 검사를 하므로 Codex가 중복 검사를 정리할지는 DEV_HANDOFF의 계약을 보고 결정. 올웨더 신규 후보 3종목(453850·308620·261220)은 asset_map에 proposed로만 넣었고 confirmed 전환은 사용자 결정. Playwright 7·pytest 103 통과
+- 2026-10-27 사용자 → Claude(ee15fccc): 자산 등록은 '우리 자산'에서 한 곳(사진·직접 입력·파일), 데이터는 구글 시트가 원천(1번), **화면도 Claude가 맡는다**. 이에 따라 `web/`·`backend/` 중 등록·시트 부분(REG-01/SHEET-01 경로)은 Claude 담당으로 바뀜. Codex는 나머지 `web/`·`backend/`(홈·주식·부동산·리밸런싱 미리보기·프로필·수동 자산 API)를 계속 맡고, `App.tsx`·`main.py`는 Claude가 연결 지점만 고치므로 같은 줄을 동시에 수정하지 않도록 DEV_HANDOFF를 본다.
+- 2026-10-27 Claude(ee15fccc): REG-01/SHEET-01 구현. 메모리 시트·임시 규칙 파일로 pytest(등록 API 13·시트 저장소 12·파일 읽기 7) 통과, Playwright 15 통과(파일 등록 흐름 1개 추가), 1440/390 화면 확인. 실제 구글 연결은 사용자가 `docs/GOOGLE_SHEETS.md`대로 OAuth 클라이언트를 만든 뒤에만 검증 가능. Codex UX-01(공동 소유·세부 자산·자산 우선 등록)과 같은 시간에 `backend/storage.py`를 고쳤고 두 변경이 함께 들어 있음 — 시트 저장소도 parent_id·valuation_source·share_percent를 그대로 나른다. `tests/test_local_data.py` 1개 실패는 Codex의 require_person 변경(중립 소유자 자동 생성)과 옛 기대값의 차이.
+- 2026-10-27 사용자 → Claude(ee15fccc): 실제 캡처 6장으로 (신) 계좌 등록 성공(합계 23,501,048원 일치). 피드백 "처음 등록할 때 계좌 선택이 안 되게", "전체(캡처 전부 한 번에)", "내 계좌를 얘가 일단 모를 텐데" → 계좌 선택 단계 제거, 다중 계좌 캡처 분리·이름 매칭·그 자리에서 새 계좌 추가로 보완. pytest 155·Playwright 16 통과
 - 2026-10-27 사용자: “하던거 마저 해줘. 처음에 계획 세운대로 그런 스타일의 사이트” 요청. Codex가 UI-01을 착수한다. 실데이터 저장·주문 연결은 SAFE 단계 통과 후이며, 이번 홈은 고정 예시 데이터로 먼저 검수한다.
 - 2026-10-27 Codex: 사용자 재확인대로 React/TypeScript/Vite와 Python/FastAPI를 구성한다. `web/` 화면과 `backend/` 읽기 전용 전략 API·정적 서빙·실행 스크립트 담당. Claude의 SAFE-01/02 및 `tools/`·`rules/` 작업과 분리. 실제 파일 업로드/주문/개인정보는 새 API로 노출하지 않는다.
 

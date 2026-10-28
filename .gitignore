@@ -13,3 +13,10 @@ data/*
 
 # AI 도구 세션 상태 (oh-my-claudecode 등) — 환경 파일, 저장소에 올리지 않는다
 .omc/
+web/node_modules/
+web/dist/
+web/*.tsbuildinfo
+web/test-results/
+web/playwright-report/
+
+web/test-results-*/

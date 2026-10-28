@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { classInfo, type Family, type Owner, type Snapshot } from './model'
 
 export const emptySnapshot: Snapshot = { assets: [], debts: [], total: 0, retirement: 0, cash: 0, property: 0, debt: 0, net: 0, financial: 0, classes: [], count: 0, unclassified: 0, as_of: null }
@@ -19,11 +19,14 @@ export function useLocalData(owner: Owner) {
   const [snapshot, setSnapshot] = useState<Snapshot>(emptySnapshot)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const loadedOwner = useRef(owner)
   const [revision, setRevision] = useState(0)
   const refresh = useCallback(() => setRevision(v => v + 1), [])
   useEffect(() => {
     const controller = new AbortController()
-    setLoading(true); setError(''); setSnapshot(emptySnapshot)
+    setLoading(true); setError('')
+    if (loadedOwner.current !== owner) setSnapshot(emptySnapshot)
+    loadedOwner.current = owner
     const timeout = setTimeout(() => controller.abort(new Error('요청 시간이 초과되었습니다. 다시 시도해 주세요.')), 8000)
     Promise.all([api<Family | null>('/family', 'GET', undefined, controller.signal), api<Snapshot>(`/dashboard?owner=${owner}`, 'GET', undefined, controller.signal)])
       .then(([nextFamily, data]) => {

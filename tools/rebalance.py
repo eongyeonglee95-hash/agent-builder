@@ -17,7 +17,7 @@ from dataclasses import dataclass, field
 
 import pandas as pd
 
-from tools.assets import ConstraintResult, check_constraints
+from tools.assets import ConstraintResult, check_candidates, check_constraints, load_accounts
 from tools.strategy import Strategy, class_label
 
 
@@ -85,11 +85,26 @@ def compute_rebalance(
     if mode not in ("rebalance", "buy_only"):
         raise ValueError(f"알 수 없는 mode: {mode}")
     cash_by_account = dict(cash_by_account or {})
+    if new_cash is not None and (isinstance(new_cash.amount, bool) or not isinstance(new_cash.amount, int) or new_cash.amount < 0):
+        raise ValueError(f"신규 납입 금액은 0 이상 정수여야 함: {new_cash.amount!r}")
     h = holdings.copy()
     h["value"] = (h["qty"] * h["price"]).astype(int)
+    accts = load_accounts() if accounts is None else accounts
 
     # ---- 제약 검증 (실패 시 주문표 없음) ----
-    constraints = check_constraints(h, accounts)
+    constraints = check_constraints(h, accts)
+    # SAFE-02: 납입 계좌도 등록·사용 중이어야 한다 (풀의 첫 계좌로 자동 지정하던 것을 명시 선택으로)
+    if new_cash is not None:
+        a = new_cash.account_id
+        if a not in accts:
+            constraints.append(ConstraintResult("납입 계좌 등록·사용 중", False, f"미등록 {a}"))
+        elif accts[a].get("active", True) is False:
+            constraints.append(ConstraintResult("납입 계좌 등록·사용 중", False, f"사용 안 함 {a}"))
+        else:
+            constraints.append(ConstraintResult("납입 계좌 등록·사용 중", True, "통과"))
+    # SAFE-02: 신규 매수 후보(기본 종목)도 보유 종목과 같은 제도 제약을 받는다
+    cand_accounts = [str(a) for a in h["account_id"].unique()] + ([new_cash.account_id] if new_cash else [])
+    constraints.append(check_candidates(defaults, strategy.targets, cand_accounts, accts))
     blocked = [c for c in constraints if not c.passed]
 
     # ---- 합산 비중·편차 ----
@@ -198,6 +213,7 @@ def compute_rebalance(
 
     # 2) 매수: 부족한 자산군에, 계좌별 가용 현금 안에서 부족분 비례 배분
     short = {cls: goal[cls] - have[cls] for cls in targets if goal[cls] - have[cls] > 0}
+    unconfirmed: set[str] = set()
     for acct, cash in sorted(acct_cash.items()):
         if cash <= 0 or not short:
             continue
@@ -215,6 +231,15 @@ def compute_rebalance(
             # 전략 지정 종목(strategies.yaml instruments)은 보유 종목보다 먼저 산다 (REBALANCING §1-2, 2026-10-26). 현재가 없으면 보유 종목으로
             strategy_pick = bool(d and d.get("source") == "strategy" and d.get("price"))
             if len(rows) == 0 or strategy_pick:
+                if d and d.get("ticker") and d.get("confirmed", True) is False:
+                    # SAFE-02: asset_map에 '확인됨'으로 없는 후보는 수량을 계산하지 않는다 — 금액만 보여 주고 사용자가 확인·등록한 뒤 수량
+                    src = "전략 지정 종목" if d.get("source") == "strategy" else "기본 종목"
+                    orders.append(Order("매수", cls, acct, d.get("name"), d.get("ticker"), None, int(amt),
+                                        f"{src} · 종목 확인 필요 (rules/asset_map.yaml에 '확인됨'으로 등록되지 않음)"))
+                    unconfirmed.add(str(d.get("name") or d.get("ticker")))
+                    short[cls] -= amt
+                    acct_cash[acct] -= amt
+                    continue
                 if d and d.get("price"):
                     # 기본 종목으로 수량 계산
                     qty = int(math.floor(amt / d["price"]))
@@ -257,6 +282,17 @@ def compute_rebalance(
         orders.append(Order("생략", ",".join(c["asset_class"] for c in untouched), "", None, None, None, 0,
                             "임계치 미만 · " + " · ".join(c["label"] for c in untouched)))
 
+    if unconfirmed:
+        result.notes.append("종목 확인 필요 (수량 없이 금액만 표시): " + ", ".join(sorted(unconfirmed))
+                            + " — 입력 화면에서 분류를 확인하면 rules/asset_map.yaml에 '확인됨'으로 들어간다")
+    # SAFE-02 사후 검증: 어떤 계좌도 가진 현금(예수금+매도대금+납입)보다 많이 사지 않았는지
+    overspent = {a: int(v) for a, v in acct_cash.items() if v < -1}
+    if overspent:
+        result.constraints.append(ConstraintResult("계좌별 현금 범위", False, "초과 매수 " + ", ".join(f"{a} {v:,}원" for a, v in overspent.items())))
+        result.blocked_reason = "계좌별 현금 범위: " + ", ".join(f"{a} {v:,}원 초과" for a, v in overspent.items())
+        result.orders = []
+        return result
+    result.constraints.append(ConstraintResult("계좌별 현금 범위", True, "통과"))
     leftover = {a: int(v) for a, v in acct_cash.items() if v >= strategy.min_trade_krw}
     if leftover:
         result.notes.append("매수 후 남는 예수금: " + ", ".join(f"{a} {v:,}원" for a, v in leftover.items()))

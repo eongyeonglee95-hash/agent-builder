@@ -1,4 +1,4 @@
-"""Local React preview + a read-only strategy API; no real-data endpoints yet."""
+"""Local single-household app: profile, manual ledger and strategy display."""
 from pathlib import Path
 from typing import Literal
 from uuid import UUID
@@ -12,11 +12,13 @@ from pydantic import ValidationError
 import yaml
 
 from backend.strategies import StrategyDisplay, load_strategy_display
-from backend import storage
+from backend import storage, rebalance, registration, google_api
 
 app = FastAPI(title="둘이서은퇴 · 로컬 API", version="0.1.0", docs_url="/api/docs",
               redoc_url=None, openapi_url="/api/openapi.json")
 app.add_middleware(TrustedHostMiddleware, allowed_hosts=["127.0.0.1", "localhost", "[::1]"])
+app.include_router(registration.router)   # REG-01 자산 등록(사진·파일) — Claude 담당
+app.include_router(google_api.router)     # SHEET-01 구글 시트 연결 — Claude 담당
 
 
 @app.middleware("http")
@@ -77,6 +79,19 @@ def strategies():
         return load_strategy_display()
     except (OSError, yaml.YAMLError, ValidationError, KeyError, TypeError, AttributeError):
         raise HTTPException(status_code=503, detail="전략 규칙을 확인할 수 없습니다. 잠시 후 다시 시도해 주세요.") from None
+
+
+@app.get("/api/rebalance/options")
+def rebalance_options(owner: Literal["together", "me", "partner"] = "together"):
+    return rebalance.options(owner)
+
+
+@app.post("/api/rebalance/preview")
+def rebalance_preview(data: rebalance.PreviewInput):
+    try:
+        return rebalance.preview(data)
+    except (OSError, yaml.YAMLError, ValidationError, KeyError, TypeError, ValueError, AttributeError):
+        raise HTTPException(503, "계산에 필요한 규칙을 확인할 수 없습니다. 설정을 확인해 주세요.") from None
 
 
 dist = Path(__file__).resolve().parents[1] / "web" / "dist"

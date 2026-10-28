@@ -13,7 +13,7 @@ def client():
 
 def test_health_does_not_claim_live_data(client):
     assert client.get("/api/health").json() == {
-        "status": "ok", "mode": "demo", "real_data_connected": False,
+        "status": "ok", "mode": "local", "broker_connected": False,
     }
 
 def test_strategy_projection_is_read_only_and_contains_only_display_fields(client):
@@ -23,7 +23,9 @@ def test_strategy_projection_is_read_only_and_contains_only_display_fields(clien
     for strategy in response.json():
         assert set(strategy) == {"id", "name", "targets", "labels", "threshold", "examples"}
         assert not strategy["targets"] or sum(strategy["targets"].values()) == pytest.approx(100)
-    assert client.post("/api/strategies", json={"targets": {"stock": 100}}).status_code == 405
+    assert client.post("/api/strategies", json={"targets": {"stock": 100}}, headers={
+        "Origin": "http://127.0.0.1", "X-Retire-Local": "1",
+    }).status_code == 405
 
 @pytest.mark.parametrize("targets", [
     {"stock": -10, "gold": 110}, {"stock": 99}, {"stock": float("nan")},

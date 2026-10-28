@@ -1,0 +1,49 @@
+/* REG-01 자산 등록 · SHEET-01 구글 시트 — Claude 담당. 공통 폼·버튼은 styles.css 것을 쓴다. */
+.modal:has(.register-wide){width:min(900px,calc(100vw - 32px))}
+.register-choice{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:14px 0 10px}
+.register-choice button{display:flex;flex-direction:column;align-items:flex-start;gap:7px;text-align:left;padding:18px 16px 16px;border:1px solid #e3e8ef;border-radius:12px;background:#fbfcfd;min-height:150px;transition:border-color .15s,box-shadow .15s,transform .15s}
+.register-choice button:hover,.register-choice button:focus-visible{border-color:#9fb3cf;box-shadow:0 6px 18px #1b2f4a14;transform:translateY(-1px)}
+.register-choice strong{font-size:14px;color:#243247}.register-choice small{font-size:11px;color:#7d8899;line-height:1.5}
+.choice-icon{width:42px;height:42px;border-radius:11px;display:grid;place-items:center;color:#fff}
+.choice-icon.capture{background:linear-gradient(135deg,#5985ec,#42b3aa)}.choice-icon.manual{background:linear-gradient(135deg,#e6ba69,#d397b5)}.choice-icon.file{background:linear-gradient(135deg,#9583cf,#5985ec)}
+.register-back{margin-bottom:10px;gap:4px}
+.register-upload .account-pick{display:flex;gap:8px;align-items:stretch}.register-upload .account-pick select{flex:1;min-width:0}.register-upload .account-pick .secondary-button{white-space:nowrap;padding:0 12px}
+.dropzone{width:100%;display:flex;flex-direction:column;align-items:center;gap:4px;padding:26px 16px;margin:14px 0 10px;border:1.5px dashed #c6d0de;border-radius:12px;background:#f8fafc;color:#4e617a;transition:border-color .15s,background .15s}
+.dropzone:hover,.dropzone:focus-visible{border-color:#5985ec;background:#f1f5ff}.dropzone.has-files{border-style:solid;border-color:#a9c0ec}
+.dropzone strong{font-size:13px}.dropzone small{font-size:11px;color:#8490a2}
+.file-list{list-style:none;padding:0;margin:0 0 12px;display:flex;flex-direction:column;gap:6px}
+.file-list li{display:flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid #e9edf2;border-radius:8px;font-size:12px}.file-list li span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.file-list li small{color:#8490a2}
+.new-account{border:1px solid #e3e8ef;border-radius:12px;padding:14px 16px 12px;margin:6px 0 12px;background:#fbfcfd;display:flex;flex-direction:column;gap:10px}.new-account>strong{font-size:13px}
+.reconcile-banner{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:10px;font-size:12px;line-height:1.55;margin-bottom:12px}
+.reconcile-banner.ok{background:#eef8f1;color:#2f6b45;border:1px solid #cfe8d6}.reconcile-banner.warn{background:#fff6e8;color:#8a5a12;border:1px solid #f1dcb8}.reconcile-banner.unknown{background:#f3f5f8;color:#4e617a;border:1px solid #e3e8ef}
+.reconcile-banner svg{flex-shrink:0;margin-top:2px}
+.register-errors{margin:0 0 12px;padding:10px 14px 10px 28px;border-radius:8px;background:#fdf0ee;color:#9c3f32;font-size:12px}.register-errors.soft{background:#f3f5f8;color:#5c6b80}
+.review-meta{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:8px;font-size:12px;color:#4e617a}.review-meta .form-label.inline{display:flex;align-items:center;gap:8px;font-size:11px}.review-meta .form-label.inline input{min-height:36px;padding:4px 8px}
+.register-table-wrap{border:1px solid #e9edf2;border-radius:10px}
+.register-table{width:100%;border-collapse:collapse;font-size:12px}
+.register-table th{font-weight:500;color:#7d8899;text-align:left;padding:9px 8px;border-bottom:1px solid #e9edf2;white-space:nowrap}
+.register-table td{padding:6px 6px;border-bottom:1px solid #f0f3f7;vertical-align:top}.register-table tfoot td{border-bottom:0;padding:10px 8px;color:#4e617a}
+.register-table input,.register-table select{width:100%;min-width:0;min-height:36px;border:1px solid #dce3ec;border-radius:6px;padding:6px 8px;font:inherit;font-size:12px;background:#fff}
+.register-table input.number{text-align:right;font-variant-numeric:tabular-nums;width:92px}.register-table input.mono{width:82px;font-variant-numeric:tabular-nums;letter-spacing:.3px}
+.register-table td:first-child{min-width:170px}.register-table select{min-width:112px}.register-table select.needs-choice{border-color:#e6ba69;background:#fffaf0}
+.register-table .number-cell{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+.candidates{display:block;margin-top:4px;font-size:10px;color:#7d8899}.candidates button{display:inline-block;margin:2px 4px 0 0;padding:2px 6px;border:1px solid #dce3ec;border-radius:5px;font-size:10px;background:#f8fafc}.candidates button:hover{border-color:#5985ec}
+.confirmed-tag{display:block;margin-top:3px;font-size:10px;color:#2f6b45}
+.review-tools{align-items:center;margin:12px 0 4px}.review-tools .form-help{margin:0;flex:1}
+.register-actions{justify-content:flex-end;margin-top:12px}
+.sheet-badge{display:inline-flex;align-items:center;gap:5px;padding:5px 9px;border:1px solid #e5ece5;border-radius:5px;font-size:10px;font-weight:500;color:#6f8574;background:#f1f5f1;white-space:nowrap}.sheet-badge.on{background:#e7f3ea;color:#2f6b45;border-color:#cfe8d6}
+.sheet-panel .step-list{list-style:none;padding:0;margin:8px 0 14px;display:flex;flex-direction:column;gap:10px}
+.step-list li{display:flex;gap:12px;padding:12px 14px;border:1px solid #e9edf2;border-radius:10px;opacity:.65}.step-list li.now{opacity:1;border-color:#9fb3cf;background:#fbfcfe}.step-list li.done{opacity:1}
+.step-list li>div{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}.step-list strong{font-size:13px}.step-list small{font-size:11px;color:#7d8899;line-height:1.5}.step-list code{font-size:10px;background:#f1f3f6;padding:1px 4px;border-radius:3px}
+.step-mark{width:24px;height:24px;border-radius:50%;background:#e9edf2;color:#4e617a;display:grid;place-items:center;font-size:11px;font-weight:600;flex-shrink:0}.step-list li.done .step-mark{background:#2f6b45;color:#fff}.step-list li.now .step-mark{background:#142339;color:#fff}
+.step-list textarea{width:100%;font:inherit;font-size:11px;border:1px solid #dce3ec;border-radius:7px;padding:8px 10px;resize:vertical}
+.step-list form{display:flex;flex-direction:column;gap:8px;align-items:flex-start}.step-list form.use-sheet{flex-direction:row;align-items:stretch;width:100%}.step-list form.use-sheet input{flex:1;min-width:0;min-height:40px;border:1px solid #dce3ec;border-radius:7px;padding:6px 10px;font:inherit;font-size:12px}
+.connecting{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#4e617a}.spin{animation:spin 1.2s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
+.sheet-connected{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:10px;background:#eef8f1;border:1px solid #cfe8d6;color:#2f6b45;margin-bottom:12px}.sheet-connected>div{flex:1;min-width:0}.sheet-connected strong{display:block;font-size:13px}.sheet-connected small{font-size:11px}.sheet-connected .secondary-button{white-space:nowrap;text-decoration:none}
+.sheet-tools{justify-content:space-between;margin:4px 0 10px}.text-link.danger{color:#9c3f32}
+@media(max-width:650px){.register-choice{grid-template-columns:1fr}.register-choice button{min-height:0;display:grid;grid-template-columns:42px 1fr;column-gap:12px;row-gap:2px;align-items:center;padding:14px}.register-choice .choice-icon{grid-row:1/3}.register-choice strong{white-space:nowrap}.review-meta{flex-direction:column;align-items:flex-start}.review-tools{flex-direction:column;align-items:flex-start}.register-upload .account-pick{flex-direction:column}.step-list form.use-sheet{flex-direction:column}}
+@media(prefers-reduced-motion:reduce){.spin{animation:none}.register-choice button{transition:none}}
+.review-group{border:1px solid #e3e8ef;border-radius:12px;padding:14px 14px 10px;margin-bottom:14px;background:#fff}.review-group.is-saved{opacity:.75}
+.group-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px;flex-wrap:wrap}.group-title strong{display:block;font-size:14px;color:#243247}.group-title small{font-size:11px;color:#7d8899}
+.group-account{display:flex;flex-direction:column;gap:3px;min-width:min(100%,320px)}.group-account select{min-height:38px;border:1px solid #dce3ec;border-radius:7px;padding:6px 10px;font:inherit;font-size:12px;background:#fff}
+.matched-tag{display:inline-flex;align-items:center;gap:4px;font-size:10px;color:#2f6b45}

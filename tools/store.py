@@ -34,9 +34,15 @@ def save_holdings(account_id: str, df: pd.DataFrame, on: dt.date | None = None,
         raise ValueError(f"등록되지 않은 계좌: {account_id} (rules/accounts.yaml 또는 설정 화면에서 먼저 등록)")
     if accts[account_id].get("active", True) is False:
         raise ValueError(f"사용 안 함으로 표시된 계좌: {account_id}")
-    df = df[df["account_id"] == account_id] if "account_id" in df else df.assign(account_id=account_id)
-    if len(df) == 0:
+    if "account_id" not in df:
+        df = df.assign(account_id=account_id)
+    mine = df[df["account_id"] == account_id]
+    if len(mine) == 0:
         raise ValueError(f"계좌 {account_id}에 저장할 행이 없음 (표의 account_id가 다른 계좌인지 확인)")
+    others = sorted(str(a) for a in df.loc[df["account_id"] != account_id, "account_id"].unique())
+    if others:  # SAFE-02: 다른 계좌 행이 섞인 표는 조용히 걸러 저장하지 않는다 — 계좌 전환 뒤 이전 표를 저장하는 실수 차단
+        raise ValueError(f"계좌 {account_id} 저장 거부: 다른 계좌 행 포함 ({', '.join(others)}). 계좌별로 나눠 저장")
+    df = mine
     errors = validate_holdings(df)
     if errors:
         raise ValueError("저장 거부:\n" + "\n".join(errors))
