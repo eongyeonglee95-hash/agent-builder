@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>정보 입력</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600;700&amp;family=IBM+Plex+Sans+KR:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#1B1A17}a:hover{color:#B8321F}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #F5F2EB; color: #1B1A17; font-family: 'IBM Plex Sans KR', sans-serif; display: flex; flex-direction: column; padding: 16px 24px 28px">
+<div style="display: flex; align-items: center; gap: 8px; height: 44px">
+<a href="Main.dc.html" aria-label="뒤로" style="display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; margin-left: -12px; text-decoration: none"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#1B1A17" stroke-width="1.6" aria-hidden="true"><path d="M12.5 4 L6.5 10 L12.5 16"></path></svg></a>
+<span style="font-size: 15px; font-weight: 600">정보 입력</span>
+<span style="margin-left: auto; font-size: 12px; color: #5E5950">5가지 풀이</span>
+</div>
+<div style="margin-top: 12px; display: flex; flex-direction: column; gap: 22px">
+<div style="display: flex; flex-direction: column; gap: 8px">
+<span style="font-size: 13px; font-weight: 600">성별</span>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border: 1px solid #1B1A17; border-radius: 4px; overflow: hidden">
+<button type="button" style="height: 44px; border: 0; background: transparent; font-family: inherit; font-size: 15px; color: #1B1A17">여</button>
+<button type="button" aria-pressed="true" style="height: 44px; border: 0; background: #1B1A17; color: #F5F2EB; font-family: inherit; font-size: 15px; font-weight: 600">남</button>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<label for="birth" style="font-size: 13px; font-weight: 600">생년월일</label>
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px">
+<button type="button" aria-pressed="true" style="height: 36px; border: 1px solid #1B1A17; background: #1B1A17; color: #F5F2EB; border-radius: 4px; font-family: inherit; font-size: 13px; font-weight: 600">양력</button>
+<button type="button" style="height: 36px; border: 1px solid #B9B2A5; background: transparent; border-radius: 4px; font-family: inherit; font-size: 13px; color: #3D3A34">음력</button>
+<button type="button" style="height: 36px; border: 1px solid #B9B2A5; background: transparent; border-radius: 4px; font-family: inherit; font-size: 13px; color: #3D3A34">음력 윤달</button>
+</div>
+<input id="birth" value="1990. 05. 15" style="height: 48px; box-sizing: border-box; border: 0; border-bottom: 1px solid #1B1A17; background: transparent; font-family: 'Noto Serif KR', serif; font-size: 22px; color: #1B1A17; padding: 0">
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<label for="hour" style="font-size: 13px; font-weight: 600">태어난 시각</label>
+<div style="display: flex; gap: 8px; align-items: center">
+<input id="hour" value="10 : 30" style="flex: 1; min-width: 0; height: 48px; box-sizing: border-box; border: 0; border-bottom: 1px solid #1B1A17; background: transparent; font-family: 'Noto Serif KR', serif; font-size: 22px; color: #1B1A17; padding: 0">
+<span style="font-family: 'Noto Serif KR', serif; font-size: 15px; color: #B8321F">巳時</span>
+<button type="button" style="height: 36px; padding: 0 12px; border: 1px solid #B9B2A5; background: transparent; border-radius: 4px; font-family: inherit; font-size: 13px; color: #3D3A34">모름</button>
+</div>
+<span style="font-size: 12px; line-height: 1.5; color: #5E5950">모르면 정오로 두고 '가정 시각'이라고 표시해요. 자미두수는 시각이 있어야 열려요.</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<label for="city" style="font-size: 13px; font-weight: 600">태어난 도시 <span style="font-weight: 400; color: #5E5950">· 점성술</span></label>
+<input id="city" value="서울" style="height: 44px; box-sizing: border-box; border: 0; border-bottom: 1px solid #B9B2A5; background: transparent; font-family: inherit; font-size: 16px; color: #1B1A17; padding: 0">
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<span style="font-size: 13px; font-weight: 600">이름 <span style="font-weight: 400; color: #5E5950">· 성명학</span></span>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px">
+<input aria-label="한글 이름" placeholder="한글 이름" style="height: 44px; box-sizing: border-box; border: 0; border-bottom: 1px solid #B9B2A5; background: transparent; font-family: inherit; font-size: 16px; color: #1B1A17; padding: 0">
+<input aria-label="한자 이름 (선택)" placeholder="한자 (선택)" style="height: 44px; box-sizing: border-box; border: 0; border-bottom: 1px solid #B9B2A5; background: transparent; font-family: 'Noto Serif KR', serif; font-size: 16px; color: #1B1A17; padding: 0">
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<label for="mbti" style="font-size: 13px; font-weight: 600">MBTI</label>
+<select id="mbti" style="height: 44px; border: 0; border-bottom: 1px solid #B9B2A5; background: transparent; font-family: inherit; font-size: 16px; color: #1B1A17">
+<option>ISTJ</option>
+<option>모름</option>
+</select>
+</div>
+<details style="font-size: 13px; color: #3D3A34">
+<summary style="cursor: pointer; min-height: 32px">계산 기준 · 야자시, 진태양시, 서머타임</summary>
+<p style="margin: 6px 0 0; line-height: 1.6; color: #5E5950">기본은 많이 쓰는 앱과 같은 쪽. 바꾸면 결과 화면에 적용한 기준을 함께 표시해요.</p>
+</details>
+</div>
+<a href="Slide.dc.html" style="margin-top: auto; display: flex; align-items: center; justify-content: center; height: 54px; background: #1B1A17; color: #F5F2EB; text-decoration: none; font-size: 16px; font-weight: 600; border-radius: 4px">2027 읽기</a>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,44 @@
+# 공통 주제 태그 — 겹침 판정(●●○)의 비교 단위
+#
+# 사주·자미두수·점성술 결과를 모두 이 태그로 바꾼 뒤 코드가 비교한다. 글끼리 비교하지 않는다.
+# 상태: 초안 v0 (2026-10-30). 자미두수·점성술 → 태그 변환표는 아직 없음 (다음 단계).
+
+version: 0
+groups:                     # 같은 그룹이면 "같은 방향"으로 센다
+  일과 평가: [work, responsibility, evaluation, pressure, challenge]
+  표현과 결과: [expression, output, friction]
+  돈의 흐름: [money, money_in, money_out, opportunity, stability]
+  사람과 관계: [peers, competition, bond, relation, support]
+  배움과 문서: [learning, documents, solitude]
+  움직임과 변화: [change, movement, independence]
+
+labels:
+  work: 일
+  responsibility: 책임
+  evaluation: 평가
+  pressure: 압박
+  challenge: 시험대
+  expression: 표현
+  output: 결과물
+  friction: 마찰
+  money: 돈의 흐름
+  money_in: 들어오는 돈
+  money_out: 나가는 돈
+  opportunity: 기회
+  stability: 안정
+  peers: 동료
+  competition: 경쟁
+  bond: 묶임
+  relation: 가까운 관계
+  support: 도움
+  learning: 배움
+  documents: 문서
+  solitude: 혼자의 시간
+  change: 변화
+  movement: 이동
+  independence: 독립
+
+overlap:
+  lenses: [saju, ziwei, astro]        # 시기 풀이만 센다. 성명학·MBTI는 기질 쪽
+  min_lenses_to_show: 2               # 켜진 시기 풀이가 2개 미만이면 ●●○ 숨김
+  agree_if: same_group_in_top2        # 각 풀이의 상위 2개 그룹 중 하나가 같으면 같은 방향

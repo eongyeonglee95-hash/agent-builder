@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>시작 · 풀이 고르기</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600;700&amp;family=IBM+Plex+Sans+KR:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#1B1A17}a:hover{color:#B8321F}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #F5F2EB; color: #1B1A17; font-family: 'IBM Plex Sans KR', sans-serif; display: flex; flex-direction: column; padding: 20px 24px 28px">
+<div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #5E5950; letter-spacing: 0.02em">
+<span>lifecanvasLab 실험</span>
+<span>2027 · 丁未年</span>
+</div>
+<div style="margin-top: 40px; display: flex; flex-direction: column; gap: 4px">
+<div style="font-family: 'Noto Serif KR', serif; font-weight: 700; font-size: 104px; line-height: 1; color: {{accent}}; letter-spacing: -0.02em">丁未</div>
+<h1 style="margin: 12px 0 0; font-family: 'Noto Serif KR', serif; font-weight: 600; font-size: 30px; line-height: 1.25">겹쳐 읽는 2027</h1>
+<p style="margin: 10px 0 0; font-size: 15px; line-height: 1.6; color: #3D3A34">사주를 바탕으로, 다섯 가지 풀이가 어디서 겹치고 어디서 갈리는지 같이 읽어요.</p>
+</div>
+<div style="margin-top: 32px; border-top: 1px solid #1B1A17; padding-top: 12px; display: flex; justify-content: space-between; align-items: baseline">
+<span style="font-size: 13px; font-weight: 600">무엇으로 볼까요</span>
+<span style="font-size: 12px; color: #5E5950">끄면 그 입력 칸이 사라져요</span>
+</div>
+<div style="display: flex; flex-direction: column">
+<sc-for list="{{methods}}" as="m" hint-placeholder-count="5">
+<button type="button" onClick="{{m.pick}}" disabled="{{m.locked}}" aria-pressed="{{m.on}}" style="display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 8px 0; border: 0; border-bottom: 1px solid #D9D3C7; background: transparent; text-align: left; font-family: inherit; color: inherit; cursor: pointer">
+<span style="font-family: 'Noto Serif KR', serif; font-size: 22px; width: 28px; text-align: center">{{m.glyph}}</span>
+<span style="flex: 1; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 15px; font-weight: 600">{{m.name}}</span>
+<span style="font-size: 12px; color: #5E5950">{{m.need}}</span>
+</span>
+<sc-if value="{{m.locked}}" hint-placeholder-val="{{false}}">
+<span style="font-size: 12px; color: #5E5950">기본</span>
+</sc-if>
+<sc-if value="{{m.free}}" hint-placeholder-val="{{true}}">
+<sc-if value="{{m.on}}" hint-placeholder-val="{{true}}">
+<span style="font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 999px; background: #1B1A17; color: #F5F2EB">켬</span>
+</sc-if>
+<sc-if value="{{m.off}}" hint-placeholder-val="{{false}}">
+<span style="font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 999px; border: 1px solid #8A8378; color: #5E5950">끔</span>
+</sc-if>
+</sc-if>
+</button>
+</sc-for>
+</div>
+<div style="margin-top: auto; display: flex; flex-direction: column; gap: 10px">
+<p style="margin: 0; font-size: 12px; color: #5E5950; text-align: center">{{countLine}} · 입력한 정보는 저장하지 않아요</p>
+<a href="Input.dc.html" style="display: flex; align-items: center; justify-content: center; height: 54px; background: #1B1A17; color: #F5F2EB; text-decoration: none; font-size: 16px; font-weight: 600; border-radius: 4px">시작하기</a>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#B8321F","options":["#B8321F","#1B1A17","#8C5A2B"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { off: {} };
+  }
+  renderVals() {
+    const base = [
+      { id: 'saju', glyph: '命', name: '사주 · 만세력', need: '생년월일시 · 성별', locked: true },
+      { id: 'ziwei', glyph: '紫', name: '자미두수', need: '추가 입력 없음 · 태어난 시각 필요' },
+      { id: 'astro', glyph: '星', name: '점성술', need: '태어난 도시' },
+      { id: 'name', glyph: '名', name: '성명학', need: '이름 (한자는 선택)' },
+      { id: 'mbti', glyph: '性', name: 'MBTI', need: '16개 중 선택' }
+    ];
+    const off = this.state.off;
+    const methods = base.map((m) => {
+      const on = m.locked ? true : !off[m.id];
+      return Object.assign({}, m, {
+        locked: !!m.locked,
+        free: !m.locked,
+        on: on,
+        off: !on,
+        pick: () => {
+          if (m.locked) return;
+          const next = Object.assign({}, this.state.off);
+          next[m.id] = !next[m.id];
+          this.setState({ off: next });
+        }
+      });
+    });
+    const n = methods.filter((m) => m.on).length;
+    return {
+      accent: this.props.accent ?? '#B8321F',
+      methods: methods,
+      countLine: n + '가지 풀이로 읽어요'
+    };
+  }
+}
+</script>
+</body>
+</html>

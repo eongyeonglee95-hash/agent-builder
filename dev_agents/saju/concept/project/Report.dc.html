@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>상세 리포트</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600;700&amp;family=IBM+Plex+Sans+KR:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#1B1A17}a:hover{color:#B8321F}
+</style>
+</helmet>
+<div style="width: 390px; min-height: 2100px; box-sizing: border-box; background: #F5F2EB; color: #1B1A17; font-family: 'IBM Plex Sans KR', sans-serif; display: flex; flex-direction: column; gap: 36px; padding: 20px 24px 40px">
+
+<div style="display: flex; flex-direction: column; gap: 14px">
+<div style="display: flex; justify-content: space-between; font-size: 12px; color: #5E5950">
+<span>1990. 05. 15 10:30 · 서울 · 남</span>
+<span>양력</span>
+</div>
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-top: 1px solid #1B1A17; border-bottom: 1px solid #1B1A17">
+<div style="display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 0; border-right: 1px solid #D9D3C7"><span style="font-size: 11px; color: #5E5950">시</span><span style="font-family: 'Noto Serif KR', serif; font-size: 28px; font-weight: 600">辛</span><span style="font-size: 11px; color: #5E5950">겁재</span><span style="font-family: 'Noto Serif KR', serif; font-size: 28px; font-weight: 600; color: #B8321F">巳</span><span style="font-size: 11px; color: #5E5950">편관</span></div>
+<div style="display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 0; border-right: 1px solid #D9D3C7; background: #ECE6DA"><span style="font-size: 11px; color: #5E5950">일</span><span style="font-family: 'Noto Serif KR', serif; font-size: 28px; font-weight: 700">庚</span><span style="font-size: 11px; font-weight: 600">나</span><span style="font-family: 'Noto Serif KR', serif; font-size: 28px; font-weight: 600">辰</span><span style="font-size: 11px; color: #5E5950">편인</span></div>
+<div style="display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 0; border-right: 1px solid #D9D3C7"><span style="font-size: 11px; color: #5E5950">월</span><span style="font-family: 'Noto Serif KR', serif; font-size: 28px; font-weight: 600">辛</span><span style="font-size: 11px; color: #5E5950">겁재</span><span style="font-family: 'Noto Serif KR', serif; font-size: 28px; font-weight: 600; color: #B8321F">巳</span><span style="font-size: 11px; color: #5E5950">편관</span></div>
+<div style="display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 0"><span style="font-size: 11px; color: #5E5950">연</span><span style="font-family: 'Noto Serif KR', serif; font-size: 28px; font-weight: 600">庚</span><span style="font-size: 11px; color: #5E5950">비견</span><span style="font-family: 'Noto Serif KR', serif; font-size: 28px; font-weight: 600; color: #B8321F">午</span><span style="font-size: 11px; color: #5E5950">정관</span></div>
+</div>
+<span style="font-size: 12px; line-height: 1.5; color: #5E5950">계산 기준: 한국 표준시 · 절입 시각 반영 · 야자시 적용 안 함. 붉은 글자는 불(火)이에요. 불이 셋이라 쇠(庚)를 세게 다루는 사주예요.</span>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 10px">
+<span style="font-size: 13px; color: #5E5950">2027 한 줄</span>
+<h2 style="margin: 0; font-family: 'Noto Serif KR', serif; font-size: 28px; font-weight: 700; line-height: 1.3">책임이 늘고,<br>평가받는 해</h2>
+<p style="margin: 0; font-size: 15px; line-height: 1.7; color: #3D3A34">맡는 일의 크기가 커지고, 누군가 그 결과를 지켜보는 한 해예요. 규칙과 기준이 분명한 곳에서 힘을 써요.</p>
+<button type="button" onClick="{{toggleWhy}}" aria-expanded="{{showWhy}}" style="align-self: flex-start; min-height: 44px; display: flex; align-items: center; gap: 6px; padding: 0; border: 0; background: transparent; font-family: inherit; font-size: 13px; font-weight: 600; color: #B8321F; cursor: pointer">왜 이렇게 읽었나 {{whyMark}}</button>
+<sc-if value="{{showWhy}}" hint-placeholder-val="{{true}}">
+<div style="display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; background: #ECE6DA; font-size: 13px; line-height: 1.6">
+<span><b style="font-family: 'Noto Serif KR', serif">丁</b> 2027년 천간 丁(불)은 나 庚(쇠)를 다스리는 기운 → <b>정관</b> · 책임, 직장, 규칙</span>
+<span><b style="font-family: 'Noto Serif KR', serif">未</b> 지지 未의 주된 기운 己(흙)는 나를 받쳐주는 기운 → <b>정인</b> · 도움, 문서</span>
+<span style="color: #5E5950">근거: 연해자평 「정관」 · 십신 산출표</span>
+</div>
+</sc-if>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 12px">
+<div style="border-top: 1px solid #1B1A17; padding-top: 10px; display: flex; justify-content: space-between; align-items: baseline">
+<span style="font-size: 15px; font-weight: 600">2027에 무엇이 오나</span>
+<span style="font-size: 12px; color: #5E5950">시기 풀이 3</span>
+</div>
+<div style="display: flex; flex-direction: column">
+<div style="display: flex; gap: 12px; padding: 12px 0; border-bottom: 1px solid #D9D3C7"><span aria-hidden="true" style="margin-top: 6px; width: 10px; height: 10px; flex: none; border-radius: 50%; background: #1B1A17"></span><span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 14px; font-weight: 600">사주 · 일과 평가</span><span style="font-size: 13px; line-height: 1.5; color: #3D3A34">세운 丁이 정관. 8월 말 대운이 甲申에서 乙酉로 바뀌어요.</span></span></div>
+<div style="display: flex; gap: 12px; padding: 12px 0; border-bottom: 1px solid #D9D3C7"><span aria-hidden="true" style="margin-top: 6px; width: 10px; height: 10px; flex: none; border-radius: 50%; background: #1B1A17"></span><span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 14px; font-weight: 600">점성술 · 일과 평가</span><span style="font-size: 13px; line-height: 1.5; color: #3D3A34">[예시] 토성이 일·평판의 자리를 지나가요.</span></span></div>
+<div style="display: flex; gap: 12px; padding: 12px 0; border-bottom: 1px solid #D9D3C7"><span aria-hidden="true" style="margin-top: 6px; width: 10px; height: 10px; flex: none; box-sizing: border-box; border-radius: 50%; border: 1.5px solid #1B1A17"></span><span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 14px; font-weight: 600">자미두수 · 관계와 돈</span><span style="font-size: 13px; line-height: 1.5; color: #3D3A34">[예시] 올해 궁은 재물과 사람 쪽에 무게가 있어요.</span></span></div>
+</div>
+<p style="margin: 0; font-size: 14px; line-height: 1.6"><b>●●○</b> 둘은 '일과 평가'를, 하나는 '관계와 돈'을 봐요. 일이 늘면서 사람과 돈 문제가 따라올 수 있다는 뜻으로 함께 읽어요.</p>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 12px">
+<div style="border-top: 1px solid #1B1A17; padding-top: 10px; display: flex; justify-content: space-between; align-items: baseline">
+<span style="font-size: 15px; font-weight: 600">두 관점이 갈려요</span>
+<span style="font-size: 12px; color: #5E5950">좋은 해인지 버거운 해인지</span>
+</div>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+<div style="display: flex; flex-direction: column; gap: 6px; padding: 12px; border: 1px solid #D9D3C7"><span style="font-size: 12px; color: #5E5950">강약으로 보면</span><span style="font-size: 14px; line-height: 1.5">불이 이미 많은 사주에 불이 또 들어와요. <b>버거운 해</b>.</span></div>
+<div style="display: flex; flex-direction: column; gap: 6px; padding: 12px; border: 1px solid #D9D3C7"><span style="font-size: 12px; color: #5E5950">흐름을 이으면</span><span style="font-size: 14px; line-height: 1.5">未의 흙이 불을 받아 쇠를 살려요. <b>버틸 힘이 생기는 해</b>.</span></div>
+</div>
+<p style="margin: 0; font-size: 14px; line-height: 1.6">그래서 이렇게 하면 둘 다 살려요. 맡는 일은 받되, 혼자 떠안지 말고 기준과 결과를 문서로 남겨 두세요. 흙(문서·도움)이 불을 받아내는 길이에요.</p>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div style="border-top: 1px solid #1B1A17; padding-top: 10px; display: flex; justify-content: space-between; align-items: baseline">
+<span style="font-size: 15px; font-weight: 600">달마다</span>
+<span style="font-size: 12px; color: #5E5950">절기 기준 · 달이 바뀌는 날</span>
+</div>
+<sc-for list="{{months}}" as="mo" hint-placeholder-count="12">
+<div style="display: grid; grid-template-columns: 76px 44px 1fr; gap: 8px; align-items: baseline; padding: 9px 0; border-bottom: 1px solid #D9D3C7">
+<span style="font-size: 12px; color: #5E5950">{{mo.range}}</span>
+<span style="font-family: 'Noto Serif KR', serif; font-size: 16px; font-weight: 600">{{mo.gz}}</span>
+<span style="display: flex; flex-direction: column; gap: 1px">
+<span style="font-size: 13px"><b>{{mo.god}}</b> · {{mo.line}}</span>
+<sc-if value="{{mo.flag}}" hint-placeholder-val="{{false}}">
+<span style="font-size: 12px; font-weight: 600; color: #B8321F">{{mo.flagText}}</span>
+</sc-if>
+</span>
+</div>
+</sc-for>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 12px">
+<div style="border-top: 1px solid #1B1A17; padding-top: 10px; display: flex; justify-content: space-between; align-items: baseline">
+<span style="font-size: 15px; font-weight: 600">나는 어떻게 받아내나</span>
+<span style="font-size: 12px; color: #5E5950">기질 풀이</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 10px; font-size: 14px; line-height: 1.6">
+<span><b>사주 원국</b> · 불 속의 쇠. 압력이 있을 때 오히려 모양이 잡히는 사람이에요.</span>
+<span><b>이름</b> · [예시] 획수 풀이가 '지키는 힘'을 말해요.</span>
+<span><b>ISTJ</b> · [예시] 정해진 틀에서 강해요. 대신 혼자 다 해내려는 쪽이 약점이에요.</span>
+</div>
+<p style="margin: 0; padding: 14px; background: #1B1A17; color: #F5F2EB; font-size: 14px; line-height: 1.6">책임이 들어오는 해에, 압력에서 단단해지는 사람. 2027은 버티는 해가 아니라 모양이 잡히는 해로 쓸 수 있어요.</p>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 10px">
+<a href="Tarot.dc.html" style="display: flex; align-items: center; justify-content: space-between; min-height: 54px; padding: 0 16px; border: 1px solid #1B1A17; text-decoration: none; font-size: 15px; font-weight: 600">읽고 생긴 질문 하나, 카드로 물어보기<span aria-hidden="true">→</span></a>
+<a href="Share.dc.html" style="display: flex; align-items: center; justify-content: space-between; min-height: 54px; padding: 0 16px; background: #1B1A17; color: #F5F2EB; text-decoration: none; font-size: 15px; font-weight: 600">내 일주 카드 만들기<span aria-hidden="true">→</span></a>
+<p style="margin: 6px 0 0; font-size: 12px; line-height: 1.6; color: #5E5950">재미와 성찰을 위한 풀이예요. 검증된 예측이 아니에요. 같은 정보를 넣으면 언제나 같은 결과가 나와요.</p>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":2100}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { showWhy: true };
+  }
+  renderVals() {
+    const months = [
+      { range: '2/4 – 3/5', gz: '壬寅', god: '식신', line: '하고 싶은 말과 아이디어가 많아요' },
+      { range: '3/6 – 4/4', gz: '癸卯', god: '상관', line: '말이 앞서기 쉬워요, 한 번 더 고르기' },
+      { range: '4/5 – 5/5', gz: '甲辰', god: '편재', line: '기회가 보이고 지출도 커져요' },
+      { range: '5/6 – 6/5', gz: '乙巳', god: '정재', line: '꾸준한 것을 정리하기 좋아요' },
+      { range: '6/6 – 7/6', gz: '丙午', god: '편관', line: '압박이 가장 큰 때, 일정을 비워 두기', flag: true, flagText: '주의할 때' },
+      { range: '7/7 – 8/7', gz: '丁未', god: '정관', line: '평가와 책임이 한가운데 와요', flag: true, flagText: '중요한 때' },
+      { range: '8/8 – 9/7', gz: '戊申', god: '편인', line: '한숨 돌리고 배우기 좋아요', flag: true, flagText: '8월 말 대운 교체 甲申→乙酉' },
+      { range: '9/8 – 10/7', gz: '己酉', god: '정인', line: '도움을 청하기 좋은 달' },
+      { range: '10/8 – 11/7', gz: '庚戌', god: '비견', line: '동료와 나란히, 경쟁도 함께' },
+      { range: '11/8 – 12/6', gz: '辛亥', god: '겁재', line: '사람 따라 돈이 나가기 쉬워요' },
+      { range: '12/7 – 1/5', gz: '壬子', god: '식신', line: '한 해 결과를 말로 정리해요' },
+      { range: '1/6 – 2/3', gz: '癸丑', god: '상관', line: '다음 해를 준비해요' }
+    ].map((m) => Object.assign({ flag: false, flagText: '' }, m));
+    return {
+      months: months,
+      showWhy: this.state.showWhy,
+      whyMark: this.state.showWhy ? '접기' : '펼치기',
+      toggleWhy: () => this.setState({ showWhy: !this.state.showWhy })
+    };
+  }
+}
+</script>
+</body>
+</html>

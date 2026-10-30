@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>카드로 물어보기</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600;700&amp;family=IBM+Plex+Sans+KR:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#1B1A17}a:hover{color:#B8321F}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #F5F2EB; color: #1B1A17; font-family: 'IBM Plex Sans KR', sans-serif; display: flex; flex-direction: column; padding: 16px 24px 28px">
+<div style="display: flex; align-items: center; gap: 8px; height: 44px">
+<a href="Report.dc.html" aria-label="리포트로" style="display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; margin-left: -12px; text-decoration: none"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="#1B1A17" stroke-width="1.6" aria-hidden="true"><path d="M12.5 4 L6.5 10 L12.5 16"></path></svg></a>
+<span style="font-size: 15px; font-weight: 600">카드로 물어보기</span>
+</div>
+<div style="margin-top: 8px; display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 12px; color: #5E5950">리포트 키워드 '책임 · 평가'를 이어받았어요</span>
+<span style="font-family: 'Noto Serif KR', serif; font-size: 22px; font-weight: 600; line-height: 1.4">2027년, 늘어나는 책임을<br>어떻게 다룰까?</span>
+</div>
+<div style="margin-top: 22px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px">
+<div style="display: flex; flex-direction: column; gap: 6px; align-items: center">
+<div style="width: 100%; height: 150px; box-sizing: border-box; border: 1px solid #1B1A17; background: #F5F2EB; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px"><span style="font-family: 'Noto Serif KR', serif; font-size: 13px; color: #5E5950">XI</span><span style="font-family: 'Noto Serif KR', serif; font-size: 22px; font-weight: 700; color: #B8321F">정의</span><span style="font-size: 11px; color: #5E5950">[카드 그림]</span></div>
+<span style="font-size: 12px; font-weight: 600">올해의 카드</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px; align-items: center">
+<button type="button" aria-label="일 자리 카드 뒤집기" style="width: 100%; height: 150px; border: 0; background: #1B1A17; display: flex; align-items: center; justify-content: center; cursor: pointer"><span aria-hidden="true" style="width: 70%; height: 80%; box-sizing: border-box; border: 1px solid #5E5950"></span></button>
+<span style="font-size: 12px; color: #3D3A34">일</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px; align-items: center">
+<button type="button" aria-label="관계 자리 카드 뒤집기" style="width: 100%; height: 150px; border: 0; background: #1B1A17; display: flex; align-items: center; justify-content: center; cursor: pointer"><span aria-hidden="true" style="width: 70%; height: 80%; box-sizing: border-box; border: 1px solid #5E5950"></span></button>
+<span style="font-size: 12px; color: #3D3A34">관계</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px; align-items: center">
+<button type="button" aria-label="컨디션 자리 카드 뒤집기" style="width: 100%; height: 150px; border: 0; background: #1B1A17; display: flex; align-items: center; justify-content: center; cursor: pointer"><span aria-hidden="true" style="width: 70%; height: 80%; box-sizing: border-box; border: 1px solid #5E5950"></span></button>
+<span style="font-size: 12px; color: #3D3A34">컨디션</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px; align-items: center">
+<button type="button" aria-label="돈 자리 카드 뒤집기" style="width: 100%; height: 150px; border: 0; background: #1B1A17; display: flex; align-items: center; justify-content: center; cursor: pointer"><span aria-hidden="true" style="width: 70%; height: 80%; box-sizing: border-box; border: 1px solid #5E5950"></span></button>
+<span style="font-size: 12px; color: #3D3A34">돈</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px; align-items: center">
+<button type="button" aria-label="조언 자리 카드 뒤집기" style="width: 100%; height: 150px; border: 0; background: #1B1A17; display: flex; align-items: center; justify-content: center; cursor: pointer"><span aria-hidden="true" style="width: 70%; height: 80%; box-sizing: border-box; border: 1px solid #5E5950"></span></button>
+<span style="font-size: 12px; color: #3D3A34">조언</span>
+</div>
+</div>
+<div style="margin-top: 22px; border-top: 1px solid #1B1A17; padding-top: 12px; display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 13px; font-weight: 600">올해의 카드 · 정의 (정방향)</span>
+<p style="margin: 0; font-size: 14px; line-height: 1.65; color: #3D3A34">저울을 든 사람. 들인 만큼 정확히 돌아오는 한 해예요. 사주의 '평가받는 해'와 같은 쪽을 가리켜요. 기준을 먼저 적어 두면 평가가 당신 편이 돼요.</p>
+</div>
+<p style="margin-top: auto; margin-bottom: 0; font-size: 12px; line-height: 1.6; color: #5E5950">카드 순서는 뽑기 전에 정해져 있고, 당신이 누른 자리가 열려요. 같은 질문은 하루 한 번.</p>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>
