@@ -1,0 +1,45 @@
+# 정답 사주 — 계산 엔진 회귀 테스트용
+# 이름·연락처는 넣지 않는다. 생년월일시와 기대값만.
+# source: lib = 라이브러리 교차 검증(research/03), app:<서비스> = 앱 화면과 대조
+# 십신 표기: 일간 칸은 "일간"(앱에 따라 "비견"으로 적기도 함)
+
+cases:
+  - id: A
+    birth: { calendar: solar, date: 1990-05-15, time: "10:30", place: 서울, sex: M }
+    source: [lib]
+    pillars: { year: 庚午, month: 辛巳, day: 庚辰, hour: 辛巳 }
+    ten_gods:
+      stem: { year: 비견, month: 겁재, day: 일간, hour: 겁재 }
+      branch: { year: 정관, month: 편관, day: 편인, hour: 편관 }
+    dayun: { direction: forward, start: 壬午, start_age: 7.3, transition_2027: "2027-08 말 甲申→乙酉" }
+    note: wiki/judgment/annual-fortune-method.md 시연 사례
+
+  - id: B
+    birth: { calendar: solar, date: 1986-09-05, time: "08:00", place: 서울, sex: F }
+    source: ["app:뤼튼 플롯 (2026-10-30 화면 캡처)", lib]
+    pillars: { year: 丙寅, month: 丙申, day: 壬子, hour: 甲辰 }
+    ten_gods:
+      stem: { year: 편재, month: 편재, day: 일간, hour: 식신 }
+      branch: { year: 식신, month: 편인, day: 겁재, hour: 편관 }
+    sewun_2027: { stem: 정재, branch: 정관, relations: [丁壬 천간합 (세운 천간 ↔ 일간)] }
+    note: >
+      중국 서머타임(1986~1991) 기간. 한국 시각을 Asia/Shanghai로 바꾸면 1시간 어긋날 수 있다.
+      변환은 고정 UTC+8로 한다. 이 사례는 시주 경계에서 멀어 결과 영향 없음.
+
+  - id: C
+    birth: { calendar: solar, date: 1986-09-05, time: "05:00", place: 대구, sex: F }
+    source: ["app:사주핑 (2026-10-30 화면 캡처)", lib]
+    pillars: { year: 丙寅, month: 丙申, day: 壬子, hour: 壬寅 }
+    ten_gods:
+      stem: { year: 편재, month: 편재, day: 일간, hour: 비견 }
+      branch: { year: 식신, month: 편인, day: 겁재, hour: 식신 }
+    dayun:
+      direction: backward
+      sequence: [乙未, 甲午, 癸巳, 壬辰, 辛卯]
+      start: { lib: "9년 4개월 → 1996-01 무렵", app: "9세 · 1995 표기 (대운수 9 내림, 출생연도+9)" }
+    note: >
+      B와 같은 사람·다른 출생 시각 입력(08:00 vs 05:00). 원국 8글자와 대운 순서는 앱과 일치.
+      대운 시작 연도 표기가 1년 다름 → 대운수 처리(내림·연도 표기)는 사주핑 쪽 관행 후보. school_defaults 대운수 항목에 반영 검토.
+
+pending:
+  - research/03 §4 대조 입력 10건 (앱 캡처 대기)

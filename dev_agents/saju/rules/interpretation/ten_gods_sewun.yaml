@@ -1,0 +1,187 @@
+# 해석표 v0 — 세운(그해)으로 들어온 십신이 무엇을 뜻하나
+#
+# 상태: 초안 (2026-10-30). 사용자·감수자 확인 전.
+# 쓰는 곳: 판단 엔진 8단계(영역 매핑)·10단계(문구 후보). LLM은 여기 있는 키워드·행동 안에서만 문장을 쓴다.
+# 근거: wiki/relations/ten-gods.md (산출·고전 정의), wiki/judgment/annual-fortune-method.md §2 (육친 → 현대 영역)
+#   - classic: 고전 육친·성정 분류에 근거
+#   - product: 우리 상품용 현대 묶음 (고전에 직접 근거 없음, 감수 대상)
+#
+# 읽는 법
+#   themes        겹침 판정용 공통 태그. 자미두수·점성술 결과도 같은 태그로 바꿔 비교한다 (themes.yaml)
+#   areas         영역별 키워드. 영역: work 일 / relation 관계 / condition 컨디션 / money 재물 / learning 배움
+#   tone          판정이 '좋음'일 때(favorable)와 '버거움'일 때(burdensome)의 결. 두 관점이 갈리면 둘 다 쓴다 (C13)
+#   action        "그래서 이렇게 하면 된다" 후보. 나쁜 운도 반드시 여기로 끝낸다 (Q12)
+#   position      stem = 세운 천간으로 올 때, branch = 세운 지지 본기로 올 때. v0은 같은 표를 쓰고 branch는 강도만 낮춘다
+
+version: 0
+defaults:
+  branch_weight: 0.5          # 지지 본기로 온 십신은 천간보다 약하게 (연해자평 "歲君看干")
+  hidden_stem_mention: true   # 지장간 중기·여기는 근거 펼치기에만 표시, 문장 주제로 쓰지 않음
+  spouse_star_by_sex: false   # 고전 육친(남=재성, 여=관성 배우자)을 문장에 쓸지. 기본 끔 — 관계는 일지 합충으로 읽는다
+  forbidden:
+    - 질병명·사고·사망·이혼 단정
+    - 투자·종목·대출 권유, 금액 예측
+    - 반드시·100%·운명이다 같은 단정
+    - 특정 달을 "흉한 달"로만 끝내기 (action 없이)
+
+ten_gods:
+  비견:
+    group: 비겁
+    basis: { classic: "형제·동료(六親)", product: "독립·협업 묶음" }
+    themes: [peers, independence]
+    areas:
+      work: [내 방식으로 밀고 나가기, 동등한 협업, 독립 프로젝트]
+      relation: [친구·동료가 늘어남, 나란히 가는 사람]
+      money: [각자 계산, 나눠 쓰기]
+      condition: [버티는 힘, 자기 페이스]
+    tone:
+      favorable: 기댈 동료가 생기고 추진력이 붙어요
+      burdensome: 고집이 부딪히고 몫을 나눠야 해요
+    action: [역할과 몫을 먼저 정하기, 혼자 정하던 일 하나를 같이 정하기]
+
+  겁재:
+    group: 비겁
+    basis: { classic: "형제·경쟁자, 재물을 나눠 가짐", product: "경쟁·지출 묶음" }
+    themes: [peers, competition, money_out]
+    areas:
+      work: [경쟁, 승부가 걸린 일, 팀의 힘]
+      relation: [경쟁자, 의리로 엮이는 관계]
+      money: [사람 따라 나가는 돈, 함께 쓰는 지출]
+      condition: [승부욕, 무리하기 쉬움]
+    tone:
+      favorable: 경쟁이 실력을 끌어올려요
+      burdensome: 사람과 얽혀 돈과 에너지가 새기 쉬워요
+    action: [돈이 오가는 약속은 기록으로 남기기, 이길 판과 비킬 판을 나누기]
+
+  식신:
+    group: 식상
+    basis: { classic: "내가 생하는 기운, 의식(衣食)·여성에게 자녀", product: "결과물·표현 묶음" }
+    themes: [expression, output]
+    areas:
+      work: [만든 결과물, 기술 발휘, 꾸준한 생산]
+      relation: [편안한 교류, 먹고 노는 자리]
+      money: [결과물이 수입으로 이어짐]
+      condition: [먹고 쉬는 리듬, 여유]
+    tone:
+      favorable: 하는 만큼 결과가 손에 잡혀요
+      burdensome: 편한 쪽으로 느슨해지기 쉬워요
+    action: [하나를 끝까지 만들어 보여주기, 생활 리듬을 먼저 고정하기]
+
+  상관:
+    group: 식상
+    basis: { classic: "정관을 상하게 하는 기운(傷官)", product: "틀 깨기·말 묶음" }
+    themes: [expression, change, friction]
+    areas:
+      work: [기존 방식 바꾸기, 아이디어, 말과 글]
+      relation: [말로 생기는 마찰, 윗사람과의 부딪힘]
+      money: [재능을 돈으로 바꾸는 시도]
+      condition: [예민함, 생각이 많아짐]
+    tone:
+      favorable: 막혀 있던 것을 뚫는 힘이 생겨요
+      burdensome: 말이 앞서 규칙과 부딪히기 쉬워요
+    action: [비판은 대안과 같이 내기, 중요한 말은 하루 묵혔다 하기]
+
+  편재:
+    group: 재성
+    basis: { classic: "내가 극하는 기운, 큰 재물·부친", product: "기회·확장 묶음" }
+    themes: [money, opportunity, movement]
+    areas:
+      work: [영역 넓히기, 바깥 활동, 사람을 만나는 일]
+      relation: [사교, 넓어지는 인맥]
+      money: [크게 들어오고 크게 나가는 흐름, 기회와 지출이 함께]
+      condition: [바쁨, 이동이 많음]
+    tone:
+      favorable: 판이 커지고 기회가 보여요
+      burdensome: 벌이기만 하고 거두는 게 늦어지기 쉬워요
+    action: [들어온 기회는 숫자로 한 번 확인하기, 벌인 일의 마감부터 정하기]
+
+  정재:
+    group: 재성
+    basis: { classic: "내가 극하는 기운, 정당한 재물·남성에게 아내", product: "안정 수입·관리 묶음" }
+    themes: [money_in, stability]
+    areas:
+      work: [성실함이 보상받음, 꼼꼼한 관리]
+      relation: [안정적인 관계, 약속을 지키는 사람]
+      money: [꾸준한 수입, 관리와 저축]
+      condition: [규칙적인 생활]
+    tone:
+      favorable: 쌓은 만큼 남는 한 해예요
+      burdensome: 계산이 많아져 마음이 좁아지기 쉬워요
+    action: [고정 지출 한 번 점검하기, 아끼는 것과 쓸 것을 미리 나누기]
+
+  편관:
+    group: 관성
+    basis: { classic: "나를 극하는 기운(七殺), 여성에게 이성", product: "압박·도전 묶음" }
+    themes: [pressure, challenge, responsibility]
+    areas:
+      work: [갑작스러운 과제, 압박, 시험대]
+      relation: [강한 사람, 긴장감 있는 관계]
+      money: [급한 지출]
+      condition: [긴장, 과로 신호, 리듬이 깨지기 쉬움]
+    tone:
+      favorable: 위기에서 실력을 증명할 기회예요
+      burdensome: 압박이 한꺼번에 몰리기 쉬워요
+    action: [일정에 빈칸을 미리 두기, 혼자 버티지 말고 도움 요청 경로 만들기]
+
+  정관:
+    group: 관성
+    basis: { classic: "나를 극하는 기운(正官), 여성에게 남편", product: "책임·평가 묶음" }
+    themes: [responsibility, evaluation, work]
+    areas:
+      work: [책임이 늘어남, 평가·승진, 규칙과 기준]
+      relation: [공식적인 관계, 신뢰를 쌓는 관계]
+      money: [정해진 보상]
+      condition: [긴장 속의 안정]
+    tone:
+      favorable: 맡은 만큼 인정받는 해예요
+      burdensome: 평가와 틀이 부담으로 느껴질 수 있어요
+    action: [기준과 결과를 문서로 남기기, 맡을 일과 넘길 일을 구분하기]
+
+  편인:
+    group: 인성
+    basis: { classic: "나를 생하는 기운(偏印·梟神)", product: "특수한 배움·혼자의 시간 묶음" }
+    themes: [learning, solitude]
+    areas:
+      learning: [전문 분야 공부, 남다른 관심사]
+      work: [기획, 연구, 혼자 하는 일]
+      relation: [혼자 있는 시간이 늘어남]
+      condition: [생각 과다, 잠과 리듬]
+    tone:
+      favorable: 깊이 파고드는 공부가 길이 돼요
+      burdensome: 생각만 많고 실행이 늦어지기 쉬워요
+    action: [배운 것을 작게 하나 실행하기, 미룬 일에 날짜 붙이기]
+
+  정인:
+    group: 인성
+    basis: { classic: "나를 생하는 기운(正印·印綬), 모친", product: "도움·문서·배움 묶음" }
+    themes: [support, documents, learning]
+    areas:
+      learning: [자격·시험, 정식 공부]
+      work: [문서·계약, 윗사람의 지원]
+      relation: [도와주는 사람, 보호받는 관계]
+      condition: [회복, 쉬어 가기]
+    tone:
+      favorable: 도움과 문서운이 따라와요
+      burdensome: 기대기만 하다 늘어지기 쉬워요
+    action: [도움을 구체적으로 부탁하기, 계약·서류는 끝까지 읽기]
+
+# 세운 글자와 원국의 관계 (v0은 일간·일지·월지만)
+relations:
+  stem_combine_day_master:        # 예: 壬 일간 + 세운 丁 (丁壬合)
+    basis: { classic: "연해자평 「論征太歲」 — 합하면 晦", product: "묶임·끌림" }
+    themes: [bond]
+    areas: { relation: [가까워지는 사람, 묶이는 약속], work: [놓기 어려운 일] }
+    tone: { neutral: 그해의 기운이 나와 직접 묶이는 해예요 }
+    action: [묶이는 약속은 조건을 먼저 확인하기]
+  branch_clash_day:               # 세운 지지가 일지(배우자 자리)를 충
+    basis: { classic: "충 = 움직임(적천수 歲運論)", product: "관계·생활 변화" }
+    themes: [change, relation]
+    areas: { relation: [가까운 관계의 변화], condition: [생활 리듬 변화] }
+    tone: { neutral: 가까운 자리에서 움직임이 생겨요 }
+    action: [바뀌는 것을 미리 말로 나누기]
+  branch_clash_month:             # 세운 지지가 월지를 충
+    basis: { classic: "월지 = 부모·사회 자리", product: "일터·환경 변화" }
+    themes: [change, work]
+    areas: { work: [환경·부서·거처 변화] }
+    tone: { neutral: 일터나 생활 환경이 움직이기 쉬워요 }
+    action: [옮길 때 기준 세 가지를 먼저 적기]
