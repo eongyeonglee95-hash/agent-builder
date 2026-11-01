@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
+import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
 // 읽기용 엑셀 표 — 요약·리밸런싱 시트. 편집용 표(sheet.tsx)와 같은 격자·선택·수식 입력줄 모양을 쓴다.
-// 숫자는 서버가 계산한 값을 그대로 보여 준다. 고칠 수 있는 칸(edit)은 이번 달 납입 같은 입력값뿐.
+// 숫자는 서버가 계산한 값을 그대로 보여 준다. 고칠 수 있는 칸(edit)은 이번 달 납입·결정 사유 같은 입력값뿐, 버튼 칸(btn)은 결정 기록.
 
 export type Cell = {
   v?: string | number | null
@@ -13,7 +14,8 @@ export type Cell = {
   section?: boolean
   span?: number
   bar?: { pct: number; color: string }
-  edit?: { value: string; onCommit: (v: string) => void; placeholder?: string; label: string }
+  edit?: { value: string; onCommit: (v: string) => void; placeholder?: string; label: string; text?: boolean }
+  btn?: { label: string; onClick: () => void; disabled?: boolean; primary?: boolean }
 }
 
 const won = (n: number) => n.toLocaleString('ko-KR')
@@ -43,7 +45,7 @@ export function ReadGrid({ label, widths, rows }: { label: string; widths: numbe
     setSel(s => { const r = Math.max(0, Math.min(rows.length - 1, s.r + dr)); return { r, c: Math.max(0, Math.min((rows[r]?.length ?? 1) - 1, s.c + dc)) } })
   }
   function onKey(e: KeyboardEvent<HTMLDivElement>) {
-    if ((e.target as HTMLElement).tagName === 'INPUT') return
+    if ((e.target as HTMLElement).closest('input,button')) return
     const k = e.key
     if (k === 'ArrowDown' || k === 'Enter') { e.preventDefault(); move(1, 0) }
     else if (k === 'ArrowUp') { e.preventDefault(); move(-1, 0) }
@@ -74,20 +76,22 @@ export function ReadGrid({ label, widths, rows }: { label: string; widths: numbe
               const on = sel.r === ri && sel.c === ci
               const text = show(c)
               const tone = c.tone === 'auto' && typeof c.v === 'number' ? (c.v > 0 ? 'up' : c.v < 0 ? 'down' : '') : c.tone
-              const numeric = typeof c.v === 'number' || !!c.edit
+              const numeric = typeof c.v === 'number' || (!!c.edit && !c.edit.text)
               return <div key={`${ri}-${ci}`} role="gridcell" aria-selected={on}
                 style={c.span ? { gridColumn: `span ${c.span}` } : undefined}
                 className={cn('xl-cell', numeric && 'r', on && 'on', c.head && 'xl-hcell', c.section && 'xl-section', c.bold && 'font-semibold',
                   tone === 'up' && 'up', tone === 'down' && 'down', tone === 'muted' && 'text-grey-600', c.edit && 'xl-input')}
-                onMouseDown={e => { if ((e.target as HTMLElement).tagName !== 'INPUT') { e.preventDefault(); setSel({ r: ri, c: ci }); gridRef.current?.focus() } }}>
+                onMouseDown={e => { if (!(e.target as HTMLElement).closest('input,button')) { e.preventDefault(); setSel({ r: ri, c: ci }); gridRef.current?.focus() } }}>
                 {c.bar && <span className="xl-databar" style={{ width: `${Math.max(0, Math.min(100, c.bar.pct))}%`, background: c.bar.color }}/>}
-                {c.edit
-                  ? <input aria-label={c.edit.label} className="xl-edit text-right" inputMode="numeric" placeholder={c.edit.placeholder}
-                      value={on && draft !== null ? draft : c.edit.value ? Number(c.edit.value).toLocaleString('ko-KR') : ''}
+                {c.btn
+                  ? <Button size="xs" variant={c.btn.primary ? 'default' : 'outline'} disabled={c.btn.disabled} onClick={c.btn.onClick} className="relative">{c.btn.label}</Button>
+                  : c.edit
+                  ? <input aria-label={c.edit.label} className={cn('xl-edit', !c.edit.text && 'text-right')} inputMode={c.edit.text ? 'text' : 'numeric'} placeholder={c.edit.placeholder}
+                      value={on && draft !== null ? draft : !c.edit.text && c.edit.value ? Number(c.edit.value).toLocaleString('ko-KR') : c.edit.value}
                       onFocus={() => { setSel({ r: ri, c: ci }); setDraft(c.edit!.value) }}
-                      onChange={e => setDraft(e.target.value.replace(/[^\d]/g, ''))}
+                      onChange={e => setDraft(c.edit!.text ? e.target.value : e.target.value.replace(/[^\d]/g, ''))}
                       onBlur={() => { if (draft !== null) c.edit!.onCommit(draft); setDraft(null) }}
-                      onKeyDown={e => { if (e.key === 'Enter') { (e.target as HTMLInputElement).blur(); move(1, 0); gridRef.current?.focus() } if (e.key === 'Escape') { setDraft(null); gridRef.current?.focus() } }}/>
+                      onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) { (e.target as HTMLInputElement).blur(); move(1, 0); gridRef.current?.focus() } if (e.key === 'Escape') { setDraft(null); gridRef.current?.focus() } }}/>
                   : <span className="relative">{text}</span>}
               </div>
             }),

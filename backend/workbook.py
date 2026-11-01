@@ -4,16 +4,22 @@
   이번 달 납입은 묶음별로 넣을 수 있다. 계산은 엔진, 문장은 tools.explain 템플릿 — LLM 없음.
 - /api/workbook/summary   : 한 줄 요약과 요약 숫자 (대시보드 + 종목 잔고 + 리밸런싱 판정).
 - /api/workbook/report.xlsx: 한 줄 요약이 맨 위에 있는 보고서 엑셀 (요약·보유종목·자산·리밸런싱 시트).
+- /api/workbook/check     : n8n 같은 바깥 자동화용 읽기 전용 점검(할 일 있나 + 알림 문장). 2026-10-29 사용자 "n8n 배우고 싶다".
+- /api/workbook/decision  : 묶음의 주문표 수락(직접 주문)·보류를 사유와 함께 DECISIONS.md에 남긴다 (tools.decisions).
+  주문표는 화면이 보낸 숫자를 믿지 않고 같은 입력으로 다시 계산해 기록한다.
 """
 from __future__ import annotations
 
 import datetime as dt
 import io
+import os
+import re
 from dataclasses import asdict
+from pathlib import Path
 from typing import Annotated, Literal
 
 import pandas as pd
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import Response
 from pydantic import Field
 
@@ -21,6 +27,7 @@ from backend import holdings as hapi
 from backend import registration, storage
 from backend.storage import InputModel
 from tools.assets import defaults_with_prices, load_accounts, load_asset_map, load_pools, tag_holdings
+from tools.decisions import DECISIONS_PATH, read_decisions, record_decision
 from tools.parse_balance import HOLDING_COLUMNS
 from tools.strategy import CLASS_LABELS, load_strategy
 
@@ -37,6 +44,25 @@ class RebalanceInput(InputModel):
     owner: Owner = "together"
     live: bool = False
     cash: dict[str, PoolCash] = {}
+
+
+class DecisionInput(RebalanceInput):
+    pool_id: Annotated[str, Field(min_length=1, max_length=80)]
+    action: Literal["accept", "hold"]
+    reason: Annotated[str, Field(max_length=200)] = ""
+
+
+def decisions_path() -> Path:
+    return Path(os.environ.get("RETIRE_DECISIONS_PATH") or DECISIONS_PATH)
+
+
+def _short(label: str) -> str:
+    """'연금저축(구) — 리밸런싱' → '연금저축(구)'. 결정 기록과 한 줄 요약에 쓰는 묶음 이름."""
+    return label.split(" — ")[0]
+
+
+def _last_decision(label: str, decisions: list[dict]) -> dict | None:
+    return next((d for d in reversed(decisions) if d["decision"].startswith(_short(label))), None)
 
 
 def _holdings_frame(owner: str, live: bool) -> tuple[pd.DataFrame, dict, list[str]]:
@@ -59,6 +85,7 @@ def rebalance_all(data: RebalanceInput) -> dict:
     pools = load_pools(registration.accounts_path())
     amap = load_asset_map(registration.asset_map_path())
     df, as_of, failed = _holdings_frame(data.owner, data.live)
+    decisions = read_decisions(decisions_path()) if decisions_path().exists() else []
     out = []
     for pid, pool in pools.items():
         ids = [a for a in pool.get("accounts", []) if a in accts and accts[a].get("active", True) is not False]
@@ -67,7 +94,7 @@ def rebalance_all(data: RebalanceInput) -> dict:
             continue
         label = pool.get("label") or pid
         base = {"pool_id": pid, "label": label, "mode": pool.get("mode", "rebalance"), "accounts": [{"id": a, "label": accts[a].get("label", a)} for a in ids],
-                "as_of": min((as_of[a] for a in ids if as_of.get(a)), default=None)}
+                "as_of": min((as_of[a] for a in ids if as_of.get(a)), default=None), "last_decision": _last_decision(label, decisions)}
         try:
             strategy = load_strategy(pool.get("strategy") or "all_weather")
         except (KeyError, ValueError) as e:
@@ -95,6 +122,34 @@ def rebalance_all(data: RebalanceInput) -> dict:
 @router.post("/rebalance")
 def rebalance(data: RebalanceInput):
     return rebalance_all(data)
+
+
+def _order_text(o: dict) -> str:
+    size = f"{o['qty']:,}주" if o["qty"] else f"{o['amount']:,}원"
+    return f"{o['side']} {o['ticker_name'] or CLASS_LABELS.get(o['asset_class'], o['asset_class'])} {size}"
+
+
+@router.post("/decision")
+def decision(data: DecisionInput):
+    """수락 = 증권사 앱에서 직접 주문하겠다는 기록(자동주문 없음). 보류 = 이번엔 넘김."""
+    pool = next((p for p in rebalance_all(data)["pools"] if p["pool_id"] == data.pool_id), None)
+    if pool is None:
+        raise HTTPException(404, "이 묶음의 등록 잔고가 없어요.")
+    if pool.get("error"):
+        raise HTTPException(409, pool["error"])
+    trades = [o for o in pool["orders"] if o["side"] != "생략"]
+    if data.action == "accept" and (pool["blocked_reason"] or not trades):
+        raise HTTPException(409, f"주문표 보류: {pool['blocked_reason']}" if pool["blocked_reason"] else "수락할 주문이 없어요.")
+    reason = " ".join(re.sub(r"[|\r\n]", " ", data.reason).split())
+    if data.action == "accept":
+        text = f"{_short(pool['label'])} 주문표 수락 (직접 주문): " + ", ".join(_order_text(o) for o in trades)
+    else:
+        text = f"{_short(pool['label'])} 리밸런싱 보류"
+        reason = reason or "(사유 없음)"
+    if not decisions_path().exists():
+        decisions_path().write_text("# DECISIONS\n", encoding="utf-8")
+    line = record_decision(text, reason, path=decisions_path())
+    return {"line": line, "decision": read_decisions(decisions_path())[-1]}
 
 
 def _won(n: int | None) -> str:
@@ -128,7 +183,7 @@ def summary(owner: str = "together", live: bool = False) -> dict:
             continue
         worst = max(p["classes"], key=lambda c: abs(c["deviation_pp"]))
         if p["triggered"]:
-            need.append(f"{p['label'].split(' — ')[0]} {worst['label']} {worst['deviation_pp']:+.1f}%p")
+            need.append(f"{_short(p['label'])} {worst['label']} {worst['deviation_pp']:+.1f}%p")
     parts.append("리밸런싱 필요: " + ", ".join(need) if need else "리밸런싱: 모두 범위 안")
     stale = [a["label"] for a in h["accounts"] if a["stale"]]
     if stale:
@@ -139,6 +194,38 @@ def summary(owner: str = "together", live: bool = False) -> dict:
 @router.get("/summary")
 def summary_api(owner: Owner = "together", live: bool = False):
     return summary(owner, live)
+
+
+@router.get("/check")
+def check(owner: Owner = "together", live: bool = False):
+    """n8n 같은 바깥 자동화가 정기 점검에 쓰는 읽기 전용 요약. 알림 문장도 여기서 만든다(LLM 없음).
+    needs_action = 범위를 벗어난 묶음이 있거나 오래된 잔고·계산 오류가 있음."""
+    h = hapi.holdings(owner, live)
+    rb = rebalance_all(RebalanceInput(owner=owner, live=live))
+    pools, lines = [], []
+    for p in rb["pools"]:
+        name = _short(p["label"])
+        if p.get("error"):
+            pools.append({"pool_id": p["pool_id"], "name": name, "error": p["error"]})
+            lines.append(f"{name}: 계산할 수 없어요 — {p['error']}")
+            continue
+        worst = max(p["classes"], key=lambda c: abs(c["deviation_pp"]), default=None)
+        orders = [_order_text(o) for o in p["orders"] if o["side"] != "생략"]
+        pools.append({"pool_id": p["pool_id"], "name": name, "triggered": p["triggered"], "blocked_reason": p["blocked_reason"],
+                      "worst": worst and {"label": worst["label"], "deviation_pp": worst["deviation_pp"]}, "orders": orders,
+                      "as_of": p["as_of"], "last_decision": p["last_decision"]})
+        if p["triggered"]:
+            what = f"{worst['label']} {worst['deviation_pp']:+.1f}%p 벗어남" if worst else "범위 벗어남"
+            tail = f"주문표 보류: {p['blocked_reason']}" if p["blocked_reason"] else ("주문표 확인하세요" if orders else "이번 달 납입으로 맞출 수 있어요")
+            lines.append(f"{name}: {what} — {tail}")
+    stale = [a["label"] for a in h["accounts"] if a["stale"]]
+    if stale:
+        lines.append("다시 등록할 잔고: " + ", ".join(stale))
+    needs = bool(lines)
+    head = f"{dt.date.today():%Y.%m.%d} 연금 점검"
+    message = head + "\n" + ("\n".join(lines) if needs else "모두 범위 안이에요. 할 일 없어요.")
+    return {"date": dt.date.today().isoformat(), "needs_action": needs, "message": message, "pools": pools, "stale": stale,
+            "quote_failed": rb["quote_failed"]}
 
 
 @router.get("/report.xlsx")
