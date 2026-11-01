@@ -60,4 +60,7 @@
 - (코드) 엑셀처럼 입력·수정: `web/src/sheet.tsx`·`sheet.css`(보유종목·자산 두 탭 표, 붙여넣기, 키보드, 한글 IME), `/api/register/sheet`, `/api/register/template.xlsx`(빈 양식·지금 잔고 채운 양식, 고르는 칸), 파일의 계좌·자산군·주식 구분 열 읽기(한 파일 여러 계좌). 등록 방법 네 가지(사진·표로 입력·엑셀·CSV 파일·금액 직접 입력). SCREEN_REFERENCE 2026-10-28 엑셀처럼 절, DECISIONS 한 줄
 - (코드) 화면 표준 Tailwind v4 + shadcn/ui 도입(`web/src/theme.css` 토큰, Pretendard, `src/components/ui/*`, `@/` 별칭). 첫 화면을 엑셀 워크북으로(`web/src/workbook/*`, `/api/workbook/summary·rebalance·report.xlsx`): 한 줄 요약, 요약·보유종목·자산·리밸런싱 시트, 이번 달 납입 입력 칸, 보고서 엑셀. 예전 화면은 '다른 버전으로 보기'(#home), 예전 CSS는 legacy 레이어. 브라우저 테스트의 첫 화면 주소를 /#home으로
 - (문서) CLAUDE.md 시각 기준을 새 표준으로, SCREEN_REFERENCE 2026-10-28 화면 표준 절, `docs/research/UI_REFERENCES.md`(레퍼런스·토큰 근거), DECISIONS·AGENT_DESIGN UI-02·DEV_HANDOFF
-
+- (코드) FLOW-01 결정 기록을 워크북에: 리밸런싱 시트 묶음마다 결정 줄(직접 주문할게요·이번엔 넘기기·사유 칸·지난 결정). `/api/workbook/decision`이 같은 입력으로 주문표를 다시 계산해 DECISIONS.md "리밸런싱 제안 기록"에 남긴다(주문 없거나 보류 중이면 수락 거절). 테스트·브라우저 서버는 RETIRE_DECISIONS_PATH 임시 파일
+- (코드) n8n 배우기 1단계: 읽기 전용 점검 `GET /api/workbook/check`(할 일 여부 + 코드가 만든 알림 문장), `automation/n8n/`에 월 1회 점검 워크플로(25일 9시→점검→조건→텔레그램)와 README. n8n은 주문하지 않고 로컬에서만
+- (문서, 2026-10-30 Codex) `dev_agents/saju/research/08_명리도서_학습로드맵.md`에 현재 서점 근거·도서 비교·독서 순서를 추가하고 `skills/saju-research/` 재사용 스킬 및 `CODEX_HANDOFF.md`를 작성. 기존 Claude 리서치는 보존, 수신 확인은 별도 대기.
+- (문서, 2026-10-30 Codex) 사주핑 사용자 캡처 24장을 열람하고 기존 `research/09`를 재사용해 `dev_agents/saju/CODEX_HANDOFF.md`에 화면 근거의 한계·차별화 가정 수정·선택형 신년운세 검토 후보를 추가. 제품 결정·구현·원본 이미지 저장은 없음.

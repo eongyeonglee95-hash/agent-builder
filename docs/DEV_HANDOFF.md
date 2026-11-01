@@ -118,3 +118,4 @@ Codex 별도포트 테스트 결과 경로도 `web/test-results-8766`로 격리�
 - 사용자 결정: 화면 표준 = Tailwind CSS + shadcn/ui. 첫 화면 = 엑셀 워크북(요약·보유종목·자산·리밸런싱 시트), 지금 카드형 App은 '다른 버전으로 보기'로 남긴다. concept.jpg 시각 기준은 대체(DECISIONS 2026-10-28).
 - 이 전환 동안 `web/` 전체는 Claude가 맡는다(AGENT_DESIGN §0 UI-02). Codex는 `backend/storage.py`(장부)·`backend/rebalance.py`·프로필/자산 API·관련 테스트를 계속 맡는다. `web/`을 고쳐야 하면 이 문서에 먼저 한 줄 남겨 주세요.
 - 새 서버 경로(Claude): `backend/workbook.py` — `/api/workbook/summary`(한 줄 요약), `/api/workbook/rebalance`(등록 잔고로 묶음별 엔진 실행, 이번 달 납입), `/api/workbook/report.xlsx`.
+- 2026-10-29 Claude: 워크북 리밸런싱 시트에 결정 줄 추가(`web/src/workbook/*`, `backend/workbook.py` `/api/workbook/decision`). 기록은 `tools.decisions`로 DECISIONS.md, 경로는 `RETIRE_DECISIONS_PATH`로 바꿀 수 있고 `web/e2e/server.py`는 임시 파일을 쓴다. `backend/rebalance.py`·storage는 손대지 않음.

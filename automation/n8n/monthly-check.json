@@ -1,0 +1,59 @@
+{
+  "name": "연금 월 1회 점검",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": { "interval": [ { "field": "months", "triggerAtDayOfMonth": 25, "triggerAtHour": 9 } ] }
+      },
+      "id": "a1",
+      "name": "매달 25일 9시",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": { "url": "http://127.0.0.1:8000/api/workbook/check", "options": {} },
+      "id": "a2",
+      "name": "앱에 물어보기",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [240, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict", "version": 2 },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.needs_action }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "true", "singleValue": true }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a3",
+      "name": "할 일 있나?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [480, 0]
+    },
+    {
+      "parameters": { "chatId": "여기에_내_chat_id", "text": "={{ $json.message }}", "additionalFields": { "appendAttribution": false } },
+      "id": "a4",
+      "name": "텔레그램 보내기",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [720, -80]
+    }
+  ],
+  "connections": {
+    "매달 25일 9시": { "main": [ [ { "node": "앱에 물어보기", "type": "main", "index": 0 } ] ] },
+    "앱에 물어보기": { "main": [ [ { "node": "할 일 있나?", "type": "main", "index": 0 } ] ] },
+    "할 일 있나?": { "main": [ [ { "node": "텔레그램 보내기", "type": "main", "index": 0 } ], [] ] }
+  },
+  "settings": { "timezone": "Asia/Seoul" }
+}
