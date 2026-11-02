@@ -257,6 +257,7 @@ export function AssetSheet({ owner, initialTab = 'holdings', onSaved, embedded =
         }
         window.dispatchEvent(new Event('retire:holdings-changed'))
         onSaved(`${changedAccounts.size}개 계좌 · ${saved}종목 · ${total.toLocaleString('ko-KR')}원을 저장했어요.`)
+        await load()   // 표가 화면 안에 그대로 남으므로(2026-11-02 인라인) 저장한 뒤 다시 읽어 '바뀐 줄' 표시를 지운다
       } else {
         let n = 0
         for (const r of rows) {
@@ -270,6 +271,8 @@ export function AssetSheet({ owner, initialTab = 'holdings', onSaved, embedded =
           n++
         }
         onSaved(`자산 ${n}건을 저장했어요.`)
+        window.dispatchEvent(new Event('retire:holdings-changed'))
+        await load()
       }
     } catch (e) { setError(e instanceof Error ? e.message : '저장하지 못했어요.'); await load() } finally { setBusy(false) }
   }

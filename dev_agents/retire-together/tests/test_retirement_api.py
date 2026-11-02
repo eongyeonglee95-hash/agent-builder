@@ -88,6 +88,8 @@ def test_layer_of_uses_account_registry_then_name():
     assert retirement.layer_of({"account": "미래에셋 IRP"}, {}) == 2
     assert retirement.layer_of({"account": "중개형 ISA"}, {}) == 4
     assert retirement.layer_of({"account": "연금저축계좌(신)"}, {}) == 3
+    assert retirement.layer_of({"account": "한화생명보험 · 무배당 연금보험 Enterprise"}, {}) == 4   # 세제비적격 → 추가연금
+    assert retirement.layer_of({"account": "삼성생명 연금저축보험"}, {}) == 3   # 연금저축은 세제적격 → 개인연금
 
 
 def test_db_from_reported_accrual_and_wage(client):

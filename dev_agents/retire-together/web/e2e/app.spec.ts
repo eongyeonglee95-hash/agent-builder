@@ -360,8 +360,9 @@ test('엑셀처럼: 복사한 표를 붙여 넣고 키보드로 고쳐 저장하
   await expect(page.locator('.hp-row', { hasText: '엑셀 연금저축' }).filter({ hasText: 'KODEX 200' })).toContainText('+5,000,000')
   // 자산 탭: 집을 칸에 바로 입력
   await page.getByRole('button', { name: '엑셀처럼 고치기' }).click()
-  await dialog.getByRole('tab', { name: '자산' }).click()
-  const assets = dialog.getByRole('grid', { name: '자산 표' })
+  const inline = page.locator('.hp-sheet-inline')   // 2026-11-02: 팝업이 아니라 종목 잔고 패널 안에 펼친다
+  await inline.getByRole('tab', { name: '자산' }).click()
+  const assets = inline.getByRole('grid', { name: '자산 표' })
   await expect(assets).toBeVisible()
   await expect(assets.locator('.xl-cell').first()).not.toHaveText('')
   const aw = await assets.locator('.xl-head').count()
@@ -378,8 +379,8 @@ test('엑셀처럼: 복사한 표를 붙여 넣고 키보드로 고쳐 저장하
   await assets.locator('.xl-cell').nth(base + 6).click()
   await page.keyboard.type('900000000')
   await page.keyboard.press('Enter')
-  await dialog.locator('.xl-save').click()
-  await expect(dialog).not.toBeVisible()
+  await inline.locator('.xl-save').click()
+  await expect(inline.locator('.xl-status')).toContainText('바뀐 내용 없음')   // 저장해도 표는 열려 있다
   await expect(page.locator('.asset-table-panel')).toContainText('우리 집')
   expect(errors).toEqual([])
 })
