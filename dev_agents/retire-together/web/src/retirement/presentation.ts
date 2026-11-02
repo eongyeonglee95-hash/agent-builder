@@ -12,8 +12,15 @@ export const LAYERS = [
 export const amount = (row: Row | undefined, scope: Scope, layer?: number) => {
   if (!row) return null
   // Only add already calculated server items; no yield, inflation or payout formulas here.
+  // 층을 주지 않은 합계는 서버와 같이 1~3층만이다. 4층 추가연금은 extra()로 따로 읽는다 (기본 합계에 넣지 않음, 2026-11-02 사용자).
   if (scope === 'together') return layer ? row.layers_real[String(layer)] ?? 0 : row.total_real
-  return row.items.filter(i => i.person === scope && (layer === undefined || i.layer === layer)).reduce((sum, i) => sum + i.real, 0)
+  return row.items.filter(i => i.person === scope && (layer === undefined ? i.layer !== 4 : i.layer === layer)).reduce((sum, i) => sum + i.real, 0)
+}
+// 4층 추가연금을 월급으로 나눠 쓸 때의 월액(오늘 돈). 서버 extra_real / 사람별 items 합.
+export const extra = (row: Row | undefined, scope: Scope) => {
+  if (!row) return 0
+  if (scope === 'together') return row.extra_real ?? row.layers_real['4'] ?? 0
+  return row.items.filter(i => i.person === scope && i.layer === 4).reduce((sum, i) => sum + i.real, 0)
 }
 // Aggregate registered amounts only. Future contributions and DB forecasts never
 // become part of today's account balance. DB accrued is displayed separately.
@@ -39,7 +46,6 @@ export function visibleYears(data: Result, scope: Scope = 'together') {
   return Number.isFinite(first) ? rows.filter(r => r.year >= first) : rows
 }
 export function layerState(data: Result, scope: Scope, year: number, layer: number) {
-  if (layer === 4) return '수령 계산 미연결'
   if (!data.projection || (scope !== 'together' && !data.used[scope])) return '계산 전'
   const selected = streams(data, scope, layer)
   if (!selected.length) return '준비 정보 없음'

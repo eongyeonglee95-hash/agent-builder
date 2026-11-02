@@ -186,3 +186,19 @@ def test_actual_private_payout_period_uses_later_db_retirement_and_person_age():
     partner = Person("partner", "배우자", 63, 60, private_start_age=60, balances={3: 60_000_000})
     periods = {(s["person"], s["label"]): s["payout_years"] for s in project([me, partner], A, 2026)["summary"]["streams"]}
     assert periods == {("me", "개인연금"): 35, ("me", "퇴직연금(DB)"): 30, ("partner", "개인연금"): 27}
+
+
+def test_extra_layer_is_computed_like_private_but_kept_out_of_base_total():
+    """4층 추가연금(세제비적격·ISA): 3층과 같은 확정기간 월액을 계산하되 기본 합계·부족액에는 넣지 않고 extra_*로 따로 돌려준다 (2026-11-02 사용자)."""
+    me = Person("me", "나", age=50, retire_age=60, private_start_age=60, balances={3: 60_000_000, 4: 30_000_000})
+    pr = project([me], A, 2026, monthly_need=3_000_000)
+    row = next(r for r in pr["rows"] if r["ages"]["me"] == 60)
+    assert row["layers_real"][4] > 0 and row["extra_real"] == row["layers_real"][4]
+    assert row["total_real"] == row["layers_real"][3] and row["gap_real"] == row["total_real"] - 3_000_000
+    assert row["coverage"]["with_extra"] > row["coverage"]["total"]
+    s4 = [s for s in pr["summary"]["streams"] if s["layer"] == 4]
+    assert len(s4) == 1 and s4[0]["start_age"] == 60 and s4[0]["payout_years"] == A.end_age - 60
+    # 4층은 3층과 같은 공식이라 적립금이 같으면 월액도 같다
+    same = project([Person("me", "나", age=50, retire_age=60, private_start_age=60, balances={3: 30_000_000, 4: 30_000_000})], A, 2026)
+    r60 = next(r for r in same["rows"] if r["ages"]["me"] == 60)
+    assert r60["layers_real"][3] == r60["layers_real"][4]
