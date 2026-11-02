@@ -37,6 +37,8 @@ export function RetirementTower({ data, error, save, reload, owner, onOwnerChang
   const [editor, setEditor] = useState<Editor | null>(null)
   const [editorScope, setEditorScope] = useState<Scope | null>(null)
   const [profileOpen, setProfileOpen] = useState(false)
+  // 자산 등록(사진·표·포털 계약)이 끝나면 적립금이 바뀌므로 다시 읽는다
+  useEffect(() => { const h = () => { reload() }; window.addEventListener('retire:holdings-changed', h); return () => window.removeEventListener('retire:holdings-changed', h) }, [reload])
   const money = (won: number | null | undefined) => hidden ? '••••••' : won == null ? '—' : `${won.toLocaleString('ko-KR')}원`
   const monthly = (won: number | null | undefined) => hidden ? '••••••' : won == null ? '—' : (won / 10000).toLocaleString('ko-KR', { maximumFractionDigits: 1 })
   const big = (won: number | null | undefined) => hidden ? '••••••' : won == null ? '—' : `${manWon(won)} 원`

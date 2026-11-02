@@ -181,6 +181,8 @@ def parse_images_multi(paths: list[Path]) -> list[tuple[pd.DataFrame, dict]]:
     from tools.parse_balance import parse_captures
     groups = parse_captures(paths)
     for df, meta in groups:
+        if meta.get("kind") == "contracts":
+            continue   # 계약 표에는 종목코드가 없다
         codes, pending = [], []
         for name in df["ticker_name"]:
             try:
@@ -232,6 +234,9 @@ async def capture(images: Annotated[list[UploadFile], File()], account_id: Annot
         raise HTTPException(422, "캡처에서 종목을 찾지 못했어요. 잔고 화면이 보이는 캡처인지 확인해 주세요.")
     out = []
     for df, meta in groups:
+        if meta.get("kind") == "contracts":
+            out.append(_contracts_preview(meta, owner or "me"))
+            continue
         label = meta.get("account_label") or (acct.get("label") if acct else "") or "계좌"
         matched = account_id or match_account(label, accts)
         preview = _preview(df, meta, matched, label, "capture")
@@ -345,6 +350,102 @@ def sheet_rows(owner: Literal["together", "me", "partner"] = "together"):
             "rows": [{"account_id": h.account_id, "ticker_name": h.ticker_name, "ticker": h.ticker, "qty": h.qty, "price": h.price,
                       "buy_value": h.buy_value, "asset_class": h.asset_class, "stock_group": h.stock_group} for h in rows],
             "as_of": {a.id: a.as_of.isoformat() if a.as_of else None for a in accounts}}
+
+
+# ---------- 연금 계약 표 (통합연금포털 캡처) ----------
+
+LAYER_LABELS = {1: "국민연금", 2: "퇴직연금 · DC·IRP", 3: "개인연금 · 연금저축·연금보험", 4: "추가 자금 · ISA 등"}
+_LAYER2 = re.compile(r"IRP|퇴직|DC|DB", re.IGNORECASE)
+
+
+def guess_layer(label: str, product_type: str = "") -> int:
+    """표 제목·상품유형으로 연금 층을 미리 고른다. 사용자가 확인 화면에서 바꾼다. 적립금 계산·판단은 하지 않는다."""
+    text = f"{label} {product_type}"
+    if "국민" in text:
+        return 1
+    if _LAYER2.search(text):
+        return 2
+    if "ISA" in text.upper():
+        return 4
+    return 3
+
+
+def _overlaps_existing(contract: dict, existing_accounts: list[str]) -> bool:
+    """증권사 잔고(캡처·파일)로 이미 등록한 연금저축·IRP 계좌가 있으면 포털의 같은 종류 계약은 두 번 잡힐 수 있다 → 기본 제외 표시.
+    판단은 '종류 이름이 겹친다'는 힌트일 뿐이며 사용자가 확인 화면에서 켠다."""
+    ptype = (contract.get("product_type") or "")
+    keys = [k for k in ("연금저축", "IRP", "DC") if k.casefold() in ptype.casefold()]
+    return any(k.casefold() in acct.casefold() for k in keys for acct in existing_accounts)
+
+
+def _contracts_preview(meta: dict, owner: str) -> dict:
+    label = meta.get("account_label") or "연금"
+    owner = owner if owner in ("me", "partner") else "me"
+    brokered = [a.get("account") or "" for a in storage.list_assets() if a.get("owner") == owner and a.get("pocket") == "retirement" and a.get("source") in ("capture", "file")]
+    rows = [{**c, "layer": guess_layer(label, c.get("product_type") or ""), "overlap": _overlaps_existing(c, brokered)} for c in meta.get("contracts") or []]
+    total = sum(r["amount"] for r in rows)
+    screen = meta.get("screen_total_value") or None
+    return {"kind": "contracts", "account_id": None, "account_label": label, "source": "capture", "rows": [], "contracts": rows,
+            "computed_total": total, "screen_total": screen, "verified": bool(screen), "reconciled": screen is None or abs(total - screen) <= 5000,
+            "diff": (total - screen) if screen else 0, "value_diff": None, "errors": [], "class_labels": CLASS_LABELS, "layer_labels": LAYER_LABELS,
+            "owner": owner}
+
+
+class ContractRow(InputModel):
+    company: Annotated[str, Field(min_length=1, max_length=60)]
+    product_type: Annotated[str, Field(max_length=60)] = ""
+    product_name: Annotated[str, Field(min_length=1, max_length=100)]
+    amount: Annotated[int, Field(strict=True, ge=0, le=10**15)]
+    as_of: dt.date
+    payout_start_date: dt.date | None = None
+    layer: Literal[2, 3, 4]
+
+
+class ContractsInput(InputModel):
+    owner: Literal["me", "partner"]
+    rows: Annotated[list[ContractRow], Field(min_length=1, max_length=200)]
+
+
+def _layer_account(row: ContractRow) -> str:
+    """자산 장부의 계좌 이름. 장부는 계좌 하나에 총액 자산 하나만 허용하므로 계약마다 다른 이름(회사 · 상품명)을 쓴다.
+    backend.retirement.layer_of 가 이름으로 층을 정하므로 고른 층이 이름에 드러나게 한다."""
+    base = " · ".join(x for x in (row.company.strip(), row.product_name.strip()) if x)
+    if row.layer == 2 and not _LAYER2.search(base):
+        base += " · IRP"
+    if row.layer == 4 and "ISA" not in base.upper():
+        base += " · ISA"
+    if row.layer == 3:
+        base = _LAYER2.sub("", base).replace("ISA", "").strip(" ·") or row.company.strip()
+    return base[:100]
+
+
+@router.post("/contracts")
+def save_contracts(data: ContractsInput):
+    """연금 계약 줄 → 노후 주머니의 금액 자산(종목 없음). 같은 소유자·계좌·상품명이 이미 있으면 금액·기준일만 갱신한다.
+    적립금은 보이는 값 그대로 저장하며 수익·수령액 계산은 하지 않는다. 연금개시예정일은 저장하지 않고 응답에만 돌려준다."""
+    from uuid import UUID, uuid4
+    today = dt.date.today()
+    with storage.connection() as conn:
+        storage.require_person(conn, data.owner)
+    existing = [a for a in storage.list_assets() if a.get("owner") == data.owner and a.get("pocket") == "retirement"]
+    created, updated, total, saved = 0, 0, 0, []
+    for row in data.rows:
+        if row.as_of > today:
+            raise HTTPException(422, f"{row.product_name}: 기준일은 미래일 수 없어요.")
+        account = _layer_account(row)
+        payload = {"name": row.product_name.strip()[:100], "account": account, "owner": data.owner, "pocket": "retirement", "assetClass": "mixed",
+                   "amount": row.amount, "as_of": row.as_of.isoformat()}
+        match = next((a for a in existing if a.get("name") == payload["name"] and a.get("account") == account), None)
+        if match is not None:
+            out = storage.update_asset(UUID(match["id"]), storage.AssetUpdate(**{**payload, "version": match["version"]}))
+            updated += 1
+        else:
+            out = storage.create_asset(storage.AssetCreate(**{**payload, "request_id": uuid4()}))
+            created += 1
+        total += row.amount
+        saved.append({"id": out["id"], "name": payload["name"], "account": account, "amount": row.amount, "layer": row.layer,
+                      "payout_start_date": row.payout_start_date.isoformat() if row.payout_start_date else None})
+    return {"created": created, "updated": updated, "total": total, "assets": saved}
 
 
 # ---------- 저장 ----------

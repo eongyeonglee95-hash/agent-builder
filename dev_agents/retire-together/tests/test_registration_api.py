@@ -340,3 +340,65 @@ def test_sheet_rows_endpoint(client):
     d = client.get("/api/register/sheet").json()
     assert [a["id"] for a in d["accounts"]] == ["me_test_pension", "spouse_test_general"]
     assert d["rows"][0]["ticker_name"] == "KODEX 200" and d["rows"][0]["account_id"] == "me_test_pension"
+
+
+def test_capture_contract_table_previews_and_saves_as_amount_assets(client, env, monkeypatch):
+    """통합연금포털 '개인연금' 표 캡처: 종목이 아니라 계약 줄 → 미리보기는 kind=contracts, 저장은 노후 주머니 금액 자산. 다시 저장하면 갱신만."""
+    def fake_multi(paths):
+        df = pd.DataFrame([], columns=["account_id", "ticker_name", "ticker", "qty", "price", "value", "buy_value"])
+        meta = {"kind": "contracts", "account_label": "개인연금", "screen_total_value": 56_509_075, "reconciled": True, "verified": False, "diff": 0, "value_diff": None, "errors": [],
+                "contracts": [{"company": "한화생명보험", "product_type": "일반연금보험", "product_name": "연금보험 Enterprise 무배당", "start_date": "2023-01-20", "payout_start_date": "2047-01-20", "amount": 13_902_026, "as_of": "2026-09-30"},
+                              {"company": "한화생명보험", "product_type": "일반연금보험", "product_name": "무배당 연금보험 Enterprise", "start_date": "2013-01-21", "payout_start_date": "2042-01-21", "amount": 42_607_049, "as_of": "2026-09-30"}]}
+        return [(df, meta)]
+    monkeypatch.setattr(registration, "parse_images_multi", fake_multi)
+    r = client.post("/api/register/capture", data={"owner": "me"}, files=[("images", ("portal.png", b"\x89PNG" + b"0" * 50, "image/png"))])
+    assert r.status_code == 200, r.text
+    g = r.json()["groups"][0]
+    assert g["kind"] == "contracts" and g["account_label"] == "개인연금" and g["rows"] == []
+    assert [c["layer"] for c in g["contracts"]] == [3, 3] and g["computed_total"] == 56_509_075 and g["reconciled"] is True
+    assert [c["overlap"] for c in g["contracts"]] == [False, False]
+    rows = [{"company": c["company"], "product_type": c["product_type"], "product_name": c["product_name"], "amount": c["amount"], "as_of": c["as_of"],
+             "payout_start_date": c["payout_start_date"], "layer": c["layer"]} for c in g["contracts"]]
+    saved = client.post("/api/register/contracts", json={"owner": "me", "rows": rows})
+    assert saved.status_code == 200, saved.text
+    assert saved.json()["created"] == 2 and saved.json()["updated"] == 0 and saved.json()["total"] == 56_509_075
+    assets = [a for a in storage.list_assets() if a["pocket"] == "retirement"]
+    assert len(assets) == 2 and all(a["account"].startswith("한화생명보험 · ") and a["assetClass"] == "mixed" and a["owner"] == "me" for a in assets) and len({a["account"] for a in assets}) == 2
+    from backend.retirement import layer_of
+    assert all(layer_of(a, {}) == 3 for a in assets)
+    # 같은 계약을 다시 올리면 새로 만들지 않고 금액만 갱신한다
+    rows[0]["amount"] = 14_000_000
+    again = client.post("/api/register/contracts", json={"owner": "me", "rows": rows})
+    assert again.status_code == 200 and again.json()["updated"] == 2 and again.json()["created"] == 0
+    assets = [a for a in storage.list_assets() if a["pocket"] == "retirement"]
+    assert len(assets) == 2 and sorted(a["amount"] for a in assets) == [14_000_000, 42_607_049]
+    # 층을 퇴직연금으로 고르면 계좌 이름에 IRP를 남겨 층 판정이 따라온다
+    irp = client.post("/api/register/contracts", json={"owner": "me", "rows": [{**rows[0], "product_name": "DC 적립", "product_type": "DC", "layer": 2}]})
+    assert irp.status_code == 200 and layer_of([a for a in storage.list_assets() if a["name"] == "DC 적립"][0], {}) == 2
+
+
+@pytest.mark.parametrize("label,ptype,expected", [("개인연금", "연금저축펀드", 3), ("개인연금", "일반연금보험", 3), ("퇴직연금", "DC", 2), ("퇴직연금", "IRP", 2), ("국민연금", "", 1), ("기타", "ISA", 4)])
+def test_guess_layer(label, ptype, expected):
+    assert registration.guess_layer(label, ptype) == expected
+
+
+def test_contract_rows_parse_dates_and_skip_ticker_lookup():
+    from tools.parse_balance import _contracts_from, _iso_date
+    assert _iso_date("2026/09/30") == "2026-09-30" and _iso_date("2026.9.5") == "2026-09-05" and _iso_date("") is None and _iso_date("2026/13/40") is None
+    df, meta = _contracts_from({"kind": "contracts", "account_label": "개인연금", "screen_total_value": 100, "contracts": [{"company": "A", "product_type": "B", "product_name": "C", "start_date": "2020/01/02", "payout_start_date": "", "amount": "100", "as_of": "2026/09/30"}]})
+    assert len(df) == 0 and meta["kind"] == "contracts" and meta["contracts"][0]["amount"] == 100 and meta["contracts"][0]["payout_start_date"] is None and meta["contracts"][0]["as_of"] == "2026-09-30"
+
+
+def test_contract_preview_flags_overlap_with_brokered_pension_accounts(client, env, monkeypatch):
+    """증권사 캡처로 이미 등록한 연금저축 계좌가 있으면 포털의 연금저축펀드 줄은 겹침(overlap) 표시 — 연금보험은 아니다."""
+    from backend.account_groups import replace_group
+    storage.replace_account_assets("me_test_pension", "capture", [{"name": "테스트 연금저축 · 주식", "account": "테스트 연금저축", "owner": "me", "pocket": "retirement", "assetClass": "stock", "amount": 1_000_000, "as_of": "2026-10-01"}])
+    def fake_multi(paths):
+        df = pd.DataFrame([], columns=["account_id", "ticker_name", "ticker", "qty", "price", "value", "buy_value"])
+        return [(df, {"kind": "contracts", "account_label": "개인연금", "screen_total_value": 0, "reconciled": True, "verified": False, "diff": 0, "value_diff": None, "errors": [],
+                      "contracts": [{"company": "미래에셋증권", "product_type": "연금저축펀드", "product_name": "TIGER 미국S&P500외 4", "start_date": None, "payout_start_date": None, "amount": 100, "as_of": "2026-09-30"},
+                                    {"company": "한화생명보험", "product_type": "일반연금보험", "product_name": "연금보험", "start_date": None, "payout_start_date": None, "amount": 100, "as_of": "2026-09-30"}]})]
+    monkeypatch.setattr(registration, "parse_images_multi", fake_multi)
+    r = client.post("/api/register/capture", data={"owner": "me"}, files=[("images", ("portal.png", b"\x89PNG" + b"0" * 50, "image/png"))])
+    assert r.status_code == 200, r.text
+    assert [c["overlap"] for c in r.json()["groups"][0]["contracts"]] == [True, False]
