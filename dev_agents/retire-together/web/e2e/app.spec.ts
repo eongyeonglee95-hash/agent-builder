@@ -391,7 +391,7 @@ test('첫 화면은 엑셀 워크북: 한 줄 요약·시트 탭·보고서·다
   await expect(page.getByText(/기준 순자산/)).toBeVisible()
   await expect(summary).toContainText('순자산')
   await page.getByRole('tab', { name: '리밸런싱' }).click()
-  await expect(page.getByRole('grid', { name: '리밸런싱 시트' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '이번 달 리밸런싱' })).toBeVisible()
   await page.getByRole('tab', { name: '보유종목' }).click()
   await expect(page.getByRole('grid', { name: '보유종목 표' })).toBeVisible()
   await page.getByRole('tab', { name: '자산' }).click()

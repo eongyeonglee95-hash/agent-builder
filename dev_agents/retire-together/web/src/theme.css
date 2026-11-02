@@ -4,8 +4,11 @@
 /* 레이어 순서: 예전 화면 CSS(legacy)는 Tailwind 기본(base) 위, shadcn·유틸리티 아래 — 새 화면 스타일이 이기고 예전 화면은 그대로 */
 @layer theme, base, legacy, components, utilities;
 @import "tailwindcss";
-@import "./styles.css" layer(legacy);
-@import "./workspaces.css" layer(legacy);
+@import "./styles.css" layer(legacy);          /* 공통 (예전 카드형 화면) */
+@import "./rebalance.css" layer(legacy);       /* 리밸런싱 영역 — docs/WORK_AREAS.md */
+@import "./workspaces.css" layer(legacy);      /* 주식·부동산 공통 몇 줄 */
+@import "./stocks.css" layer(legacy);          /* 주식 영역 */
+@import "./property-workspace.css" layer(legacy); /* 부동산 영역 (입력 화면은 property.css) */
 @import "./experience.css" layer(legacy);
 @import "tw-animate-css";
 @import "pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css";

@@ -142,4 +142,6 @@ Codex 별도포트 테스트 결과 경로도 `web/test-results-8766`로 격리�
 - 새 경로(Claude): `tools/pension.py`, `rules/pension.yaml`, `backend/retirement.py`(`GET /api/retirement`, `PUT /api/retirement/plan`), `web/src/workbook/retirement.tsx`, `tests/test_pension.py`, `tests/test_retirement_api.py`, e2e 1개.
 - 연결 지점만: `backend/main.py` 라우터 한 줄, `Workbook.tsx` 시트 탭 '은퇴'. `backend/storage.py`는 수정하지 않고 `connection()`·`get_family()`·`dashboard()`를 읽기만 한다. 계획은 같은 SQLite의 새 표 `retirement_plan`(id=1, 버전).
 - Agent(AGENT-01, Codex)에서 은퇴 질문에 답하려면 `backend.retirement.current()` 결과를 도구로 감싸면 된다 — 숫자는 이 결과만 근거로.
-
+- 2026-11-02 Claude: 워크북 리밸런싱 시트를 카드형 제안(`web/src/workbook/RebalancePlan.tsx`)으로 교체. `/api/workbook/rebalance` 응답에 `plan`(한 문장·줄이기/늘리기)·`strategy_id`·`empty_pools`를 더했다 — 기존 키는 그대로라 요약·check·Agent 도구는 영향 없음. 새 `POST /api/workbook/portfolio/preview`(저장 없이 다른 원칙으로 계산). 개발 서버: 다른 세션이 8010/5180을 다시 띄워 쓰고 있어 확인용은 8020/5190.
+- 2026-11-02 Claude → 모든 세션(Codex 포함): 개발 서버는 http://127.0.0.1:5180 하나만. `scripts/dev-web.sh`는 이미 떠 있으면 아무것도 띄우지 않는다. 코드 변경은 저절로 반영(--reload). 다른 포트로 따로 띄우지 말고, 멈췄을 때만 `--restart`. 브라우저 테스트는 세션마다 다른 `RETIRE_E2E_PORT`.
+- 2026-11-02 Claude → 모든 세션: 영역 나누기 완료 — `docs/WORK_AREAS.md`를 먼저 보세요. 예전 화면 CSS가 `rebalance.css`·`stocks.css`·`property-workspace.css`로 나뉘었습니다(주식·부동산 스타일은 이제 `workspaces.css`가 아니라 각 영역 파일). `App.tsx`의 리밸런싱은 `rebalance-page.tsx` 한 줄. 공통 파일(`theme.css`의 CSS 불러오기 순서 포함)은 고치기 전에 여기 한 줄.

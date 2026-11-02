@@ -12,7 +12,7 @@ npm --prefix web ci
 bash scripts/dev-web.sh
 ```
 
-개발 화면: http://127.0.0.1:5173 · API: http://127.0.0.1:8000/api/health
+개발 화면: http://127.0.0.1:5180 · API: http://127.0.0.1:8010/api/health (하나만 띄운다. 이미 떠 있으면 스크립트가 주소만 알려 주고 끝난다. API는 --reload라 코드를 고치면 저절로 다시 읽는다. 멈췄을 때만 `bash scripts/dev-web.sh --restart`)
 
 스크립트는 API와 웹 개발 서버를 함께 시작한다. 종료할 때 자신이 시작한 프로세스만 정리한다. 다른 서버가 포트를 사용 중이면 해당 실행 상황을 확인한 뒤 다시 실행한다.
 

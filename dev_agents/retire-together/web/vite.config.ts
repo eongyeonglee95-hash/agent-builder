@@ -35,7 +35,7 @@ export default defineConfig({
       return `export default ${JSON.stringify(result)}`
     },
   }],
-  // 포트는 RETIRE_WEB_PORT·RETIRE_API_PORT로 바꿀 수 있다 (같은 PC의 다른 프로젝트가 8000/5173을 쓸 때)
-  server: { host: '127.0.0.1', port: Number(process.env.RETIRE_WEB_PORT ?? 5173), strictPort: true, proxy: { '/api': { target: `http://127.0.0.1:${process.env.RETIRE_API_PORT ?? 8000}`, changeOrigin: false } } /* keep Host = 127.0.0.1:5173 so the API's Origin/Host check passes in dev */ },
+  // 개발 서버는 5180(API 8010) 하나로 고정 — scripts/dev-web.sh. 포트는 RETIRE_WEB_PORT·RETIRE_API_PORT로만 바꾼다
+  server: { host: '127.0.0.1', port: Number(process.env.RETIRE_WEB_PORT ?? 5180), strictPort: true, proxy: { '/api': { target: `http://127.0.0.1:${process.env.RETIRE_API_PORT ?? 8010}`, changeOrigin: false } } /* keep Host = 127.0.0.1:5173 so the API's Origin/Host check passes in dev */ },
   preview: { host: '127.0.0.1', port: 4173, strictPort: true },
 })
