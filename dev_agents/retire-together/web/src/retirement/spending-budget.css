@@ -1,6 +1,7 @@
 .tower-summary .tower-income-actions {display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px 12px}
 .tower-summary .tower-budget-open {display:inline-flex;align-items:center;gap:5px;min-height:36px;padding:6px 9px;border:1px solid color-mix(in srgb,var(--background) 25%,transparent);border-radius:8px;background:transparent;color:var(--primary-foreground);font-size:var(--text-xs);white-space:nowrap}
 .tower-summary .tower-budget-open:hover {background:color-mix(in srgb,var(--background) 10%,transparent)}
+body:has(.tower-budget-dialog[data-state="open"]) .wb-back {visibility:hidden}
 .tower-budget-dialog {width:calc(100% - 32px);max-width:720px!important;max-height:90dvh;padding:0;gap:0;overflow:hidden;display:flex;flex-direction:column;color:var(--foreground);font-feature-settings:"tnum";word-break:keep-all}
 .tower-budget-header {padding:22px 48px 18px 24px;text-align:left;border-bottom:1px solid var(--border)}
 .tower-budget-header h2 {display:flex;align-items:center;gap:8px;font-size:var(--text-xl);line-height:1.4}
