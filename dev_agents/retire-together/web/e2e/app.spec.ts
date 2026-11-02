@@ -67,10 +67,12 @@ test('세부 합산 선택과 공동 지분이 실제 홈·모바일에 반영�
   await expect(page.locator('.stat-number').first()).toContainText('800만원')
   await page.reload()
   await expect(page.locator('.stat-number').first()).toContainText('800만원')
-  await page.goto('/#property')
+  // 공통 자산 등록의 지분 집계 회귀. 부동산 전용 등록은 property-move.spec.ts에서 검증.
+  await page.goto('/#assets')
   await expect(page.getByRole('button', { name: '자산 등록', exact: true })).toHaveCount(1)
   await page.getByRole('button', { name: '자산 등록', exact: true }).click()
   await dialog.getByRole('button', { name: /직접 입력/ }).click()
+  await dialog.getByRole('combobox', { name: '자산 종류', exact: true }).selectOption('property')
   await dialog.locator('[name="owner"]').selectOption('joint')
   await dialog.locator('[name="account"]').fill('검증 공동 집')
   await dialog.locator('[name="share"]').fill('40')

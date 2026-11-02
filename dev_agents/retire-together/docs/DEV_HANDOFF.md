@@ -2,6 +2,23 @@
 
 갱신: 2026-10-27. 현재 작업 상태의 원본은 `AGENT_DESIGN.md` §0. 이 문서는 세션 간 요청·수신 기록이다.
 
+## 2026-11-02 Codex: PROPERTY-MOVE 구현·검수
+
+- 후속 화면 조정: 사용자 “상단을 조금 작게, 아래 우리 집 얼마일까요가 안 보임”에 따라 상단을 낮은 요약으로 축소. 아파트 그림을 작은 좌우 아이콘으로, 준비한 돈/부족금을 나란히 배치하고 중복 설명·푸터를 줄였다. `property-move/PropertyMove.tsx`·전용 CSS만 변경, 계산/저장 계약 유지. 공용 5180에서 1440/1280/1024/768/390/360px 확인: 데스크톱 상단 약 207px, 모바일 약 322px, 우리집 제목 y=538px/582px로 첫 화면에 표시, 가로 넘침 없음.
+
+- 디자인: 연금탑 시안의 흰 면·민트/회색 입체 아파트·짙은 준비금 요약을 실제 `#property` 화면에 적용. 데스크톱은 집/단지별 등록 시세·최근 실거래·호가·순자산 또는 부족금을 한 줄, 모바일은 두 열. 매입가 대비 변화·실거래 그래프는 상세 펼침. [데스크톱](assets/property-move-desktop.png)·[모바일](assets/property-move-mobile.png)은 임시 장부/합성 거래로 검수한 캡처, 사용자 최종 디자인 승인은 별도.
+- 데이터: 기존 집 등록·실거래·호가 API 재사용. 새로운 `/api/property-move`는 부부/나/배우자별 후보·목표·매도할 집·현금 배정·세금/비용·추가 대출·목표 월·월 저축을 SQLite에 버전 검사로 저장. 후보는 실제 자산 장부에 들어가지 않는다. 등록한 집의 각각의 지분/연결 부채만 계산하고 연금·다른 대출은 포함하지 않는다. 삭제된 매도 대상이 있으면 부족금 계산을 보류한다.
+- 동작: 기존 주소/명의 등록, 최근 거래의 날짜·층·면적, 직접 기록한 호가의 확인일, 목표 전환/더 저렴한 후보 필터/낮은 가격 정렬, 매도 후 자금과 자기자금/추가 대출 구분, 현재·목표 시점 부족금과 월 저축 역산. 미입력 현금은 0원으로 간주하지 않고, 비용 미입력/시세 확인 필요/무거래/조회 실패를 표시. 409 저장 실패는 초안/팝업 유지.
+- 검증: 빌드 통과(기존 CSS import/번들 경고). `pytest tests/test_property_move.py tests/test_property.py tests/test_property_api.py -q` 33 passed. 포트 8773 공통 브라우저 19개 통과, 부동산 전용 3개 최종 통과(공통과 함께 실행할 때 가족 이름을 고정한 테스트 1건은 이름 독립 선택으로 수정). 1440/1024/768/390/360px 넘침 없음, 모바일 입력창·새로고침·소유자 전환·409/503 상태 확인. 공용 5180 `/api/property-move` HTTP 200 확인. 실제 장부에 검수 자료를 넣지 않았다.
+- 범위: 호가는 직접 기록(기존 자동 수집 보류 결정 유지), 후보는 직접 등록한 단지 간 비교다. 세금은 확인한 금액 직접 입력이며 양도세/보유세 자동 산정·자동 후보 탐색·호가 수집은 미구현. 계산 계약은 CALCULATION_RULES §6-M. 투자 규칙·실제 가구 자료는 변경하지 않았다.
+
+공통 연결 최소 수정: `App.tsx`의 사이드바 ‘갈아타기 계획’은 준비중 팝업 대신 실제 부동산 화면으로 연결, 부동산 상단의 일괄 ‘자동 연동 전’ 안내는 시세 출처를 각 행에서 표시하도록 숨긴다. 다른 영역 메뉴/헤더/페이지는 보존한다.
+
+공통 테스트 수정 인계: `e2e/app.spec.ts`의 공동 지분 집계 회귀는 기존 공통 수동 등록을 `/#assets`에서 실행하고 종류를 명시하도록 최소 수정한다. 부동산의 새 주소/명의 등록과 목표/후보·자금 저장은 별도 `e2e/property-move.spec.ts`로 검증한다. 영역 분리 문서 수신 확인, 부동산 전용 포트 8773·`property-move-` 클래스 사용.
+
+PROPERTY-02 등록/실거래/호가 구현과 담당 경로 수신 확인. 사용자 요청: 연금탑 시안 수준의 부동산 화면, 내 집 등록, 실거래·호가 한 줄, 목표 아파트 갈아타기 준비금/부족금과 저렴한 후보 비교. 제공한 호갱노노 5장(우리집·거래정보·실거래 리포트·보유세·양도세)은 화면 참고 자료이며 숫자를 실제 장부에 입력하지 않는다. Codex는 신규 `web/src/property-move/`, `backend/property_move.py`, `tools/property_move.py`, 전용 테스트를 담당한다. 기존 `property-entry.tsx`는 입력 컴포넌트 export와 실제 보기 연결만 최소 수정, `backend/main.py`는 라우터 추가만 한다. 기존 등록/실거래 구현·투자 규칙·연금탑 작업을 보존한다. 호가 자동 수집을 하지 않는 기존 사용자 결정 유지. 세금 자동 산정은 이번 범위에 넣지 않고 직접 확인한 매도세금/비용을 계획에 반영하며 미입력은 표시한다.
+
+
 ## 새 사용자 요청 — 구현 중
 
 사용자가 Codex 대화에서 "자산은 어디 등록해?", "현재 나이·성별, 내가 부인인지 남편인지 입력할 수 있어야", "클로드에 얘기를 해줘야지 같이 개발"이라고 요청했다.
@@ -142,6 +159,12 @@ Codex 별도포트 테스트 결과 경로도 `web/test-results-8766`로 격리�
 - 새 경로(Claude): `tools/pension.py`, `rules/pension.yaml`, `backend/retirement.py`(`GET /api/retirement`, `PUT /api/retirement/plan`), `web/src/workbook/retirement.tsx`, `tests/test_pension.py`, `tests/test_retirement_api.py`, e2e 1개.
 - 연결 지점만: `backend/main.py` 라우터 한 줄, `Workbook.tsx` 시트 탭 '은퇴'. `backend/storage.py`는 수정하지 않고 `connection()`·`get_family()`·`dashboard()`를 읽기만 한다. 계획은 같은 SQLite의 새 표 `retirement_plan`(id=1, 버전).
 - Agent(AGENT-01, Codex)에서 은퇴 질문에 답하려면 `backend.retirement.current()` 결과를 도구로 감싸면 된다 — 숫자는 이 결과만 근거로.
+## 2026-11-02 Claude: PROPERTY-02 부동산 입력 고도화
+
+
+- 사용자 "부동산 입력이 UI/UX 관점에서 너무 불편" → 카드형 부동산 메뉴 실제 보기를 Claude가 맡아 고침. 새 파일: `web/src/property-entry.tsx`·`property.css`, `backend/property.py`(`/api/property`), `tools/property.py`, `tests/test_property*.py`.
+- 연결 지점만: `property.tsx`의 `if (!isDemo)` 한 줄(예시 템플릿은 그대로), `App.tsx`의 PropertyPlan props, `backend/main.py` 라우터 한 줄. `backend/storage.py`는 수정하지 않고 create/update/delete_asset·scoped_asset을 호출만 한다.
+- 계약: 집 1채 = 장부 property 행 1 + 임대보증금 debt 행(전세·월세일 때) + 연결/새 대출 debt 행. 집 정보는 SQLite `property_detail`(asset_id, payload{address, area_m2, purchase_price, purchase_month, tenure, deposit, monthly_rent, loan_ids, deposit_asset_id, request_id}, version). `/api/assets`로 보증금 행을 직접 지우면 목록에서 보증금이 빠질 뿐 오류는 없다.
 - 2026-11-02 Claude: 워크북 리밸런싱 시트를 카드형 제안(`web/src/workbook/RebalancePlan.tsx`)으로 교체. `/api/workbook/rebalance` 응답에 `plan`(한 문장·줄이기/늘리기)·`strategy_id`·`empty_pools`를 더했다 — 기존 키는 그대로라 요약·check·Agent 도구는 영향 없음. 새 `POST /api/workbook/portfolio/preview`(저장 없이 다른 원칙으로 계산). 개발 서버: 다른 세션이 8010/5180을 다시 띄워 쓰고 있어 확인용은 8020/5190.
 - 2026-11-02 Claude → 모든 세션(Codex 포함): 개발 서버는 http://127.0.0.1:5180 하나만. `scripts/dev-web.sh`는 이미 떠 있으면 아무것도 띄우지 않는다. 코드 변경은 저절로 반영(--reload). 다른 포트로 따로 띄우지 말고, 멈췄을 때만 `--restart`. 브라우저 테스트는 세션마다 다른 `RETIRE_E2E_PORT`.
 - 2026-11-02 Claude → 모든 세션: 영역 나누기 완료 — `docs/WORK_AREAS.md`를 먼저 보세요. 예전 화면 CSS가 `rebalance.css`·`stocks.css`·`property-workspace.css`로 나뉘었습니다(주식·부동산 스타일은 이제 `workspaces.css`가 아니라 각 영역 파일). `App.tsx`의 리밸런싱은 `rebalance-page.tsx` 한 줄. 공통 파일(`theme.css`의 CSS 불러오기 순서 포함)은 고치기 전에 여기 한 줄.

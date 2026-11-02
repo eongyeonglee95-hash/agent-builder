@@ -12,7 +12,7 @@ from pydantic import ValidationError
 import yaml
 
 from backend.strategies import StrategyDisplay, load_strategy_display
-from backend import storage, rebalance, registration, google_api, holdings, workbook, portfolio, retirement
+from backend import storage, rebalance, registration, google_api, holdings, workbook, portfolio, retirement, property, property_move
 
 app = FastAPI(title="둘이서은퇴 · 로컬 API", version="0.1.0", docs_url="/api/docs",
               redoc_url=None, openapi_url="/api/openapi.json")
@@ -23,6 +23,8 @@ app.include_router(holdings.router)       # 보유 종목 손익 — Claude 담�
 app.include_router(workbook.router)       # 엑셀처럼 보는 첫 화면·한 줄 요약·보고서 — Claude 담당
 app.include_router(portfolio.router)      # 리밸런싱 시트 포트폴리오 고르기·직접 설정 — Claude 담당
 app.include_router(retirement.router)     # RETIRE-01 은퇴 시트 연금 계획·수령 시뮬레이션 — Claude 담당
+app.include_router(property.router)       # PROPERTY-02 부동산 메뉴 집 등록(주소·산 가격·거주 형태·대출 연결) — Claude 담당
+app.include_router(property_move.router)  # PROPERTY-MOVE 갈아타기 목표·후보·자금 계획 — Codex
 
 
 @app.middleware("http")

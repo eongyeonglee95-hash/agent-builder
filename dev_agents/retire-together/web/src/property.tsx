@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { ArrowRight, Check, CirclePlus, ChevronRight, Compass, Heart, House, MapPin, MoveRight, SlidersHorizontal, Sprout, Target } from 'lucide-react'
 import { PanelHeading } from './components'
-import { money } from './model'
+import { money, type Family, type Owner } from './model'
+import { PropertyMove } from './property-move/PropertyMove'
 
 // Fictional places and assumptions for template review; never saved to the ledger.
 const homes = [
@@ -14,8 +15,9 @@ function Neighborhood({ theme = 'river', floors = [8, 12, 9] }: { theme?: string
   return <div className={`neighborhood ${theme}`} aria-hidden="true"><span className="neighborhood-sun"/><span className="neighborhood-cloud cloud-one"/><span className="neighborhood-cloud cloud-two"/><div className="building-row">{floors.map((floor, i) => <div className={`building building-${i}`} key={i} style={{ height: `${floor * 7 + 18}px` }}>{Array.from({ length: floor > 10 ? 18 : 12 }, (_, k) => <i key={k}/>)}</div>)}</div><span className="neighborhood-tree tree-one"/><span className="neighborhood-tree tree-two"/><span className="neighborhood-ground"/></div>
 }
 
-export function PropertyPlan({ value, registered, isDemo, onPreview, onDemo, onRegister }: {
+export function PropertyPlan({ value, registered, isDemo, onPreview, onDemo, onRegister, owner, family, hidden, onChanged }: {
   value: string; registered: boolean; isDemo: boolean; onPreview: () => void; onDemo: () => void; onRegister: () => void
+  owner: Owner; family: Family | null; hidden: boolean; onChanged: () => void
 }) {
   const [selected, setSelected] = useState(homes[0].id)
   const [saved, setSaved] = useState<string[]>([homes[0].id, homes[2].id])
@@ -25,7 +27,7 @@ export function PropertyPlan({ value, registered, isDemo, onPreview, onDemo, onR
   const needed = target.price + 35_000_000 - (600_000_000 - 100_000_000) - 200_000_000
   const projected = monthly * years * 12
   const gap = Math.max(0, needed - projected)
-  if (!isDemo) return <section className="panel actual-workspace property-actual"><div><span className="editorial-kicker">OUR HOME TODAY</span><h2>우리 집, 그다음 이야기</h2><strong>{registered ? value : '보유 부동산 미등록'}</strong><p>등록한 부동산 지분의 합계예요. 아래 내역에서 금액과 기준일을 갱신할 수 있어요.</p></div><div className="actual-workspace-actions"><button className="primary-button" onClick={onRegister}><CirclePlus size={14}/>자산 등록</button><button className="secondary-button" onClick={onPreview}>집·대출 요약 보기 <ArrowRight size={14}/></button><button className="text-link" onClick={onDemo}>관심 집·갈아타기 예시 <ArrowRight size={13}/></button></div></section>
+  if (!isDemo) return <PropertyMove key={owner} owner={owner} family={family} hidden={hidden} onChanged={onChanged} onDemo={onDemo}/>
   return <div className="property-workspace">
     <section className="property-editorial"><div><span className="editorial-kicker"><Compass size={13}/>A PLACE FOR OUR NEXT CHAPTER</span><h2>다음 집을 꿈꾸는 일도,<br/><em>우리의 계획이 됩니다.</em></h2><p>살고 싶은 동네와, 함께 보내고 싶은 시간.<br/>지금의 집에서 다음 삶으로 이어지는 지도를 그려요.</p><button className="primary-button" onClick={onRegister}><CirclePlus size={14}/>자산 등록</button><div className="property-hero-status"><span/><span>{isDemo ? '가상 생활권 · 예시 가격으로 살펴보는 갈아타기' : '우리 집 자산 관리 · 갈아타기 기능은 고도화 예정'}</span></div></div><Neighborhood theme="hero" floors={[10, 14, 11]}/></section>
     <section className="property-next-chapter"><div className="chapter-number">01<span>지금, 그리고 다음</span></div><PanelHeading title="우리 집, 그다음 이야기" detail="얼마짜리 집보다, 어떤 일상을 원하는지부터."/><div className="home-journey-cards">

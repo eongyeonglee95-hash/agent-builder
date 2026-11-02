@@ -271,7 +271,7 @@ tfoot td{font-weight:600;background:#fbfcfd;border:0;padding-top:18px;padding-bo
 .empty-state{display:flex;flex-direction:column;align-items:center;padding:40px 15px;color:#9aaabb;text-align:center;gap:15px}
 .empty-state h3{color:#7e8da0;font-weight:500}
 .empty-state p{font-size:12px}
-.modal{border:1px solid #e6eaf0;border-radius:15px;box-shadow:0 30px 100px #10213733;padding:0;width:min(540px,calc(100vw - 32px));max-height:calc(100dvh - 50px);color:#4e617a;background:#fff;overflow:auto}
+.modal{margin:auto;border:1px solid #e6eaf0;border-radius:15px;box-shadow:0 30px 100px #10213733;padding:0;width:min(540px,calc(100vw - 32px));max-height:calc(100dvh - 50px);color:#4e617a;background:#fff;overflow:auto}
 .modal::backdrop{background:#15243a65;backdrop-filter:blur(4px)}
 .modal-header{display:flex;justify-content:space-between;align-items:center;padding:25px 28px 21px;border-bottom:1px solid #edf0f4;background:#fff;position:sticky;top:0;z-index:2}
 .modal-header .eyebrow{font-size:7px;color:#9ca8b6;letter-spacing:1.5px;margin-bottom:6px}
