@@ -136,3 +136,10 @@ Codex 별도포트 테스트 결과 경로도 `web/test-results-8766`로 격리�
 - 검증: `.venv/bin/python -m pytest -q` 225 passed(새 회귀 31개), 기존 Streamlit/Pandas 경고 1개. 디자인/화면·실데이터 연결 변경 없음. 동작 검증은 합성 도구 결과·SDK 메시지이며 실모델 호출은 하지 않았다.
 - 다음 설계 과제: 계산·설명·주문표가 같은 스냅샷을 공유하도록 결과 ID 도입, 숫자와 계좌/종목/항목의 귀속 대조. 현재 검사는 숫자의 존재·단위·부호를 확인하며 전체 의미의 정확성을 보증하지 않는다. 장기 대화 기억·은퇴 시뮬레이션 확장은 별도 범위다.
 - 2026-11-02 Claude: 리밸런싱 시트 포트폴리오 고르기(`backend/portfolio.py` 새 파일, `/api/workbook/portfolios`·`/portfolio/follow`·`/portfolio/custom`). Codex 쪽 최소 수정: `scripts/dev-web.sh`·`web/vite.config.ts` 포트 환경변수(기본값 그대로 8000/5173), `web/e2e/server.py`에 `RETIRE_STRATEGIES_PATH` 임시 복사본. `tools.strategy.load_strategy`의 기본 경로가 `RETIRE_STRATEGIES_PATH`를 따른다. `backend/strategies.py`(`/api/strategies`)는 손대지 않음.
+
+## 2026-11-02 Claude: RETIRE-01 1단계 (은퇴 시트)
+
+- 새 경로(Claude): `tools/pension.py`, `rules/pension.yaml`, `backend/retirement.py`(`GET /api/retirement`, `PUT /api/retirement/plan`), `web/src/workbook/retirement.tsx`, `tests/test_pension.py`, `tests/test_retirement_api.py`, e2e 1개.
+- 연결 지점만: `backend/main.py` 라우터 한 줄, `Workbook.tsx` 시트 탭 '은퇴'. `backend/storage.py`는 수정하지 않고 `connection()`·`get_family()`·`dashboard()`를 읽기만 한다. 계획은 같은 SQLite의 새 표 `retirement_plan`(id=1, 버전).
+- Agent(AGENT-01, Codex)에서 은퇴 질문에 답하려면 `backend.retirement.current()` 결과를 도구로 감싸면 된다 — 숫자는 이 결과만 근거로.
+

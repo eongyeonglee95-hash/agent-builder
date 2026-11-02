@@ -411,3 +411,32 @@ test('첫 화면은 엑셀 워크북: 한 줄 요약·시트 탭·보고서·다
   await expect(page.getByRole('grid', { name: '요약 시트' })).toBeVisible()
   expect(errors).toEqual([])
 })
+
+test('은퇴 시트: 국민연금 월액을 넣으면 저장하고 연도별 수령액을 다시 계산한다', async ({ page, request }) => {
+  const errors: string[] = []
+  page.on('pageerror', e => errors.push(e.message))
+  if (!(await (await request.get('/api/family')).json())?.me?.age) {
+    const cur = await (await request.get('/api/family')).json()
+    const saved = await request.put('/api/family', { data: {
+      me: { name: '테스트 사용자', age: 40, role: 'partner', gender: 'unspecified' },
+      partner: null, retirement_age: 62, target_amount: 3_000_000_000, version: cur?.version ?? 0,
+    } })
+    expect(saved.ok()).toBe(true)
+  }
+  await page.goto('/#retire')
+  const grid = page.getByRole('grid', { name: '은퇴 시트' })
+  await expect(grid).toBeVisible()
+  await expect(grid).toContainText('세전·오늘 돈 기준')
+  const input = page.getByRole('textbox', { name: '나 국민연금 월액(오늘 돈)' })
+  await input.fill('1000000')
+  await input.press('Enter')
+  await expect(grid).toContainText('나 국민연금 시작')
+  await expect(grid).toContainText('1,000,000')
+  const saved = await (await request.get('/api/retirement')).json()
+  expect(saved.plan.me.national_monthly).toBe(1_000_000)
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 900 })
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  }
+  expect(errors).toEqual([])
+})

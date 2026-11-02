@@ -1,0 +1,103 @@
+"""은퇴 시트 API — 계획 저장·버전 검사, 장부 적립금의 층 나누기, 빠진 입력 안내. 임시 DB·규칙, 네트워크 없음."""
+from datetime import date
+
+import pytest
+from fastapi.testclient import TestClient
+
+from backend import retirement, storage
+from backend.main import app
+
+ACCOUNTS = """accounts:
+  - id: me_ps
+    label: 나 연금저축
+    owner: me
+    broker: mirae
+    account_type: pension_savings
+    pocket: pension
+    layer: 3
+    active: true
+pools: {}
+"""
+
+
+@pytest.fixture
+def client(tmp_path, monkeypatch):
+    (tmp_path / "accounts.yaml").write_text(ACCOUNTS, encoding="utf-8")
+    monkeypatch.setenv("RETIRE_ACCOUNTS_PATH", str(tmp_path / "accounts.yaml"))
+    monkeypatch.setattr(storage, "DB_PATH", tmp_path / "ledger.sqlite3")
+    with TestClient(app, base_url="http://127.0.0.1", headers={"Origin": "http://127.0.0.1", "X-Retire-Local": "1"}) as c:
+        yield c
+
+
+def _asset(c, name, account, owner, amount):
+    import uuid
+    r = c.post("/api/assets", json={"request_id": str(uuid.uuid4()), "name": name, "account": account, "owner": owner, "pocket": "retirement",
+                                    "assetClass": "mixed", "amount": amount, "as_of": date.today().isoformat()})
+    assert r.status_code in (200, 201), r.text
+
+
+def _family(c, partner=True):
+    body = {"me": {"name": "나", "age": 40}, "partner": {"name": "짝", "age": 42} if partner else None,
+            "retirement_age": 60, "target_amount": None, "version": c.get("/api/family").json()["version"] if c.get("/api/family").json() else 0}
+    assert c.put("/api/family", json=body).status_code == 200
+
+
+def test_missing_inputs_are_named_without_calculation(client):
+    d = client.get("/api/retirement").json()
+    assert d["projection"] is None and "나 나이" in d["line"]
+
+
+def test_layers_from_ledger_and_defaults(client):
+    _family(client)
+    _asset(client, "연금저축", "나 연금저축", "me", 60_000_000)
+    _asset(client, "IRP", "배우자 IRP", "partner", 30_000_000)
+    d = client.get("/api/retirement").json()
+    assert d["used"]["me"]["balances"] == {"3": 60_000_000}
+    assert d["used"]["partner"]["balances"] == {"2": 30_000_000}
+    # 배우자 은퇴 나이 기본값 = 나와 같은 해 (42 + 20)
+    assert d["used"]["partner"]["retire_age"] == 62
+    assert d["used"]["me"]["national_start_age"] == 65 and d["used"]["me"]["private_start_age"] == 60
+    assert d["projection"]["summary"]["retire_year"] == date.today().year + 20
+    assert "세전·오늘 돈 기준" in d["line"]
+
+
+def test_plan_save_recomputes_and_checks_version(client):
+    _family(client)
+    _asset(client, "연금저축", "나 연금저축", "me", 60_000_000)
+    body = {"me": {"national_monthly": 1_200_000, "savings_annual": 6_000_000}, "partner": {"national_monthly": 900_000},
+            "monthly_need": 3_500_000, "version": 0}
+    d = client.put("/api/retirement/plan", json=body).json()
+    assert d["plan"]["version"] == 1 and d["plan"]["monthly_need"] == 3_500_000
+    s = d["projection"]["summary"]
+    assert "short_years" in s and ("부족한 해" in d["line"] or "생활비를 채워요" in d["line"])
+    assert client.put("/api/retirement/plan", json=body).status_code == 409   # 옛 버전
+    assert client.get("/api/retirement").json()["plan"]["me"]["national_monthly"] == 1_200_000
+
+
+def test_invalid_input_rejected_and_rule_errors_reported(client):
+    _family(client, partner=False)
+    assert client.put("/api/retirement/plan", json={"me": {"national_monthly": -1}, "version": 0}).status_code == 422
+    assert client.put("/api/retirement/plan", json={"me": {}, "hack": 1, "version": 0}).status_code == 422
+    d = client.put("/api/retirement/plan", json={"me": {"private_start_age": 50}, "version": 0}).json()
+    assert d["projection"] is None and "55세 이상" in d["error"]
+
+
+def test_layer_of_uses_account_registry_then_name():
+    accts = {"x": {"layer": 2}}
+    assert retirement.layer_of({"account_id": "x", "account": "아무거나"}, accts) == 2
+    assert retirement.layer_of({"account": "미래에셋 IRP"}, {}) == 2
+    assert retirement.layer_of({"account": "중개형 ISA"}, {}) == 4
+    assert retirement.layer_of({"account": "연금저축계좌(신)"}, {}) == 3
+
+
+def test_db_from_wage_and_hire_year(client):
+    _family(client)
+    body = {"me": {"db_monthly_wage": 5_000_000, "db_accrued": 50_000_000}, "partner": {"db_monthly_wage": 6_000_000, "db_accrued": 90_000_000}, "version": 0}
+    d = client.put("/api/retirement/plan", json=body).json()
+    me, pa = d["used"]["me"]["db"], d["used"]["partner"]["db"]
+    assert me == {"years_left": 20, "lump_at_retire": 150_000_000}
+    assert pa == {"years_left": 20, "lump_at_retire": 210_000_000}     # 배우자도 같은 해(62세) 은퇴
+    streams = d["projection"]["summary"]["streams"]
+    assert {(s["person"], s["label"]) for s in streams} >= {("me", "퇴직연금(DB)"), ("partner", "퇴직연금(DB)")}
+    assert next(s for s in streams if s["person"] == "me")["principal"] == round(150_000_000 * 1.02**20)
+    assert client.put("/api/retirement/plan", json={"me": {"db_accrued": -1}, "version": 1}).status_code == 422
