@@ -103,10 +103,10 @@ function Trades({ sigungu, name, area, jibun, picked, onPick }: { sigungu: strin
   useEffect(() => {
     let live = true
     setState({ loading: true, trades: [] })
-    api<{ configured: boolean; trades: Trade[] }>(`/property/trades?sigungu=${sigungu}&name=${encodeURIComponent(name)}${area ? `&area=${area}` : ''}${dong ? `&dong=${encodeURIComponent(dong)}` : ''}`)
+    api<{ configured: boolean; trades: Trade[] }>(`/property/trades?sigungu=${sigungu}&name=${encodeURIComponent(name)}${area ? `&area=${area}` : ''}${dong ? `&dong=${encodeURIComponent(dong)}` : ''}${jibun ? `&jibun=${encodeURIComponent(jibun)}` : ''}`)
       .then(r => live && setState({ loading: false, configured: r.configured, trades: r.trades }), e => live && setState({ loading: false, configured: true, trades: [], error: e instanceof Error ? e.message : '불러오지 못했어요.' }))
     return () => { live = false }
-  }, [sigungu, name, area, dong, rev])
+  }, [sigungu, name, area, dong, jibun, rev])
   if (state.loading) return <p className="pe-note">최근 실거래가를 불러오는 중…</p>
   if (state.configured === false) return <KeySetup onDone={() => setRev(r => r + 1)}/>
   return <div className="pe-trades">

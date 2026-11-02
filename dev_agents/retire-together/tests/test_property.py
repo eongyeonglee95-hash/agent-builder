@@ -72,3 +72,23 @@ def test_short_other_complex_name_and_other_dong_are_excluded():
     assert [r["price"] for r in match_trades(rows, "염리삼성래미안")] == [2]
     assert dong_of("서울 마포구 염리동 520") == "염리동" and dong_of("") is None
     assert [r["price"] for r in match_trades(rows, "래미안", dong="도화동")] == [3]
+
+
+def test_renamed_complex_matches_exact_dong_and_parcel_not_nearby_brand():
+    from tools.property import parcel_of
+    row = {"name": "힐스테이트동대구센트럴", "dong": "신천동", "jibun": "1547", "apt_seq": "27140-3787",
+           "area": 84.9921, "price": 660_000_000, "date": "2026-10-08", "floor": 26}
+    rows = [row, {**row, "name": "힐스테이트 벤처밸리", "jibun": "1548"},
+            {**row, "dong": "신암동"}, {**row, "area": 106.17}]
+    hits = match_trades(rows, "힐스테이트 벤처밸리", 84, jibun="대구 동구 신천동 1547")
+    assert hits == [row]
+    assert match_trades(rows[:1], "힐스테이트 벤처밸리", 84) == []
+    assert parcel_of("서울 마포구 염리동 0520-0") == "520"
+    assert parcel_of("신천동 산 15-2") == "산15-2"
+    assert parcel_of("힐스테이트 2차") is None
+
+
+def test_parse_trade_preserves_identity_fields():
+    xml = XML.replace('<aptNm>염리삼성래미안</aptNm>', '<aptNm>염리삼성래미안</aptNm><jibun>520</jibun><aptSeq>11440-1</aptSeq>')
+    row = parse_trades(xml)[0]
+    assert row["jibun"] == "520" and row["apt_seq"] == "11440-1"

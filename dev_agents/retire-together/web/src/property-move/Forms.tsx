@@ -1,8 +1,8 @@
 import { useCallback, useState, type FormEvent } from 'react'
 import { Check, Search } from 'lucide-react'
-import { AddressSearch, KeySetup, sourceLabel, type Address, type HomeList } from '../property-entry'
+import { AddressSearch, sourceLabel, type Address, type HomeList } from '../property-entry'
 import { money } from '../model'
-import { TradeReport, useTrades } from './Market'
+import { AreaPicker } from './AreaPicker'
 import { dateToday, emptyLiving, type Candidate, type MovePlan } from './types'
 
 export function Amount({ label, value, onChange, hint }: { label: string; value: number | null; onChange: (n: number | null) => void; hint?: string }) {
@@ -18,39 +18,19 @@ export function CandidateForm({ initial, onSave, onDelete }: { initial?: Candida
   const [error, setError] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(false)
   const set = <K extends keyof Candidate>(key: K, value: Candidate[K]) => setD(old => ({ ...old, [key]: value }))
-  const pick = useCallback((address: Address) => { setD(old => ({ ...old, address, name: address.building || old.name })); setSearch(false) }, [])
-  const market = useTrades(d.address, d.name, d.area_m2)
+  const pick = useCallback((address: Address) => { setD(old => ({ ...old, address, name: address.building || old.name, area_m2: null })); setSearch(false) }, [])
   async function submit(e: FormEvent) {
     e.preventDefault(); setError('')
     if (!d.name.trim()) { setError('단지 이름을 입력해 주세요.'); return }
-    if (d.price === 0 || (d.asking_high !== null && (d.asking_low === null || d.asking_high < d.asking_low))) { setError('계획 매수가와 최저·최고 호가를 확인해 주세요.'); return }
+    if (!d.area_m2) { setError('추적할 전용면적을 선택하거나 입력해 주세요.'); return }
     setBusy(true)
     try { await onSave({ ...d, name: d.name.trim() }) } catch (e) { setError((e as Error).message); setBusy(false) }
   }
   return <form className="property-move property-move-form" onSubmit={submit}>
-    <p className="property-move-form-intro">살고 싶은 집을 모아두고, 같은 자금으로 비교해요.</p>
-    <button type="button" className="property-move-address-button" onClick={() => setSearch(v => !v)}><Search size={17}/>{d.address ? d.address.road : '단지·주소 검색'}<span>검색</span></button>
+    <button type="button" className="property-move-address-button" onClick={() => setSearch(v => !v)}><Search size={17}/>{d.address ? d.address.road : '아파트 이름으로 검색'}<span>검색</span></button>
     {search && <><AddressSearch onPick={pick}/><p className="property-move-note">주소 검색어는 카카오 우편번호 서비스로 전송돼요.</p></>}
-    <div className="property-move-form-grid">
-      <label className="property-move-field"><span>단지 이름</span><input required maxLength={100} value={d.name} onChange={e => set('name', e.target.value)} placeholder="희망하는 아파트"/></label>
-      <label className="property-move-field"><span>전용면적 (㎡)</span><input type="number" min="1" max="2000" step="0.01" value={d.area_m2 ?? ''} onChange={e => set('area_m2', e.target.value ? Number(e.target.value) : null)} placeholder="예: 84.9"/></label>
-    </div>
-    <div className="property-move-form-grid">
-      <Amount label="계획 매수가" value={d.price} onChange={price => setD(old => ({ ...old, price, price_basis: 'manual', price_date: price === null ? null : dateToday() }))} hint="이 가격에 산다고 가정해 비교해요."/>
-      <Amount label="취득세·중개·이사비" value={d.purchase_costs} onChange={v => set('purchase_costs', v)} hint="직접 확인한 비용 합계 · 비우면 계산에서 제외"/>
-    </div>
-    <p className="property-move-note">계획 매수가 기준: {d.price_basis === 'trade' ? '선택한 실거래' : d.price_basis === 'asking' ? '기록한 호가' : '직접 입력'}{d.price_date ? ` · ${d.price_date}` : ''}</p>
-    <details className="property-move-form-details"><summary>실거래 확인하고 가격에 반영</summary><TradeReport market={market} hidden={false} onPick={t => setD(old => ({ ...old, price: t.price, price_basis: 'trade', price_date: t.date }))}/>{market.configured === false && <KeySetup onDone={market.retry}/>}</details>
-    <details className="property-move-form-details" open={!!initial?.asking_low || undefined}><summary>현재 호가 기록</summary>
-      <p className="property-move-note">매물에서 확인한 금액을 기록해요. 실거래·계획 매수가와 별도로 보관합니다.</p>
-      {d.name && <a className="property-move-link" href={`https://m.land.naver.com/search/result/${encodeURIComponent(d.name)}`} target="_blank" rel="noreferrer">네이버 부동산에서 매물 확인 ↗</a>}
-      <div className="property-move-form-grid"><Amount label="최저 호가" value={d.asking_low} onChange={v => setD(old => ({ ...old, asking_low: v, asking_high: v === null ? null : old.asking_high, asking_date: v === null ? null : old.asking_date || dateToday() }))}/><Amount label="최고 호가" value={d.asking_high} onChange={v => set('asking_high', v)}/></div>
-      {d.asking_low !== null && <><label className="property-move-field"><span>호가 확인일</span><input type="date" required value={d.asking_date ?? ''} max={dateToday()} onChange={e => set('asking_date', e.target.value || null)}/></label><button type="button" className="property-move-link" onClick={() => setD(old => ({ ...old, price: old.asking_low, price_basis: 'asking', price_date: old.asking_date }))}>최저 호가를 계획 매수가로 사용</button></>}
-    </details>
-    <details className="property-move-form-details" open={Object.values(d.living).some(Boolean) || undefined}><summary>거주 정보 · 학군·출퇴근·생활</summary>
-      <p className="property-move-note">직접 확인한 내용을 적어요. 자동으로 조회하거나 점수를 매기지 않아요.</p>
-      <div className="property-move-form-grid">{LIVING_FIELDS.map(([key, label, hint]) => <label className="property-move-field" key={key}><span>{label}</span><textarea rows={2} maxLength={300} placeholder={hint} value={d.living[key]} onChange={e => setD(old => ({ ...old, living: { ...old.living, [key]: e.target.value } }))}/></label>)}</div>
-    </details>
+    <label className="property-move-field"><span>단지 이름</span><input required maxLength={100} value={d.name} onChange={e => set('name', e.target.value)} placeholder="희망하는 아파트"/></label>
+    <AreaPicker address={d.address} name={d.name} value={d.area_m2} onChange={v => set('area_m2', v)}/>
     <label className="property-move-field"><span>비교 메모</span><textarea rows={2} maxLength={300} placeholder="예: 출퇴근 30분, 남향, 수리 필요" value={d.memo} onChange={e => set('memo', e.target.value)}/></label>
     {error && <p className="property-move-error" role="alert">{error}</p>}
     <div className="property-move-form-actions">{onDelete && <button type="button" className="property-move-link" disabled={busy} onClick={async () => { if (!confirmDelete) { setConfirmDelete(true); return } setBusy(true); try { await onDelete() } catch (e) { setError((e as Error).message); setBusy(false) } }}>{confirmDelete ? '이 후보 삭제 확인' : '후보 삭제'}</button>}<button className="property-move-button primary" disabled={busy}><Check size={15}/>{busy ? '저장 중…' : '후보 저장'}</button></div>

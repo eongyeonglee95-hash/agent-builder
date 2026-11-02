@@ -217,9 +217,10 @@ def untrack(candidate_id: UUID, day: Annotated[str, Path(pattern=r"^\d{4}-\d{2}-
 @router.get("/price-check")
 def price_check(sigungu: Annotated[str, Query(pattern=r"^\d{5}$")], name: Annotated[str, Query(min_length=1, max_length=100)],
                 area: Annotated[float, Query(gt=0, le=2000)] | None = None, months: Annotated[int, Query(ge=1, le=36)] = 12,
-                dong: Annotated[str, Query(max_length=20)] | None = None, asking: Annotated[int, Query(gt=0, le=1_000_000_000_000_000)] | None = None):
+                dong: Annotated[str, Query(max_length=20)] | None = None,
+                jibun: Annotated[str, Query(max_length=200)] | None = None, asking: Annotated[int, Query(gt=0, le=1_000_000_000_000_000)] | None = None):
     """호가를 과거 실거래(국토부, 최대 36개월)와 나란히. 판단은 사용자 몫 — 숫자만 준다."""
     if not prop.market_key():   # 모듈 경유 호출: 테스트가 인증키를 비우고, 실제 조회를 막는다
         return {"configured": False, "months": months, "trades": [], "analysis": asking_vs_trades(asking, [])}
-    trades = prop.recent_trades(sigungu, name, area, months, dong)
+    trades = prop.recent_trades(sigungu, name, area, months, dong, jibun)
     return {"configured": True, "months": months, "trades": trades[:60], "analysis": asking_vs_trades(asking, trades)}
