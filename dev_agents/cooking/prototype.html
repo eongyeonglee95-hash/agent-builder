@@ -1,0 +1,606 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>오늘의 식탁 프로토타입</title>
+<style>
+  /* LIFEPLUS 폰트 — fonts/는 git에 올리지 않음(라이선스). 파일이 없으면 아래 시스템 폰트로 대체 */
+  @font-face { font-family: "LIFEPLUS"; src: url("fonts/LIFEPLUS-Light.ttf") format("truetype"); font-weight: 100 300; font-display: swap; }
+  @font-face { font-family: "LIFEPLUS"; src: url("fonts/LIFEPLUS-Medium.ttf") format("truetype"); font-weight: 400 600; font-display: swap; }
+  @font-face { font-family: "LIFEPLUS"; src: url("fonts/LIFEPLUS-Bold.ttf") format("truetype"); font-weight: 700 900; font-display: swap; }
+  :root {
+    --ink: #111;
+    --ink-2: #555;
+    --ink-3: #8a8a8a;
+    --line: #e6e6e6;
+    --soft: #f4f4f4;
+    --paper: #fff;
+    --bg: #ececec;
+    --accent: #f5c518;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "LIFEPLUS", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", "Noto Sans KR", sans-serif;
+    background: var(--bg); color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+  }
+  button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+
+  /* ---------- page shell ---------- */
+  .page { max-width: 1100px; margin: 0 auto; padding: 28px 16px 48px; }
+  .page-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
+  .page-head h1 { font-size: 22px; letter-spacing: -0.02em; }
+  .page-head p { color: var(--ink-2); font-size: 14px; margin-top: 4px; }
+  .brand { font-weight: 800; letter-spacing: 0.18em; font-size: 15px; }
+  .brand span { font-weight: 500; letter-spacing: 0; color: var(--ink-2); margin-left: 8px; }
+
+  .concepts { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px; }
+  .concept { padding: 10px 16px; border-radius: 999px; background: var(--paper); border: 1px solid var(--line); font-size: 14px; font-weight: 600; }
+  .concept.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+
+  .stage { display: grid; grid-template-columns: 390px 1fr; gap: 28px; align-items: start; }
+  @media (max-width: 860px) { .stage { grid-template-columns: 1fr; justify-items: center; } }
+
+  /* ---------- phone ---------- */
+  .phone {
+    width: 100%; max-width: 390px; height: 800px;
+    background: #111; border-radius: 52px; padding: 12px;
+    box-shadow: 0 24px 60px rgba(0,0,0,.18);
+  }
+  .screen { position: relative; height: 100%; background: var(--paper); border-radius: 42px; overflow: hidden; display: flex; flex-direction: column; }
+  .status { display: flex; justify-content: space-between; align-items: center; padding: 14px 28px 6px; font-size: 14px; font-weight: 600; flex-shrink: 0; }
+  .status i { width: 110px; height: 30px; background: #111; border-radius: 20px; }
+  .status b { font-size: 11px; letter-spacing: 2px; }
+  .appbar { display: flex; align-items: center; justify-content: space-between; padding: 10px 20px; flex-shrink: 0; }
+  .appbar .logo { font-weight: 800; letter-spacing: .14em; font-size: 15px; }
+  .appbar .logo small { font-weight: 500; letter-spacing: 0; font-size: 13px; margin-left: 8px; }
+  .appbar .title { font-weight: 700; font-size: 17px; }
+  .icons { display: flex; gap: 14px; font-size: 18px; }
+  .body { flex: 1; overflow-y: auto; padding: 6px 20px 20px; scrollbar-width: none; }
+  .body::-webkit-scrollbar { display: none; }
+  .foot { padding: 12px 20px 26px; flex-shrink: 0; display: flex; gap: 8px; }
+
+  h2 { font-size: 22px; line-height: 1.32; letter-spacing: -0.02em; }
+  .sub { color: var(--ink-2); font-size: 13.5px; line-height: 1.5; margin-top: 6px; }
+  .label { font-size: 14px; font-weight: 700; margin: 20px 0 10px; display: flex; justify-content: space-between; align-items: center; }
+  .label a { font-weight: 500; color: var(--ink-3); font-size: 12px; cursor: pointer; }
+
+  .btn { flex: 1; height: 50px; border-radius: 12px; font-weight: 700; font-size: 15px; display: flex; align-items: center; justify-content: center; gap: 6px; }
+  .btn.primary { background: var(--ink); color: #fff; }
+  .btn.ghost { border: 1px solid var(--line); }
+  .btn:disabled { opacity: .35; cursor: default; }
+
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip { padding: 8px 14px; border-radius: 999px; background: var(--soft); font-size: 13px; font-weight: 600; }
+  .chip.on { background: var(--ink); color: #fff; }
+  .tag { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 999px; background: var(--soft); font-size: 11px; color: var(--ink-2); }
+  .tag.dark { background: var(--ink); color: #fff; }
+
+  /* expert cards */
+  .expert { position: relative; display: flex; align-items: center; gap: 14px; padding: 14px; border-radius: var(--radius); background: var(--soft); margin-bottom: 10px; text-align: left; width: 100%; }
+  .avatar { width: 64px; height: 64px; border-radius: 50%; flex-shrink: 0; display: grid; place-items: center; font-size: 30px; background: #ddd; }
+  .avatar.sm { width: 44px; height: 44px; font-size: 22px; }
+  .expert h3 { font-size: 17px; }
+  .expert .role { font-size: 13px; font-weight: 600; margin-top: 2px; }
+  .expert p { font-size: 12px; color: var(--ink-2); margin-top: 4px; }
+  .check { position: absolute; top: 12px; right: 12px; width: 26px; height: 26px; border-radius: 50%; border: 1.5px solid #bbb; display: grid; place-items: center; font-size: 13px; background: #fff; }
+  .check.on { background: var(--ink); border-color: var(--ink); color: #fff; }
+  .follow { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); padding: 6px 12px; border-radius: 999px; border: 1px solid var(--ink); font-size: 12px; font-weight: 700; background: #fff; }
+  .follow.on { background: var(--ink); color: #fff; }
+
+  /* recipe visuals (photo placeholders) */
+  .shot { position: relative; border-radius: var(--radius); overflow: hidden; color: #fff; display: flex; flex-direction: column; justify-content: flex-end; padding: 14px; min-height: 170px;
+          background: radial-gradient(circle at 70% 40%, #6b6b6b 0, #2a2a2a 55%, #151515 100%); }
+  .shot .dish { position: absolute; right: 14px; top: 18px; font-size: 64px; filter: grayscale(.4); }
+  .shot .from { position: absolute; left: 12px; top: 12px; background: #fff; color: var(--ink); font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 999px; }
+  .shot .ex { position: absolute; right: 12px; top: 12px; font-size: 10px; background: rgba(255,255,255,.2); padding: 3px 8px; border-radius: 999px; }
+  .shot h4 { font-size: 21px; line-height: 1.25; position: relative; }
+  .shot small { font-size: 12px; opacity: .8; margin-top: 4px; position: relative; }
+  .card-actions { display: flex; border-bottom: 1px solid var(--line); margin-bottom: 18px; }
+  .card-actions button { flex: 1; padding: 12px 0; font-size: 13px; font-weight: 600; }
+  .card-actions button.on { color: var(--ink); }
+  .card-desc { font-size: 12.5px; color: var(--ink-2); line-height: 1.5; margin: 8px 2px 4px; }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .taste { position: relative; text-align: left; padding: 14px; border-radius: var(--radius); border: 1px solid var(--line); min-height: 112px; }
+  .taste .ico { font-size: 26px; }
+  .taste b { display: block; font-size: 15px; margin-top: 8px; }
+  .taste span { font-size: 12px; color: var(--ink-2); }
+  .taste.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .taste.on span { color: #bbb; }
+  .taste .check { top: 10px; right: 10px; }
+
+  .seg { display: flex; background: var(--soft); border-radius: 999px; padding: 3px; }
+  .seg button { flex: 1; padding: 9px 0; border-radius: 999px; font-size: 13px; font-weight: 600; }
+  .seg button.on { background: var(--ink); color: #fff; }
+
+  .steps { display: flex; gap: 4px; margin-bottom: 10px; }
+  .steps i { width: 32px; height: 3px; background: var(--line); border-radius: 2px; }
+  .steps i.on { background: var(--ink); }
+
+  .mini { border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; text-align: left; }
+  .mini .ph { height: 110px; display: grid; place-items: center; font-size: 46px; background: radial-gradient(circle, #777 0, #2b2b2b 80%); position: relative; }
+  .mini .ph .bm { position: absolute; top: 8px; right: 8px; width: 26px; height: 26px; border-radius: 50%; background: rgba(255,255,255,.9); font-size: 13px; display: grid; place-items: center; }
+  .mini .ph .bm.on { background: var(--accent); }
+  .mini .ph .sel { position: absolute; top: 8px; right: 8px; width: 24px; height: 24px; border-radius: 50%; border: 2px solid #fff; display: grid; place-items: center; font-size: 12px; color: #fff; }
+  .mini .ph .sel.on { background: var(--ink); }
+  .mini .tx { padding: 10px 12px 12px; }
+  .mini b { font-size: 14px; }
+  .mini p { font-size: 11.5px; color: var(--ink-2); margin: 3px 0 8px; line-height: 1.4; }
+  .meta { display: flex; gap: 10px; font-size: 11px; color: var(--ink-3); }
+
+  .bubble { display: flex; gap: 12px; align-items: center; background: var(--soft); border-radius: var(--radius); padding: 14px; margin-top: 16px; }
+  .bubble p { font-size: 14px; font-weight: 600; line-height: 1.4; }
+
+  /* week + events */
+  .week { display: flex; justify-content: space-between; margin: 14px 0; }
+  .day { width: 42px; text-align: center; padding: 6px 0; border-radius: 12px; font-size: 12px; color: var(--ink-2); }
+  .day b { display: block; font-size: 16px; color: var(--ink); margin-top: 4px; }
+  .day.on { background: var(--ink); color: #ddd; }
+  .day.on b { color: #fff; }
+  .day.today { outline: 1.5px solid var(--line); }
+  .event { background: var(--soft); border-radius: var(--radius); padding: 16px; display: flex; justify-content: space-between; gap: 10px; }
+  .event .when { font-size: 12px; color: var(--ink-2); }
+  .event h3 { font-size: 18px; margin: 8px 0 6px; }
+  .event .who { font-size: 12px; color: var(--ink-2); }
+  .event .ph { width: 92px; border-radius: 10px; background: radial-gradient(circle, #888, #333); display: grid; place-items: center; font-size: 34px; flex-shrink: 0; }
+
+  .tabs { display: flex; border-bottom: 1px solid var(--line); margin: 0 -20px 8px; }
+  .tabs button { flex: 1; padding: 12px 0; font-size: 14px; color: var(--ink-3); font-weight: 600; border-bottom: 2px solid transparent; }
+  .tabs button.on { color: var(--ink); border-color: var(--ink); }
+
+  .timeline { position: relative; margin-top: 6px; }
+  .tl { display: flex; gap: 12px; align-items: flex-start; padding: 10px 0; position: relative; width: 100%; text-align: left; }
+  .tl:not(:last-child)::after { content: ""; position: absolute; left: 13px; top: 40px; bottom: -10px; border-left: 1.5px dashed #ccc; }
+  .tl .dot { width: 28px; height: 28px; border-radius: 50%; border: 1.5px solid #bbb; display: grid; place-items: center; flex-shrink: 0; font-size: 13px; background: #fff; }
+  .tl .dot.on { background: var(--ink); border-color: var(--ink); color: #fff; }
+  .tl time { font-size: 12px; color: var(--ink-2); width: 76px; flex-shrink: 0; padding-top: 5px; }
+  .tl b { font-size: 14px; display: block; padding-top: 4px; }
+  .tl span { font-size: 12px; color: var(--ink-2); }
+
+  .toggle { width: 44px; height: 26px; border-radius: 999px; background: #ccc; position: relative; transition: .2s; }
+  .toggle::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; transition: .2s; }
+  .toggle.on { background: var(--ink); }
+  .toggle.on::after { left: 21px; }
+  .row { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-top: 1px solid var(--line); font-size: 13px; }
+
+  .tabbar { display: flex; border-top: 1px solid var(--line); padding: 8px 6px 22px; flex-shrink: 0; }
+  .tabbar div { flex: 1; text-align: center; font-size: 10px; color: var(--ink-3); }
+  .tabbar div i { display: block; font-style: normal; font-size: 18px; margin-bottom: 2px; }
+  .tabbar div.on { color: var(--ink); font-weight: 700; }
+
+  /* sheet */
+  .dim { position: absolute; inset: 0; background: rgba(0,0,0,.45); display: flex; align-items: flex-end; z-index: 5; }
+  .sheet { background: #fff; width: 100%; border-radius: 26px 26px 0 0; padding: 10px 20px 26px; max-height: 82%; overflow-y: auto; }
+  .grab { width: 40px; height: 4px; border-radius: 2px; background: #ddd; margin: 0 auto 14px; }
+  .sheet-head { display: flex; justify-content: space-between; align-items: flex-start; }
+  .sheet-head small { color: var(--ink-2); font-size: 12px; }
+  .sheet-head h2 { font-size: 20px; margin-top: 4px; }
+  .x { font-size: 20px; color: var(--ink-2); }
+  .opt { display: flex; gap: 10px; align-items: flex-start; padding: 10px 0; width: 100%; text-align: left; }
+  .opt .box { width: 22px; height: 22px; border-radius: 5px; border: 1.5px solid #bbb; display: grid; place-items: center; font-size: 12px; flex-shrink: 0; }
+  .opt .box.round { border-radius: 50%; }
+  .opt .box.on { background: var(--ink); border-color: var(--ink); color: #fff; }
+  .opt b { font-size: 14px; display: block; }
+  .opt span { font-size: 12px; color: var(--ink-2); }
+
+  .toast { position: absolute; left: 50%; bottom: 96px; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 10px 16px; border-radius: 999px; font-size: 13px; white-space: nowrap; z-index: 9; animation: pop .25s ease; }
+  @keyframes pop { from { opacity: 0; transform: translate(-50%, 8px); } }
+
+  /* side panel */
+  .side { display: grid; gap: 16px; width: 100%; }
+  .panel { background: var(--paper); border-radius: 18px; padding: 18px; }
+  .panel h3 { font-size: 15px; margin-bottom: 4px; }
+  .panel > p { font-size: 12.5px; color: var(--ink-2); line-height: 1.5; }
+  .flow { display: flex; gap: 6px; margin-top: 12px; flex-wrap: wrap; }
+  .flow button { padding: 8px 12px; border-radius: 10px; background: var(--soft); font-size: 12.5px; font-weight: 600; }
+  .flow button.on { background: var(--ink); color: #fff; }
+  .plan-list { list-style: none; margin-top: 10px; display: grid; gap: 8px; }
+  .plan-list li { display: flex; justify-content: space-between; gap: 8px; padding: 10px 12px; background: var(--soft); border-radius: 10px; font-size: 13px; }
+  .plan-list li span { color: var(--ink-2); font-size: 12px; }
+  .empty { font-size: 12.5px; color: var(--ink-3); margin-top: 10px; }
+  pre { margin-top: 10px; background: #161616; color: #e6e6e6; border-radius: 10px; padding: 12px; font-size: 11.5px; line-height: 1.5; overflow: auto; max-height: 260px; }
+  .note { font-size: 11.5px; color: var(--ink-3); text-align: center; margin-top: 14px; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="page-head">
+    <div>
+      <div class="brand">PLUS US<span>오늘의 식탁</span></div>
+      <h1 style="margin-top:10px">요리 Agent 화면 프로토타입</h1>
+      <p>기획 시안 세 가지 흐름을 클릭해서 볼 수 있습니다. 전문가·레시피는 모두 가상 예시 데이터입니다.</p>
+    </div>
+  </div>
+
+  <div class="concepts" id="concepts"></div>
+
+  <div class="stage">
+    <div class="phone"><div class="screen" id="screen"></div></div>
+    <div class="side">
+      <div class="panel">
+        <h3 id="concept-title"></h3>
+        <p id="concept-desc"></p>
+        <div class="flow" id="flow"></div>
+      </div>
+      <div class="panel">
+        <h3>내 식사 계획</h3>
+        <p>어느 흐름에서 담든 같은 계획에 쌓입니다.</p>
+        <ul class="plan-list" id="plan"></ul>
+      </div>
+      <div class="panel">
+        <h3>Agent 입력 미리보기</h3>
+        <p>지금 화면 상태를 요리 agent에 넘길 때의 형태입니다. API 키를 연결하면 이 값으로 추천을 받아오게 됩니다.</p>
+        <pre id="agent-input"></pre>
+      </div>
+    </div>
+  </div>
+  <p class="note">기획 시안 · 전문가 예시 / 제휴 미정 · 콘텐츠 예시</p>
+</div>
+
+<script>
+/* ---------------- mock data (agent가 나중에 채울 부분) ---------------- */
+const EXPERTS = [
+  { id: "haru", name: "김하루", role: "간단 집밥", topic: "quick", emoji: "🍳", line: "바쁜 일상도 맛있게, 쉽게.", tags: ["20분 요리", "집밥 노하우"] },
+  { id: "jungsoon", name: "박정순", role: "한식·반찬", topic: "banchan", emoji: "🥬", line: "오늘도 반찬이 식탁을 채워요.", tags: ["한식 반찬", "계절 요리"] },
+  { id: "chen", name: "왕첸", role: "특별식", topic: "special", emoji: "🥟", line: "특별한 날, 근사한 한 끼.", tags: ["중화요리", "손님 초대"] },
+];
+const COLLECTIONS = [
+  { id: "weeknight", expert: "haru", topic: "quick", title: "바쁜 평일의\n20분 저녁", count: 6, emoji: "🍚", desc: "퇴근 후에도, 준비부터 완성까지 20분이면 충분해요." },
+  { id: "weekly-banchan", expert: "jungsoon", topic: "banchan", title: "한 번 준비하는\n주간 반찬", count: 7, emoji: "🥗", desc: "한 번 만들어 두면 일주일이 든든해져요." },
+  { id: "party", expert: "chen", topic: "special", title: "손님 초대\n코스 한 상", count: 5, emoji: "🥟", desc: "특별한 날, 집에서 차리는 근사한 코스." },
+];
+const RECIPES = [
+  { id: "bowl", topic: "quick", course: "메인", name: "한 그릇 저녁", desc: "20분으로 완성하는 든든한 한 그릇 요리", min: 20, serve: "2인분", emoji: "🍲" },
+  { id: "prep", topic: "banchan", course: "반찬", name: "주간 반찬 준비", desc: "미리 만들어 더 편한 우리집 한식 반찬", min: 30, serve: "4가지 반찬", emoji: "🥡" },
+  { id: "spinach", topic: "banchan", course: "반찬", name: "시금치나물", desc: "제철 시금치로 만드는 담백한 반찬", min: 20, serve: "6인분", emoji: "🥬" },
+  { id: "mushroom", topic: "banchan", course: "반찬", name: "버섯볶음", desc: "향이 좋은 버섯으로 만드는 든든한 반찬", min: 20, serve: "6인분", emoji: "🍄" },
+  { id: "galbi", topic: "special", course: "메인", name: "소갈비찜", desc: "가족 모임에 어울리는 메인 요리", min: 90, serve: "6인분", emoji: "🍖" },
+  { id: "doenjang", topic: "banchan", course: "국·탕", name: "된장찌개", desc: "집밥의 기본, 구수한 된장찌개", min: 25, serve: "6인분", emoji: "🥘" },
+  { id: "kids", topic: "kids", course: "메인", name: "채소 주먹밥", desc: "아이와 함께 만드는 한 입 주먹밥", min: 15, serve: "3인분", emoji: "🍙" },
+  { id: "muffin", topic: "baking", course: "메인", name: "바나나 머핀", desc: "달콤한 주말 홈베이킹", min: 40, serve: "6개", emoji: "🧁" },
+];
+const TASTES = [
+  { id: "quick", ico: "🍲", name: "20분 집밥", desc: "바쁜 날에도 근사하게" },
+  { id: "banchan", ico: "🥣", name: "반찬·한식", desc: "매일 먹는 든든한 한식 반찬" },
+  { id: "kids", ico: "🧒", name: "아이와 먹는 밥", desc: "온 가족이 함께 먹는 요리" },
+  { id: "special", ico: "👨‍👩‍👧", name: "손님 초대", desc: "특별한 날, 근사한 한 상" },
+  { id: "lunchbox", ico: "🍱", name: "도시락", desc: "일상도 특별하게" },
+  { id: "baking", ico: "🧁", name: "베이킹", desc: "달콤한 홈베이킹 시간" },
+];
+const FAMILY_EVENT = { date: "2026-10-31", time: "12:00", title: "부모님과 집에서 점심", people: 6, cuisine: "한식" };
+
+const CONCEPTS = {
+  A: { title: "A. 전문가 구독형", desc: "좋아하는 사람을 고르면, 내 식탁의 취향이 된다.", screens: ["전문가 선택", "팔로우 피드", "식사 계획 담기"] },
+  B: { title: "B. 취향 발견형", desc: "내가 원하는 요리부터, 맞는 전문가를 만나기.", screens: ["취향 선택", "전문가 추천", "레시피 추천"] },
+  C: { title: "C. 가족 일정형", desc: "다가오는 우리 가족의 일에서, 필요한 요리로.", screens: ["이번 주 가족", "반찬 찾기", "준비 계획"] },
+};
+
+/* ---------------- state ---------------- */
+const TODAY = new Date(2026, 9, 28);
+const S = {
+  concept: "A", screen: 0,
+  following: new Set(["haru", "jungsoon"]),
+  filter: "all",
+  saved: new Set(),
+  tastes: new Set(["quick", "banchan"]),
+  time: "20분",
+  bookmarks: new Set(),
+  sheet: null,            // { item, day, shopping, share }
+  cTab: "반찬",
+  picked: new Set(["spinach"]),
+  steps: new Set(["shop"]),
+  who: "나",
+  familyShare: true,
+  plan: [],
+  toast: null,
+};
+
+const $ = (s) => document.querySelector(s);
+const expert = (id) => EXPERTS.find((e) => e.id === id);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const nl = (s) => esc(s).replace(/\n/g, "<br>");
+
+function weekOf(d) {
+  const mon = new Date(d); mon.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  return [...Array(7)].map((_, i) => { const x = new Date(mon); x.setDate(mon.getDate() + i); return x; });
+}
+const DOW = ["일", "월", "화", "수", "목", "금", "토"];
+const md = (d) => `${d.getMonth() + 1}.${d.getDate()}`;
+const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+/* ---------------- shared bits ---------------- */
+const duck = (size = 64) => `
+  <svg width="${size}" height="${size}" viewBox="0 0 64 64" aria-hidden="true">
+    <ellipse cx="32" cy="36" rx="24" ry="22" fill="#fff" stroke="#111" stroke-width="2.5"/>
+    <path d="M28 14 q4 -8 8 0" fill="none" stroke="#111" stroke-width="2.5" stroke-linecap="round"/>
+    <circle cx="26" cy="32" r="3" fill="#111"/>
+    <ellipse cx="38" cy="38" rx="8" ry="5" fill="#f5c518" stroke="#111" stroke-width="2"/>
+    <rect x="40" y="44" width="18" height="15" rx="2" fill="#fff" stroke="#111" stroke-width="2"/>
+    <path d="M40 49 h18 M46 49 v10 M52 49 v10" stroke="#111" stroke-width="1.5"/>
+  </svg>`;
+const status = () => `<div class="status"><span>9:41</span><i></i><b>▂▄▆ ◉ ▭</b></div>`;
+const appbar = (opts = {}) => opts.title
+  ? `<div class="appbar"><button data-act="back" aria-label="뒤로">‹</button><div class="title">${opts.title}</div><div class="icons">${opts.right || "⌕"}</div></div>`
+  : `<div class="appbar"><div class="logo">PLUS US<small>오늘의 식탁</small></div><div class="icons">${opts.bell ? "<span>🔔</span>" : ""}<span>⌕</span><span>☰</span></div></div>`;
+
+/* ---------------- concept A ---------------- */
+function A0() {
+  const filters = [["all", "전체"], ["quick", "간단 집밥"], ["banchan", "한식·반찬"], ["special", "특별식"]];
+  const list = EXPERTS.filter((e) => S.filter === "all" || e.topic === S.filter);
+  return `${status()}${appbar()}
+  <div class="body">
+    <h2>누구의 요리를 좋아하세요?</h2>
+    <p class="sub">좋아하는 전문가를 구독하고,<br>내 식탁에 맞는 콘텐츠를 받아보세요.</p>
+    <div class="chips" style="margin:18px 0 14px">
+      ${filters.map(([k, v]) => `<button class="chip ${S.filter === k ? "on" : ""}" data-act="filter" data-v="${k}">${v}</button>`).join("")}
+    </div>
+    ${list.map((e) => `
+      <button class="expert" data-act="follow" data-v="${e.id}">
+        <div class="avatar">${e.emoji}</div>
+        <div><h3>${e.name}</h3><div class="role">${e.role}</div><p>${e.line}</p></div>
+        <span class="check ${S.following.has(e.id) ? "on" : ""}">${S.following.has(e.id) ? "✓" : ""}</span>
+      </button>`).join("")}
+  </div>
+  <div class="foot"><button class="btn primary" data-act="go" data-v="1" ${S.following.size ? "" : "disabled"}>${S.following.size}명과 시작하기 →</button></div>`;
+}
+function A1() {
+  const mine = EXPERTS.filter((e) => S.following.has(e.id));
+  const cols = COLLECTIONS.filter((c) => S.following.has(c.expert));
+  return `${status()}${appbar()}
+  <div class="body">
+    <h2 style="font-size:19px">내가 팔로우한 전문가</h2>
+    <div class="grid2" style="margin:12px 0">
+      ${mine.map((e) => `<div class="expert" style="margin:0;padding:10px"><div class="avatar sm">${e.emoji}</div><div><h3 style="font-size:15px">${e.name}</h3><p style="margin:0">${e.role}</p></div></div>`).join("")}
+    </div>
+    <div class="label">관심 주제: ${mine.map((e) => e.role).join(" · ")}<a>맞춤순 ⌄</a></div>
+    ${cols.map((c) => { const e = expert(c.expert); return `
+      <div class="shot"><span class="from">🐥 ${e.role}을 선택해서</span><span class="ex">콘텐츠 예시</span><span class="dish">${c.emoji}</span>
+        <h4>${nl(c.title)}</h4><small>${e.name}의 ${e.role} · ${c.count}개의 레시피 ›</small></div>
+      <p class="card-desc">${c.desc}</p>
+      <div class="card-actions">
+        <button data-act="save" data-v="${c.id}" class="${S.saved.has(c.id) ? "on" : ""}">${S.saved.has(c.id) ? "★ 저장됨" : "☆ 저장"}</button>
+        <button data-act="sheet" data-v="${c.id}">🗓 식사 계획</button>
+      </div>`; }).join("")}
+  </div>`;
+}
+
+/* ---------------- concept B ---------------- */
+function B0() {
+  return `${status()}${appbar()}
+  <div class="body">
+    <div class="steps"><i class="on"></i><i></i></div>
+    <div style="display:flex;justify-content:space-between;align-items:flex-start">
+      <div><small style="font-size:12px;color:var(--ink-2)">STEP 1 / 2</small><h2 style="margin-top:6px">요리에서<br>어떤 도움이 필요하세요?</h2></div>
+      ${duck(70)}
+    </div>
+    <p class="sub">선택한 취향에 맞는 전문가와 레시피를 추천해드려요.</p>
+    <div class="grid2" style="margin-top:16px">
+      ${TASTES.map((t) => `<button class="taste ${S.tastes.has(t.id) ? "on" : ""}" data-act="taste" data-v="${t.id}">
+        <div class="ico">${t.ico}</div><b>${t.name}</b><span>${t.desc}</span>
+        ${S.tastes.has(t.id) ? '<span class="check on">✓</span>' : ""}</button>`).join("")}
+    </div>
+    <div class="label">평소 요리 시간은 어느 정도인가요?</div>
+    <div class="seg">${["20분", "30분", "여유롭게"].map((t) => `<button class="${S.time === t ? "on" : ""}" data-act="time" data-v="${t}">${t}</button>`).join("")}</div>
+  </div>
+  <div class="foot"><button class="btn primary" data-act="go" data-v="1" ${S.tastes.size ? "" : "disabled"}>맞는 전문가 찾기 →</button></div>`;
+}
+const tasteChips = () => [...S.tastes].map((id) => `<span class="tag dark">✓ ${TASTES.find((t) => t.id === id).name}</span>`).join(" ");
+function B1() {
+  const match = EXPERTS.filter((e) => S.tastes.has(e.topic));
+  const other = EXPERTS.filter((e) => !S.tastes.has(e.topic));
+  return `${status()}${appbar({ title: "PLUS US" })}
+  <div class="body">
+    <h2>선택한 취향과 잘 맞아요</h2>
+    <p class="sub">당신의 요리 일상에 딱 맞는 전문가를 추천했어요.</p>
+    <div class="bubble" style="justify-content:space-between"><div><small style="font-size:12px">선택한 취향 기준</small><div style="margin-top:6px;display:flex;gap:4px;flex-wrap:wrap">${tasteChips()}</div></div>${duck(52)}</div>
+    ${match.length ? `<div class="grid2" style="margin-top:14px">${match.map((e) => `
+      <div class="mini"><div class="ph">${e.emoji}</div><div class="tx"><b>${e.name}</b><p>${e.line}</p>
+        <div style="display:flex;gap:4px;margin-bottom:10px">${e.tags.map((t) => `<span class="tag">${t}</span>`).join("")}</div>
+        <button class="btn ${S.following.has(e.id) ? "ghost" : "primary"}" style="height:38px;font-size:13px;width:100%" data-act="follow" data-v="${e.id}">${S.following.has(e.id) ? "✓ 팔로잉" : "+ 팔로우"}</button></div></div>`).join("")}</div>`
+      : `<p class="empty">선택한 취향에 맞는 전문가가 아직 없어요. 아래에서 둘러보세요.</p>`}
+    ${other.length ? `<div class="label">다른 취향도 둘러보기<a>전체보기 ›</a></div>
+      ${other.map((e) => `<button class="expert" data-act="follow" data-v="${e.id}"><div class="avatar sm">${e.emoji}</div><div><h3 style="font-size:15px">${e.name}</h3><p>${e.line}</p></div><span class="follow ${S.following.has(e.id) ? "on" : ""}">${S.following.has(e.id) ? "팔로잉" : "+ 팔로우"}</span></button>`).join("")}` : ""}
+  </div>
+  <div class="foot"><button class="btn primary" data-act="go" data-v="2">레시피 보러 가기 →</button></div>`;
+}
+function B2() {
+  const list = RECIPES.filter((r) => S.tastes.has(r.topic)).slice(0, 4);
+  return `${status()}${appbar()}
+  <div class="body">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start"><h2>오늘은 간단하게,<br>주말엔 든든하게</h2>${duck(64)}</div>
+    <p class="sub">선택한 취향에 맞춘 레시피로<br>더 맛있는 일상을 만들어보세요.</p>
+    <div class="bubble" style="padding:10px 14px;gap:6px;flex-wrap:wrap"><small style="font-size:12px;font-weight:600">선택한 취향 기준</small>${tasteChips()}</div>
+    <div class="grid2" style="margin-top:14px">${list.map((r) => `
+      <div class="mini"><div class="ph">${r.emoji}<button class="bm ${S.bookmarks.has(r.id) ? "on" : ""}" data-act="bookmark" data-v="${r.id}" aria-label="찜">♡</button></div>
+        <div class="tx"><b>${r.name}</b><p>${r.desc}</p><div class="meta"><span>◷ ${r.min}분</span><span>🍴 ${r.serve}</span></div></div></div>`).join("")}</div>
+    <div class="bubble">${duck(48)}<p>이번 주 만들어볼 요리를<br>골라주세요.</p></div>
+  </div>
+  <div class="foot">
+    <button class="btn ghost" data-act="toast" data-v="찜한 요리 ${S.bookmarks.size}개를 저장했어요">저장만 하기</button>
+    <button class="btn primary" data-act="sheet" data-v="bookmarks" ${S.bookmarks.size ? "" : "disabled"}>식사 계획 세우기 →</button>
+  </div>`;
+}
+
+/* ---------------- concept C ---------------- */
+const eventDate = new Date(2026, 9, 31);
+function C0() {
+  return `${status()}${appbar({ bell: true })}
+  <div class="body">
+    <h2>이번 주 우리 가족 ›</h2>
+    <div class="week">${weekOf(TODAY).map((d) => `<div class="day ${iso(d) === FAMILY_EVENT.date ? "on" : ""} ${iso(d) === iso(TODAY) ? "today" : ""}">${DOW[d.getDay()]}<b>${d.getDate()}</b></div>`).join("")}</div>
+    <div class="event"><div><div class="when">🗓 토요일 ${FAMILY_EVENT.time} ›</div><h3>${FAMILY_EVENT.title}</h3><div class="who">👥 가족 ${FAMILY_EVENT.people}명</div></div><div class="ph">🍱</div></div>
+    <div class="bubble" style="background:none;padding:0;margin-top:26px">${duck(84)}
+      <div style="background:var(--soft);border-radius:var(--radius);padding:14px"><small style="font-size:11px;color:var(--ink-2)">🗓 집에서 식사하는 일정이 있어요</small><p style="font-size:17px;margin-top:6px">가족 모임에 곁들일<br>반찬을 찾아볼까요?</p></div></div>
+    <div style="display:grid;gap:8px;margin-top:24px">
+      <button class="btn primary" data-act="go" data-v="1">반찬 찾아보기 ›</button>
+      <button class="btn ghost" data-act="toast" data-v="다음에 다시 알려드릴게요">괜찮아요</button>
+    </div>
+  </div>
+  <div class="tabbar">${[["⌂", "홈"], ["🍴", "레시피"], ["🗓", "일정"], ["♡", "찜한 요리"], ["👤", "마이"]].map(([i, t], k) => `<div class="${k === 0 ? "on" : ""}"><i>${i}</i>${t}</div>`).join("")}</div>`;
+}
+function C1() {
+  const banchanExperts = EXPERTS.filter((e) => e.topic === "banchan");
+  const others = EXPERTS.filter((e) => e.topic !== "banchan");
+  const list = RECIPES.filter((r) => r.course === S.cTab);
+  return `${status()}${appbar({ title: "가족 점심에 곁들일 반찬", right: "⌕ ☆" })}
+  <div style="text-align:center;flex-shrink:0"><span class="tag" style="font-size:12px;padding:5px 12px">🗓 토요일 · ${FAMILY_EVENT.people}명 · ${FAMILY_EVENT.cuisine}</span></div>
+  <div class="body">
+    <div class="tabs">${["반찬", "메인", "국·탕"].map((t) => `<button class="${S.cTab === t ? "on" : ""}" data-act="ctab" data-v="${t}">${t}</button>`).join("")}</div>
+    <div class="label">내가 팔로우한 한식 전문가 <a>›</a></div>
+    ${banchanExperts.map((e) => `<button class="expert" data-act="follow" data-v="${e.id}"><div class="avatar">${e.emoji}</div><div><h3>${e.name}</h3><div class="role" style="font-weight:500;color:var(--ink-2)">한식 전문가</div><p>집밥이 더 특별해지는 제철 한식 요리</p></div><span class="follow ${S.following.has(e.id) ? "on" : ""}" style="top:22px;transform:none">${S.following.has(e.id) ? "✓ 팔로우 중" : "+ 팔로우"}</span></button>`).join("")}
+    <div class="label">다른 전문가 보기 <a>›</a></div>
+    <div class="grid2">${others.map((e) => `<button class="expert" style="margin:0;padding:10px" data-act="follow" data-v="${e.id}"><div class="avatar sm">${e.emoji}</div><div><h3 style="font-size:14px">${e.name}</h3><p style="margin:0">${e.role}</p></div><span style="margin-left:auto;font-weight:700">${S.following.has(e.id) ? "✓" : "+"}</span></button>`).join("")}</div>
+    <div class="label">메뉴 예시 <a style="cursor:default">가족 ${FAMILY_EVENT.people}명 기준으로 추천했어요</a></div>
+    <div class="grid2">${list.map((r) => `
+      <button class="mini" data-act="pick" data-v="${r.id}"><div class="ph">${r.emoji}<span class="sel ${S.picked.has(r.id) ? "on" : ""}">${S.picked.has(r.id) ? "✓" : ""}</span></div>
+        <div class="tx"><b>${r.name}</b><p>${r.desc}</p><div class="meta"><span>◷ ${r.min}분</span><span>👥 ${r.serve}</span></div></div></button>`).join("") || '<p class="empty">아직 추천 메뉴가 없어요.</p>'}</div>
+  </div>
+  <div class="foot"><button class="btn primary" data-act="go" data-v="2" ${S.picked.size ? "" : "disabled"}>준비 계획 보기 ›</button></div>`;
+}
+function C2() {
+  const picked = RECIPES.filter((r) => S.picked.has(r.id));
+  const steps = [
+    { id: "shop", time: "금요일 18:30", name: "재료 장보기", desc: "필요한 재료를 미리 준비해요" },
+    { id: "cook", time: "토요일 10:30", name: `${picked.some((r) => r.course === "반찬") ? "반찬" : "요리"} 준비`, desc: `${picked.map((r) => r.name).join(", ")} ${picked.length}가지` },
+    { id: "meal", time: `토요일 ${FAMILY_EVENT.time}`, name: "가족 점심", desc: "부모님과 함께하는 식사" },
+  ];
+  return `${status()}${appbar({ title: "함께 준비하면 가벼워요", right: "⋮" })}
+  <div class="body">
+    <p class="sub" style="margin-top:0">가족의 일정을 요리 준비로 연결했어요.<br>미리 준비하면, 더 여유로운 가족의 식사가 될 거예요.</p>
+    <div class="event" style="margin-top:14px"><div><div class="when">🗓 토요일 ${FAMILY_EVENT.time}</div><h3>${FAMILY_EVENT.title}</h3><div class="who">👥 가족 ${FAMILY_EVENT.people}명 | ${FAMILY_EVENT.cuisine}</div></div><div class="ph">🍱</div></div>
+    <div class="label">이렇게 준비해보세요</div>
+    <div class="timeline">${steps.map((s) => `
+      <button class="tl" data-act="step" data-v="${s.id}"><span class="dot ${S.steps.has(s.id) ? "on" : ""}">${S.steps.has(s.id) ? "✓" : ""}</span><time>${s.time}</time><div><b>${s.name}</b><span>${esc(s.desc)}</span></div></button>`).join("")}</div>
+    <div class="label">누가 준비할까요?</div>
+    <div class="chips">${["나", "배우자"].map((w) => `<button class="chip ${S.who === w ? "on" : ""}" data-act="who" data-v="${w}">👤 ${w}</button>`).join("")}<button class="chip" data-act="toast" data-v="가족 초대는 준비 중이에요">+ 가족 추가</button></div>
+    <div class="row" style="margin-top:16px"><span>👥 이 일정을 가족과 공유할까요?</span><button class="toggle ${S.familyShare ? "on" : ""}" data-act="fshare" aria-label="가족과 공유"></button></div>
+    <div class="bubble" style="background:none;padding:0">${duck(56)}<p style="background:var(--soft);padding:12px 14px;border-radius:var(--radius)">가족 일정에 준비를 더할까요?</p></div>
+  </div>
+  <div class="foot">
+    <button class="btn primary" style="flex:1.6" data-act="addfamily">선택한 일정 추가 ›</button>
+    <button class="btn ghost" data-act="toast" data-v="계획만 저장했어요">계획만 저장</button>
+  </div>`;
+}
+
+/* ---------------- sheet (A·B 공통 식사 계획) ---------------- */
+function sheet() {
+  if (!S.sheet) return "";
+  const days = weekOf(TODAY);
+  return `<div class="dim" data-act="close-sheet"><div class="sheet" data-stop>
+    <div class="grab"></div>
+    <div class="sheet-head"><div><small>${esc(S.sheet.label)}에서 이어서</small><h2>이번 주 언제 준비할까요?</h2></div><button class="x" data-act="close-sheet" aria-label="닫기">✕</button></div>
+    <div class="week">${days.map((d) => `<button class="day ${S.sheet.day === iso(d) ? "on" : ""} ${iso(d) === iso(TODAY) ? "today" : ""}" data-act="day" data-v="${iso(d)}" ${d < TODAY ? "disabled style='opacity:.35'" : ""}>${iso(d) === iso(TODAY) ? "오늘" : DOW[d.getDay()]}<b style="font-size:13px">${md(d)}</b></button>`).join("")}</div>
+    <button class="opt" data-act="shopping"><span class="box ${S.sheet.shopping ? "on" : ""}">${S.sheet.shopping ? "✓" : ""}</span><div><b>장보기 일정 함께 담기</b><span>필요한 재료를 자동으로 정리해요.</span></div></button>
+    <div style="font-size:12px;color:var(--ink-2);margin:10px 0 2px">캘린더에 저장할 일정 ⓘ</div>
+    ${[["me", "나만 보기", "내 캘린더에만 저장돼요."], ["family", "가족 공유", "가족과 함께 볼 수 있어요."]].map(([k, t, d]) => `
+      <button class="opt" data-act="share" data-v="${k}"><span class="box round ${S.sheet.share === k ? "on" : ""}">${S.sheet.share === k ? "●" : ""}</span><div><b>${t}</b><span>${d}</span></div></button>`).join("")}
+    <div style="display:flex;justify-content:flex-end;align-items:center;gap:8px;margin:4px 0 12px"><span class="tag">선택한 준비만 캘린더에 담아요.</span>${duck(56)}</div>
+    <button class="btn primary" style="width:100%" data-act="add-plan" ${S.sheet.day ? "" : "disabled"}>식사 계획에 담기</button>
+  </div></div>`;
+}
+
+/* ---------------- render ---------------- */
+const SCREENS = { A: [A0, A1], B: [B0, B1, B2], C: [C0, C1, C2] };
+
+function render() {
+  const c = CONCEPTS[S.concept];
+  $("#concepts").innerHTML = Object.entries(CONCEPTS).map(([k, v]) => `<button class="concept ${S.concept === k ? "on" : ""}" data-act="concept" data-v="${k}">${v.title}</button>`).join("");
+  $("#concept-title").textContent = c.title;
+  $("#concept-desc").textContent = c.desc;
+  const screenIdx = S.concept === "A" && S.sheet ? 2 : S.screen;
+  $("#flow").innerHTML = c.screens.map((t, i) => `<button class="${screenIdx === i ? "on" : ""}" data-act="jump" data-v="${i}">${i + 1}. ${t}</button>`).join("");
+
+  const scroll = $("#screen .body")?.scrollTop || 0;
+  const fn = SCREENS[S.concept][Math.min(S.screen, SCREENS[S.concept].length - 1)];
+  $("#screen").innerHTML = fn() + sheet() + (S.toast ? `<div class="toast">${esc(S.toast)}</div>` : "");
+  const body = $("#screen .body"); if (body && S.keepScroll) body.scrollTop = scroll;
+  S.keepScroll = false;
+
+  $("#plan").innerHTML = S.plan.length
+    ? S.plan.map((p) => `<li><div>${esc(p.title)}<br><span>${esc(p.detail)}</span></div><span>${esc(p.when)}</span></li>`).join("")
+    : "";
+  if (!S.plan.length) $("#plan").outerHTML = `<ul class="plan-list" id="plan"></ul>`;
+  $("#plan").insertAdjacentHTML("afterend", "");
+  $("#plan").parentElement.querySelector(".empty")?.remove();
+  if (!S.plan.length) $("#plan").insertAdjacentHTML("afterend", `<p class="empty">아직 담은 계획이 없어요.</p>`);
+
+  $("#agent-input").textContent = JSON.stringify(agentInput(), null, 2);
+}
+
+function agentInput() {
+  const base = { today: iso(TODAY), following: [...S.following].map((id) => expert(id).name) };
+  if (S.concept === "A") return { ...base, mode: "expert_subscription", saved_collections: [...S.saved] };
+  if (S.concept === "B") return { ...base, mode: "taste_discovery", tastes: [...S.tastes].map((id) => TASTES.find((t) => t.id === id).name), cooking_time: S.time, bookmarked: [...S.bookmarks] };
+  return { ...base, mode: "family_schedule", event: FAMILY_EVENT, course: S.cTab, picked_recipes: [...S.picked], preparer: S.who, share_with_family: S.familyShare };
+}
+
+let toastTimer;
+function toast(msg) {
+  S.toast = msg; clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { S.toast = null; S.keepScroll = true; render(); }, 1800);
+}
+const toggle = (set, v) => (set.has(v) ? set.delete(v) : set.add(v));
+
+document.addEventListener("click", (ev) => {
+  const el = ev.target.closest("[data-act]");
+  if (!el) return;
+  if (el.dataset.act === "close-sheet" && ev.target.closest("[data-stop]") && !ev.target.closest(".x")) return;
+  const v = el.dataset.v;
+  S.keepScroll = true;
+  switch (el.dataset.act) {
+    case "concept": S.concept = v; S.screen = 0; S.sheet = null; S.keepScroll = false; break;
+    case "jump":
+      S.keepScroll = false;
+      if (S.concept === "A" && v === "2") { S.screen = 1; openSheet(COLLECTIONS.find((c) => S.following.has(c.expert)) || COLLECTIONS[0]); }
+      else { S.screen = +v; S.sheet = null; }
+      break;
+    case "go": S.screen = +v; S.keepScroll = false; break;
+    case "back": S.screen = Math.max(0, S.screen - 1); S.keepScroll = false; break;
+    case "filter": S.filter = v; break;
+    case "follow": toggle(S.following, v); break;
+    case "save": toggle(S.saved, v); break;
+    case "taste": toggle(S.tastes, v); break;
+    case "time": S.time = v; break;
+    case "bookmark": toggle(S.bookmarks, v); break;
+    case "ctab": S.cTab = v; break;
+    case "pick": toggle(S.picked, v); break;
+    case "step": toggle(S.steps, v); break;
+    case "who": S.who = v; break;
+    case "fshare": S.familyShare = !S.familyShare; break;
+    case "toast": toast(v); break;
+    case "sheet":
+      if (v === "bookmarks") openSheet({ title: RECIPES.filter((r) => S.bookmarks.has(r.id)).map((r) => r.name).join(", "), label: "찜한 요리" });
+      else openSheet(COLLECTIONS.find((c) => c.id === v));
+      break;
+    case "close-sheet": S.sheet = null; break;
+    case "day": S.sheet.day = v; break;
+    case "shopping": S.sheet.shopping = !S.sheet.shopping; break;
+    case "share": S.sheet.share = v; break;
+    case "add-plan": {
+      const d = new Date(S.sheet.day);
+      S.plan.push({ title: S.sheet.title.replace(/\n/g, " "), detail: `${S.sheet.shopping ? "장보기 포함 · " : ""}${S.sheet.share === "family" ? "가족 공유" : "나만 보기"}`, when: `${md(d)} (${DOW[d.getDay()]})` });
+      S.sheet = null; toast("식사 계획에 담았어요");
+      break;
+    }
+    case "addfamily": {
+      const names = RECIPES.filter((r) => S.picked.has(r.id)).map((r) => r.name).join(", ");
+      S.plan.push({ title: `${FAMILY_EVENT.title} · ${names}`, detail: `${S.who} 준비 · ${S.familyShare ? "가족 공유" : "나만 보기"}${S.steps.has("shop") ? " · 장보기 포함" : ""}`, when: "10.31 (토)" });
+      toast("가족 일정에 추가했어요");
+      break;
+    }
+  }
+  render();
+});
+
+function openSheet(item) {
+  const e = item.expert ? expert(item.expert) : null;
+  S.sheet = { title: item.title, label: item.label || `저장한 ${e ? e.role : ""} 콘텐츠`, day: null, shopping: true, share: "me" };
+}
+
+render();
+</script>
+</body>
+</html>
