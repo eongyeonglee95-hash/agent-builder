@@ -289,3 +289,11 @@
 
 /* 연금은퇴 실제 보기: 데스크톱 상단바('은퇴 계획' · 내 자산/예시 보기)는 빈 줄이라 숨김. 모바일은 메뉴 버튼이 있어 유지 */
 @media(min-width:901px){.tower-shell>.topbar{display:none}.tower-shell .tower-workspace{padding-top:30px}}
+
+/* 2026-11-02 순서 뒤집기: 숫자(탑·요약) → 층 상세 → 받는 시간표. 소득 공백 한 줄은 탑 위에 */
+.tower-bridge{display:flex;align-items:center;gap:10px;margin:0 0 14px;padding:10px 14px;border:1px solid color-mix(in srgb,var(--cls-gold) 45%,var(--border));background:color-mix(in srgb,var(--cls-gold) 10%,var(--background));border-radius:12px;font-size:var(--text-sm);line-height:1.5}
+.tower-bridge>svg{color:var(--cls-gold);flex-shrink:0}
+.tower-bridge p{flex:1;min-width:0;margin:0}.tower-bridge b{font-weight:700}
+.tower-bridge button{border:0;background:none;color:var(--grey-700);font-size:var(--text-xs);text-decoration:underline;text-underline-offset:3px;white-space:nowrap;min-height:32px;padding:0 4px}
+.tower-flow{margin:16px 0 0}
+@media(max-width:600px){.tower-bridge{flex-wrap:wrap;padding:10px 12px}.tower-bridge button{margin-left:26px}}

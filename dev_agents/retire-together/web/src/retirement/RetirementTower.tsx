@@ -84,25 +84,19 @@ export function RetirementTower({ data, error, save, reload, owner, onOwnerChang
   const capitalLabel = (id: number) => id === 2 && layerCapital(2) == null && dbSaved > 0 ? '현재 DB 퇴직금' : '현재 계좌 적립금'
   const capitalAmount = (id: number) => id === 2 && layerCapital(2) == null && dbSaved > 0 ? dbSaved : layerCapital(id)
   const periodText = (person: Scope, layer: number) => [...new Set(streams(data, person, layer).map(s => s.layer === 1 ? `${s.start_age}세부터 종신` : s.payout_years == null ? '수령 기간 확인 필요' : `${s.start_age}세부터 ${s.end_age_exclusive}세 직전까지 · ${s.payout_years}년 수령`))].join(' / ')
+  // 은퇴 첫해부터 국민연금 개시 전까지의 소득 공백. 서버가 계산한 그 해 월 합계(오늘 돈)만 읽는다.
+  const retireYear = data.projection?.summary.retire_year ?? null
+  const npStarts = streams(data, owner, 1).map(s => s.start_year)
+  const npStart = npStarts.length ? Math.min(...npStarts) : null
+  const bridgeRow = retireYear != null ? data.projection?.rows.find(r => r.year === retireYear) : undefined
+  const bridge = ready && retireYear != null && npStart != null && npStart > retireYear && bridgeRow ? { from: retireYear, to: npStart - 1, years: npStart - retireYear, amount: amount(bridgeRow, owner) ?? 0 } : null
   return <div className={`tower-workspace${embedded ? ' tower-embedded' : ''}`}>
-    <div className="tower-intro"><h1>우리의 연금, 차곡차곡.</h1>
+    <div className="tower-intro"><h1>노후 주머니</h1>
       <div className="tower-intro-actions"><div className="tower-toolbar"><button onClick={() => setProfileOpen(true)}>내 정보</button><button onClick={() => hasPerson ? setEditor('timing') : setProfileOpen(true)}>은퇴·수령 시점</button><button onClick={() => setEditor('assumptions')}><Settings2 size={14}/>계산 가정</button></div>
       <div className="tower-scope" role="group" aria-label="연금 조회 범위">{([['together', '우리 함께'], ['me', '나'], ['partner', '배우자']] as const).map(([key, label]) => <button key={key} aria-pressed={owner === key} onClick={() => onOwnerChange(key)}>{label}</button>)}</div></div>
     </div>
     {(error || data.error || missing.length > 0) && <div className="tower-alert" role="alert"><Info size={18}/><div><strong>{error || data.error || `먼저 확인해 주세요: ${missing.join(', ')}`}</strong>{partial && data.projection && <p>입력이 있는 사람만 계산했습니다. 가족 정보를 채우기 전에는 생활비 충당 여부를 표시하지 않아요.</p>}</div><Button variant="outline" size="sm" onClick={error ? reload : data.error ? () => setEditor('timing') : () => setProfileOpen(true)}>{error ? '새로고침' : data.error ? '수령 시점 수정' : '내 정보 입력'}</Button></div>}
-    <section className="tower-flow" id={`${uid}-flow`} aria-labelledby={`${uid}-flow-title`}>
-      <div className="tower-section-heading"><div><h2 id={`${uid}-flow-title`}>탑은 하나, 받는 시간은 다르게.</h2><p>연도를 움직여 두 사람의 월 연금을 살펴보세요 · 국민연금 막대 끝은 계산 범위, 수령 종료가 아니에요</p></div>
-        {row && hasInputs && !error && <div className="tower-milestones">{milestones.map(y => <button key={y} aria-pressed={year === y} onClick={() => setChosenYear(y)}>{y}년 · {y === defaultYear ? '은퇴 첫해' : y === lastYear ? '마지막 해' : [...new Set(scopedStreams.filter(s => s.start_year === y).map(s => s.label.replace(/\(.+\)/, '')))].join('·') + ' 시작'}</button>)}</div>}</div>
-      {row && hasInputs && !error ? <div className="tower-timeline"><div className="tower-year-control"><label htmlFor={`${uid}-year`}>{ageLabel}</label><div className="tower-year-track"><span>{firstYear}</span><input id={`${uid}-year`} aria-label="살펴보는 연도" type="range" min={firstYear} max={lastYear} step={1} value={year} disabled={firstYear === lastYear} aria-valuetext={`${year}년, ${ageLabel}${hidden ? '' : `, 월 ${monthly(total)}만 원`}`} onChange={e => setChosenYear(Number(e.target.value))}/><span>{lastYear}</span></div><strong>{year}년</strong></div>
-        <div className="tower-time-rows">{LAYERS.map(l => <div className="tower-time-row" key={l.id}><button onClick={() => setSelected(l.id)}><i style={{ background: `var(--tower-layer-${l.id})` }}/>{l.name}</button><div className="tower-time-lanes">{l.id === 4 ? <div className="tower-band-empty">수령 계산 미연결</div> : activePeople.map(([who, label]) => {
-          const personStreams = streams(data, who, l.id)
-          if (!personStreams.length) return <div className="tower-band-empty" key={who}>{label} · 준비 정보 없음</div>
-          const start = Math.min(...personStreams.map(s => s.start_year)), end = data.base_year + data.assumptions.end_age - data.used[who]!.age
-          const first = amount(data.projection?.rows.find(r => r.year === start), who, l.id)
-          return <div className="tower-band-track" key={who}><span className="tower-band" style={{ left: `${scale(start)}%`, width: `${Math.max(0, scale(end) - scale(start))}%`, background: `var(--tower-layer-${l.id})` }} title={`${label} ${l.name}: ${personStreams.map(s => `${s.label} ${s.start_year}년부터`).join(', ')}${l.id === 1 ? ' (끝은 계산 범위)' : ''}`}><span>{label}</span><small>{start}년부터{first ? ` ${monthly(first)}만` : ''}</small></span></div>
-        })}<i className="tower-year-cursor" aria-hidden="true" style={{ left: `${scale(year)}%` }}/></div></div>)}</div>
-      </div> : <div className="tower-flow-empty"><Sprout size={18}/><p>{data.error ? '수령 시점의 입력 오류를 수정하면 시간표를 볼 수 있어요.' : '가족 정보와 연금 계획이 준비되면 수령 시간표가 나타나요.'}</p><Button variant="outline" size="sm" onClick={() => !hasPerson ? setProfileOpen(true) : setEditor(data.error ? 'timing' : 1)}>{!hasPerson ? '내 정보 입력' : '연금 정보 입력'}</Button></div>}
-    </section>
+    {bridge && <div className="tower-bridge" role="note" data-testid="pension-bridge"><Info size={16}/><p>{bridge.years === 1 ? `${bridge.from}년` : `${bridge.from}~${bridge.to}년`}, 국민연금을 받기 전 <b>{bridge.years}년</b>은 {bridge.amount > 0 ? <>월 <b>{monthly(bridge.amount)}만 원</b>뿐이에요.</> : <><b>월 연금이 없어요.</b></>}{need != null && bridge.amount > 0 && !hidden ? ` 생활비 ${monthly(need)}만 원의 ${percent(bridge.amount / need * 100)}%예요.` : ''}</p>{year !== bridge.from && <button onClick={() => setChosenYear(bridge.from)}>{bridge.from}년 보기</button>}</div>}
     <section className="tower-hero" aria-label="우리집 4층 연금탑">
       <div className="tower-tower-card"><div className="tower-tower-heading"><div><h2>쌓인 돈이, 매달의 연금으로.</h2><span>{row ? `${year}년 월 연금` : scopeLabel} · 세전 · 오늘의 돈</span></div>
         <div className="tower-capital-total"><Coins size={16} className="tower-capital-icon"/><small>지금 모인 돈 · 2–4층</small><strong data-testid="pension-capital" data-won={hidden ? undefined : saved ?? undefined}>{saved == null ? hidden ? '••••••' : '등록 내역 없음' : `${monthly(saved)}만 원`}</strong>{dbSaved > 0 && <span className="tower-db-separate">DB 퇴직금 <b>{monthly(dbSaved)}만 원</b> 별도</span>}</div></div>
@@ -138,6 +132,19 @@ export function RetirementTower({ data, error, save, reload, owner, onOwnerChang
       <Button variant="outline" onClick={() => selected === 4 ? onAssets() : !hasPerson ? setProfileOpen(true) : setEditor(selected as Editor)} aria-label={selected === 4 ? '추가 자금 자산 보기' : `${currentLayer.name} 입력하기`}><Settings2 size={14}/>{selected === 4 ? '자산에서 확인' : '입력·수정하기'}</Button>
       {selected === 4 && <p className="tower-detail-note"><Info size={15}/>추가연금은 별도 연금 제도가 아닌 추가 준비 자금이에요. 현재는 등록한 금액만 보여주며, 월 수령액으로 전환하는 계산은 아직 연결되지 않았어요.</p>}
       {selected !== 4 && currentStatus === '준비 정보 없음' && <p className="tower-detail-note">정보가 없다는 뜻이며, 실제 받을 연금이 0원이라는 뜻은 아니에요.</p>}
+    </section>
+    <section className="tower-flow" id={`${uid}-flow`} aria-labelledby={`${uid}-flow-title`}>
+      <div className="tower-section-heading"><div><h2 id={`${uid}-flow-title`}>받는 시간표</h2><p>연도를 움직이면 위 숫자가 그 해 기준으로 바뀌어요 · 국민연금 막대 끝은 계산 범위이지 수령 종료가 아니에요</p></div>
+        {row && hasInputs && !error && <div className="tower-milestones">{milestones.map(y => <button key={y} aria-pressed={year === y} onClick={() => setChosenYear(y)}>{y}년 · {y === defaultYear ? '은퇴 첫해' : y === lastYear ? '마지막 해' : [...new Set(scopedStreams.filter(s => s.start_year === y).map(s => s.label.replace(/\(.+\)/, '')))].join('·') + ' 시작'}</button>)}</div>}</div>
+      {row && hasInputs && !error ? <div className="tower-timeline"><div className="tower-year-control"><label htmlFor={`${uid}-year`}>{ageLabel}</label><div className="tower-year-track"><span>{firstYear}</span><input id={`${uid}-year`} aria-label="살펴보는 연도" type="range" min={firstYear} max={lastYear} step={1} value={year} disabled={firstYear === lastYear} aria-valuetext={`${year}년, ${ageLabel}${hidden ? '' : `, 월 ${monthly(total)}만 원`}`} onChange={e => setChosenYear(Number(e.target.value))}/><span>{lastYear}</span></div><strong>{year}년</strong></div>
+        <div className="tower-time-rows">{LAYERS.map(l => <div className="tower-time-row" key={l.id}><button onClick={() => setSelected(l.id)}><i style={{ background: `var(--tower-layer-${l.id})` }}/>{l.name}</button><div className="tower-time-lanes">{l.id === 4 ? <div className="tower-band-empty">수령 계산 미연결</div> : activePeople.map(([who, label]) => {
+          const personStreams = streams(data, who, l.id)
+          if (!personStreams.length) return <div className="tower-band-empty" key={who}>{label} · 준비 정보 없음</div>
+          const start = Math.min(...personStreams.map(s => s.start_year)), end = data.base_year + data.assumptions.end_age - data.used[who]!.age
+          const first = amount(data.projection?.rows.find(r => r.year === start), who, l.id)
+          return <div className="tower-band-track" key={who}><span className="tower-band" style={{ left: `${scale(start)}%`, width: `${Math.max(0, scale(end) - scale(start))}%`, background: `var(--tower-layer-${l.id})` }} title={`${label} ${l.name}: ${personStreams.map(s => `${s.label} ${s.start_year}년부터`).join(', ')}${l.id === 1 ? ' (끝은 계산 범위)' : ''}`}><span>{label}</span><small>{start}년부터{first ? ` ${monthly(first)}만` : ''}</small></span></div>
+        })}<i className="tower-year-cursor" aria-hidden="true" style={{ left: `${scale(year)}%` }}/></div></div>)}</div>
+      </div> : <div className="tower-flow-empty"><Sprout size={18}/><p>{data.error ? '수령 시점의 입력 오류를 수정하면 시간표를 볼 수 있어요.' : '가족 정보와 연금 계획이 준비되면 수령 시간표가 나타나요.'}</p><Button variant="outline" size="sm" onClick={() => !hasPerson ? setProfileOpen(true) : setEditor(data.error ? 'timing' : 1)}>{!hasPerson ? '내 정보 입력' : '연금 정보 입력'}</Button></div>}
     </section>
     <SpendingGoal data={data} hidden={hidden} error={error} onGoal={() => setEditor('goal')} onAssumptions={() => setEditor('assumptions')} onTiming={() => { if (data.used.me) { setEditorScope('me'); setEditor('timing') } else setProfileOpen(true) }}/>
     <div className="tower-assumptions-summary"><div><strong>이렇게 계산했어요</strong><button onClick={() => setEditor('assumptions')}>가정 수정<Settings2 size={13}/></button></div><p>연 수익률 {(data.assumptions.return_rate * 100).toFixed(1)}% · 물가 {(data.assumptions.inflation * 100).toFixed(1)}%</p>
