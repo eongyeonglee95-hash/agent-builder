@@ -14,12 +14,12 @@ import re
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, HTTPException
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 
 from backend import registration, storage
 from backend.storage import InputModel
 from tools.assets import load_accounts
-from tools.pension import (LAYER_LABELS, Assumptions, Person, db_estimate, load_pension_rules, national_options, national_start_age, project, spending_target, survivor_check)
+from tools.pension import (LAYER_LABELS, Assumptions, Person, db_estimate, load_pension_rules, national_options, national_start_age, project, spending_budget_totals, spending_target, survivor_check)
 
 router = APIRouter(prefix="/api/retirement", tags=["retirement"])
 
@@ -50,10 +50,33 @@ class PersonPlan(InputModel):
         return value
 
 
+class SpendingBudget(InputModel):
+    meal_cost: Won = 0
+    people: Annotated[int, Field(strict=True, ge=1, le=10)] = 2
+    meals_per_day: Annotated[int, Field(strict=True, ge=1, le=10)] = 3
+    days_per_month: Annotated[int, Field(strict=True, ge=1, le=31)] = 30
+    allowance_monthly: Won = 0
+    living_monthly: Won = 0
+    insurance_monthly: Won = 0
+    housing_tax_annual: Won = 0
+    medical_monthly: Won = 0
+    health_insurance_monthly: Won = 0
+    irregular_monthly: Won = 0
+    other_monthly: Won = 0
+
+    @model_validator(mode="after")
+    def check_total(self):
+        spending_budget_totals(self.model_dump())
+        return self
+
+
 class PlanInput(InputModel):
     me: PersonPlan = PersonPlan()
     partner: PersonPlan = PersonPlan()
     monthly_need: Won | None = None         # 은퇴 후 부부 월 생활비 (오늘 돈)
+    spending_budget: SpendingBudget | None = None
+    # An explicit action, not a saved mode: manual goal edits keep their amount.
+    apply_spending_budget: Annotated[bool, Field(strict=True, exclude=True)] = False
     return_rate: Annotated[float, Field(ge=0, le=0.15)] | None = None
     inflation: Annotated[float, Field(ge=0, le=0.1)] | None = None
     version: Annotated[int, Field(strict=True, ge=0)]
@@ -166,6 +189,7 @@ def build(plan: dict, family: dict | None, bal: dict[str, dict[int, int]], base_
         used[key] = {"age": age, "retire_age": retire, "national_start_age": p.national_start_age,
                      "private_start_age": p.private_start_age, "balances": {str(k): v for k, v in b.items()}, "db": db}
     result = {"plan": plan, "used": used, "missing": missing, "assumptions": a.__dict__, "base_year": base_year,
+              "spending_budget_template": SpendingBudget(**rules.get("spending_budget_template", {})).model_dump(),
               "as_of": as_of.isoformat(), "db_estimates": db_estimates,
               "layer_labels": LAYER_LABELS, "projection": None, "error": None, "spending_target": None,
               "capital": {key: {"balances": {str(k): v for k, v in bal.get(key, {}).items() if k in (2, 3, 4)},
@@ -220,6 +244,10 @@ def retirement_api():
 
 @router.put("/plan")
 def save_plan_api(data: PlanInput):
+    if data.apply_spending_budget:
+        if data.spending_budget is None:
+            raise HTTPException(422, "적용할 생활비 항목이 없어요.")
+        data.monthly_need = spending_budget_totals(data.spending_budget.model_dump())["monthly_total"]
     for label, person in (("나", data.me), ("배우자", data.partner)):
         if person.db_method == "tenure" and (not person.db_start_date or not person.db_monthly_wage):
             raise HTTPException(422, f"{label}: 입사일로 계산하려면 입사일과 세전 월 평균급여를 입력해 주세요.")

@@ -10,7 +10,8 @@ import type { Cell } from './ReadGrid'
 // 적립금은 '자산' 시트의 노후 주머니를 그대로 쓴다 — 여기서 다시 받지 않는다.
 
 export type PersonPlan = { retire_age: number | null; national_monthly: number; national_start_age: number | null; private_start_age: number | null; irp_annual: number; savings_annual: number; db_lump: number; db_monthly_wage: number; db_accrued: number; db_method: 'reported' | 'tenure'; db_start_date: string | null }
-export type Plan = { me: PersonPlan; partner: PersonPlan; monthly_need: number | null; return_rate: number | null; inflation: number | null; version: number }
+export type SpendingBudget = { meal_cost: number; people: number; meals_per_day: number; days_per_month: number; allowance_monthly: number; living_monthly: number; insurance_monthly: number; housing_tax_annual: number; medical_monthly: number; health_insurance_monthly: number; irregular_monthly: number; other_monthly: number }
+export type Plan = { me: PersonPlan; partner: PersonPlan; monthly_need: number | null; spending_budget?: SpendingBudget | null; apply_spending_budget?: boolean; return_rate: number | null; inflation: number | null; version: number }
 export type ServicePeriod = { years: number; months: number; days: number }
 export type DbEstimate = { method: 'reported' | 'tenure'; as_of: string; tenure: ServicePeriod | null; missing: string[]; accrued_now: number | null; lump_at_retire: number | null; eligible_now?: boolean | null; timeline: { year: number; date: string; tenure: ServicePeriod | null; amount: number; eligible: boolean | null }[] }
 type Db = { years_left: number; lump_at_retire: number }
@@ -19,6 +20,7 @@ export type Row = { year: number; ages: Record<string, number>; retired: boolean
 export type NationalOption = { shift: number; start_age: number; start_year: number; factor: number; monthly_real: number; gap_years: number; breakeven_age: number | null; selected: boolean }
 export type SurvivorCheck = { survivor: string; deceased: string; own_monthly: number; deceased_monthly: number; tiers: Record<string, { survivor_only: number; own_plus: number; larger: 'own_plus' | 'survivor_only' }> }
 export type Result = { plan: Plan; used: Partial<Record<'me' | 'partner', Used>>; missing: string[]; error: string | null; line: string; base_year: number
+  spending_budget_template: SpendingBudget
   as_of: string; db_estimates: Record<'me' | 'partner', DbEstimate>
   capital: Record<'me' | 'partner', { balances: Record<string, number>; db_accrued: number }>
   // 국민연금 조기·연기 선택지와 유족연금 대충 보기 (서버 계산, 추천 없음)

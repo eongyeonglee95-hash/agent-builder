@@ -42,6 +42,50 @@ def _family(c, partner=True):
     assert c.put("/api/family", json=body).status_code == 200
 
 
+def test_spending_budget_apply_recomputes_goal_and_keeps_breakdown(client):
+    _family(client)
+    initial = client.get("/api/retirement").json()
+    assert initial["plan"]["spending_budget"] is None
+    assert initial["plan"]["monthly_need"] is None
+    budget = initial["spending_budget_template"]
+    response = client.put("/api/retirement/plan", json={**initial["plan"], "spending_budget": budget,
+                          "monthly_need": 1, "apply_spending_budget": True})
+    assert response.status_code == 200, response.text
+    saved = response.json()
+    assert saved["plan"]["monthly_need"] == 7_500_000  # never trust the client's total
+    assert saved["plan"]["spending_budget"] == budget
+    assert "apply_spending_budget" not in saved["plan"]
+    assert client.get("/api/retirement").json()["plan"] == saved["plan"]
+    assert saved["spending_target"]["monthly_today"] == 7_500_000
+    assert all(row["need_real"] == 7_500_000 for row in saved["projection"]["rows"] if row["retired"])
+    # A later direct goal edit must not be silently replaced by the stored breakdown.
+    manual = client.put("/api/retirement/plan", json={**saved["plan"], "monthly_need": 5_000_000}).json()
+    assert manual["plan"]["monthly_need"] == 5_000_000
+    assert manual["plan"]["spending_budget"] == budget
+    conflict = client.put("/api/retirement/plan", json={**saved["plan"], "apply_spending_budget": True})
+    assert conflict.status_code == 409
+    assert client.get("/api/retirement").json()["plan"] == manual["plan"]
+
+
+@pytest.mark.parametrize("change", [{"meal_cost": -1}, {"people": 0}, {"people": True}, {"days_per_month": 32}, {"medical_monthly": "1000"}, {"meal_cost": 10**12}])
+def test_spending_budget_invalid_values_never_save(client, change):
+    initial = client.get("/api/retirement").json()
+    response = client.put("/api/retirement/plan", json={**initial["plan"], "apply_spending_budget": True,
+                          "spending_budget": {**initial["spending_budget_template"], **change}})
+    assert response.status_code == 422
+    assert client.get("/api/retirement").json()["plan"] == initial["plan"]
+
+
+def test_spending_budget_can_be_set_before_family_and_requires_items(client):
+    initial = client.get("/api/retirement").json()
+    assert client.put("/api/retirement/plan", json={**initial["plan"], "apply_spending_budget": True}).status_code == 422
+    response = client.put("/api/retirement/plan", json={**initial["plan"], "apply_spending_budget": True,
+                          "spending_budget": initial["spending_budget_template"]})
+    assert response.status_code == 200
+    assert response.json()["plan"]["monthly_need"] == 7_500_000
+    assert response.json()["projection"] is None
+
+
 def test_missing_inputs_are_named_without_calculation(client):
     d = client.get("/api/retirement").json()
     assert d["projection"] is None and "나 나이" in d["line"]

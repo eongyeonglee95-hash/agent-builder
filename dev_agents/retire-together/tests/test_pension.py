@@ -3,9 +3,27 @@ import pytest
 from datetime import date
 
 from tools.pension import (Assumptions, Person, annuity_monthly, db_at_retire, future_value, load_pension_rules,
-                           monthly_cost_at, national_start_age, person_streams, project, spending_target, db_estimate, service_period, national_options, survivor_check)
+                           monthly_cost_at, national_start_age, person_streams, project, spending_target, db_estimate, service_period, national_options, survivor_check, spending_budget_totals)
 
 A = Assumptions(return_rate=0.05, inflation=0.02, end_age=90, start_age_min=55, min_payout_years=10)
+
+
+def test_spending_budget_monthly_units_and_rounding():
+    budget = load_pension_rules()["spending_budget_template"]
+    assert spending_budget_totals(budget) == {"food_monthly": 2_700_000, "housing_tax_monthly": 700_000, "monthly_total": 7_500_000}
+    changed = {**budget, "meal_cost": 12000, "days_per_month": 31, "housing_tax_annual": 4_000_002}
+    totals = spending_budget_totals(changed)
+    assert totals["food_monthly"] == 2_232_000
+    assert totals["housing_tax_monthly"] == 333_334  # half a won rounds up
+    assert totals["monthly_total"] == 6_665_334
+    zeros = {key: value if key in ("people", "meals_per_day", "days_per_month") else 0 for key, value in budget.items()}
+    assert spending_budget_totals(zeros)["monthly_total"] == 0
+
+
+@pytest.mark.parametrize("change", [{"meal_cost": -1}, {"people": 0}, {"days_per_month": 32}, {"people": True}, {"medical_monthly": 1.5}, {"meal_cost": 10**12}])
+def test_spending_budget_rejects_invalid_inputs(change):
+    with pytest.raises(ValueError):
+        spending_budget_totals({**load_pension_rules()["spending_budget_template"], **change})
 
 
 def test_rules_file_matches_confirmed_defaults():
