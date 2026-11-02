@@ -16,6 +16,7 @@
 .tower-income-date>span {font-size:var(--text-xs);color:var(--muted-foreground)}
 .tower-income-date>strong {font-size:var(--text-2xl);font-weight:650;letter-spacing:-.5px}
 .tower-income-date>strong small {font-size:var(--text-sm);margin-left:3px;font-weight:500}
+.tower-income-date-ages {display:flex;justify-content:flex-end;gap:4px;flex-wrap:wrap}.tower-income-date-ages>span{white-space:nowrap}.tower-income-date-ages>span+span:before{content:'·';margin-right:4px}
 .tower-income-plot {position:relative;min-width:0}
 .tower-income-svg {display:block;width:100%;overflow:visible;touch-action:pan-y;cursor:crosshair;user-select:none}
 .tower-income-axis {font-size:var(--text-xs);fill:var(--muted-foreground)}
@@ -68,6 +69,6 @@
 @media(max-width:900px){.tower-income-footer>span{display:none}}
 @media(max-width:600px){
   .tower-income-chart{padding:18px 14px 12px;border-radius:16px}.tower-income-heading{gap:10px;margin-bottom:22px}.tower-income-eyebrow{display:grid;gap:3px}.tower-income-total{gap:8px}.tower-income-total>strong{font-size:var(--text-2xl)}.tower-income-total>strong small{font-size:var(--text-xs);margin-left:4px}.tower-income-gap{font-size:var(--text-xs);line-height:1.6;max-width:190px}.tower-income-gap i{display:none}.tower-income-date{max-width:105px}.tower-income-date>strong{font-size:var(--text-xl)}.tower-income-date>span:last-child{line-height:1.7}
-  .tower-income-navigation{gap:10px;padding-bottom:14px}.tower-income-navigation>button{width:28px;height:28px}.tower-income-drag-hint{display:none}.tower-income-legend{gap:0;padding-top:10px}.tower-income-legend-item{padding:7px 5px;gap:5px}.tower-income-legend-title{font-size:var(--text-xs);gap:4px}.tower-income-legend-title svg{display:none}.tower-income-legend-item>strong{font-size:var(--text-base)}.tower-income-legend-item>strong small{display:block;margin:1px 0 0}.tower-income-legend-status{line-height:1.5}.tower-income-footer{padding:10px 5px 0}.tower-income-hidden{flex-direction:column;text-align:center;padding:15px}
+  .tower-income-date-ages{display:grid;gap:0}.tower-income-date-ages>span+span:before{content:none}.tower-income-navigation{gap:8px;padding-bottom:14px}.tower-income-navigation>button{width:44px;height:44px}.tower-income-drag-hint{display:none}.tower-income-legend{gap:0;padding-top:10px}.tower-income-legend-item{padding:7px 5px;gap:5px}.tower-income-legend-title{font-size:var(--text-xs);gap:4px}.tower-income-legend-title svg{display:none}.tower-income-legend-item>strong{font-size:var(--text-base)}.tower-income-legend-status{line-height:1.5}.tower-income-footer{padding:10px 5px 0}.tower-income-hidden{flex-direction:column;text-align:center;padding:15px}
 }
 @media(prefers-reduced-motion:reduce){.tower-income-reveal{animation:none}.tower-income-layer,.tower-income-legend-item{transition:none}}

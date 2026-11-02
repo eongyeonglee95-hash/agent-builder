@@ -23,6 +23,12 @@ export function IncomeChart({ rows, scope, year, onYearChange, onLayerSelect, hi
     return () => observer.disconnect()
   }, [])
   useEffect(() => { setHoverYear(null); setFocusedLayer(null) }, [scope, hidden, width])
+  useEffect(() => {
+    if (hoverYear == null) return
+    const dismiss = (event: KeyboardEvent) => { if (event.key === 'Escape') setHoverYear(null) }
+    window.addEventListener('keydown', dismiss)
+    return () => window.removeEventListener('keydown', dismiss)
+  }, [hoverYear])
   const selected = rows.find(row => row.year === year) ?? rows[0]
   const hovered = rows.find(row => row.year === hoverYear)
   const cursor = hovered ?? selected
@@ -78,7 +84,7 @@ export function IncomeChart({ rows, scope, year, onYearChange, onLayerSelect, hi
         <strong data-testid="income-chart-total" data-won={hidden ? undefined : selectedTotal}>{hidden ? '••••••' : <>{man(selectedTotal)}<small>만 원 / 월</small></>}</strong>
         {gap != null && !hidden && <span className="tower-income-gap" data-covered={gap >= 0}><i/>{gap < 0 ? `목표 생활비까지 월 ${man(-gap)}만 원 더 필요해요` : gap === 0 ? '목표 생활비를 채웠어요' : `목표 생활비보다 월 ${man(gap)}만 원 여유 있어요`}</span>}
       </div>
-      <div className="tower-income-date"><span>선택한 시점</span><strong>{selected.year}<small>년</small></strong><span>{ageText(selected)}</span></div>
+      <div className="tower-income-date"><span>선택한 시점</span><strong>{selected.year}<small>년</small></strong><span className="tower-income-date-ages">{ageText(selected).split(' · ').map(age => <span key={age}>{age}</span>)}</span></div>
     </div>
     {hidden ? <div className="tower-income-hidden"><LockKeyhole size={22}/><span>금액을 표시하면 연금 그래프를 볼 수 있어요.</span></div> : <div className="tower-income-plot">
       <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-labelledby={`${uid}-title ${uid}-desc`}
@@ -103,7 +109,7 @@ export function IncomeChart({ rows, scope, year, onYearChange, onLayerSelect, hi
             {heights.some(values => values[layer.id] > 0) && <path d={lineFor(layer.id)} stroke={color(layer.id)} className="tower-income-edge"/>}
           </g>)}
         </g>
-        {nationalStart != null && nationalStart > first && width >= 500 && <g className="tower-income-start">
+        {nationalStart != null && nationalStart > first && x(nationalStart) - left >= 115 && width >= 500 && <g className="tower-income-start">
           <line x1={x(nationalStart)} x2={x(nationalStart)} y1={top} y2={bottom}/>
           <text x={x(nationalStart)} y={14} textAnchor="middle">{nationalStart} 국민연금 시작</text>
         </g>}
@@ -144,7 +150,7 @@ export function IncomeChart({ rows, scope, year, onYearChange, onLayerSelect, hi
         className="tower-income-legend-item" style={{ '--income-color': color(layer.id) } as CSSProperties}>
         <span className="tower-income-legend-title"><i/>{layer.name}<ChevronRight size={13}/></span>
         <strong data-testid={`income-chart-layer-${layer.id}`} data-won={hidden ? undefined : value}>{hidden ? '••••••' : <>{man(value)}<small>만 원</small></>}</strong>
-        <span className="tower-income-legend-status">{start == null ? '준비 정보 없음' : selected.year < start ? `${start}년부터 수령` : value > 0 ? '선택한 해의 월 수령액' : '수령 기간 종료'}</span>
+        <span className="tower-income-legend-status">{start == null ? '준비 정보 없음' : selected.year < start ? `${start}년부터 수령` : value > 0 ? '수령 중' : '수령 기간 종료'}</span>
       </button>
     })}</div>
     <div className="tower-income-footer"><p>국민연금은 종신 · 그래프 끝은 계산 범위 · 4층 추가연금 제외</p><span><MousePointer2 size={12}/>색을 짚으면 해당 연금이 강조돼요</span></div>
