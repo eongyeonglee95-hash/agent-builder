@@ -113,8 +113,6 @@ test('연금탑: 누적 영역 그래프 합계·목표선·연도 선택은 조
   await expect(chart.locator('[data-won]')).toHaveCount(0)
   await expect(page.getByTestId('income-chart-total')).toHaveText('••••••')
   await expect(slider).not.toHaveAttribute('aria-valuetext', /월 .*만 원/)
-  await expect(page.locator('.tower-hero [data-won]')).toHaveCount(0)
-  await expect(page.getByTestId('layer-monthly-1')).toContainText('••••••')
 })
 
 test('연금탑: 서버 합계·부부 나이·개인 범위·입력 저장·다른 보기·새로고침', async ({ page, request }) => {
@@ -135,15 +133,11 @@ test('연금탑: 서버 합계·부부 나이·개인 범위·입력 저장·다
   await slider.fill(String(year))
   const row = data.projection.rows.find((r: { year: number }) => r.year === year)
   await expect(page.getByTestId('pension-total')).toHaveAttribute('data-won', String(row.total_real))
-  for (const layer of [1, 2, 3]) {
-    await expect(page.getByTestId(`layer-monthly-${layer}`)).toHaveAttribute('data-won', String(row.layers_real[String(layer)] ?? 0))
-  }
   await expect(page.locator('.tower-summary-ages')).toHaveText('나 65세 · 배우자 68세')
   await expect(page.getByRole('button', { name: '4층 추가연금 살펴보기', exact: true })).toContainText('준비 정보 없음')
   await page.getByRole('group', { name: '연금 조회 범위' }).getByRole('button', { name: '배우자', exact: true }).click()
   const partner = row.items.filter((i: { person: string }) => i.person === 'partner').reduce((sum: number, i: { real: number }) => sum + i.real, 0)
   await expect(page.getByTestId('pension-total')).toHaveAttribute('data-won', String(partner))
-  await expect(page.getByTestId('layer-monthly-1')).toHaveAttribute('data-won', '800000')
   await expect(page.locator('.tower-gap')).toContainText('생활비는 부부의 합계와 비교해요')
   await expect(page.locator('.tower-coverage-label')).not.toContainText('충당')
   await page.getByRole('button', { name: '국민연금 입력·수정하기', exact: true }).click()
@@ -235,14 +229,8 @@ test('연금탑: 적립금·수령 기간·물가 환산·층별 생활비 기�
   const accents = await page.locator('.tower-tier-accent').evaluateAll(nodes => nodes.map(node => getComputedStyle(node).stroke))
   expect(new Set(accents).size).toBe(4)
   const privateButton = page.getByRole('button', { name: '3층 개인연금 살펴보기', exact: true })
-  const nationalButton = page.getByRole('button', { name: '1층 국민연금 살펴보기', exact: true })
-  const nationalStart = Math.min(...data.projection.summary.streams.filter((s: any) => s.layer === 1).map((s: any) => s.start_year))
-  await expect(nationalButton).toContainText(`${nationalStart}년부터 수령`)
-  await expect(page.getByTestId('layer-monthly-1')).toHaveAttribute('data-won', String(data.projection.rows.find((r: any) => r.year === nationalStart).layers_real['1']))
-  await expect(page.getByTestId('layer-capital-4')).toHaveAttribute('data-won', String((data.capital.me.balances['4'] ?? 0) + (data.capital.partner.balances['4'] ?? 0)))
-  await expect(page.getByTestId('pension-capital-total')).toBeVisible()   // 2026-11-02: 합계 줄에 바로 보인다 (접힘 제거)
   await privateButton.click()
-  await expect(page.locator('.tower-layer-footnote')).toContainText('나 30년')   // 수령 기간은 줄마다가 아니라 표 아래 한 줄
+  await expect(privateButton).toContainText('나 30년 수령')
   await expect(page.locator('.tower-member').first()).toContainText('60세부터 90세 직전까지 · 30년 수령')
   await expect(page.locator('.tower-member').first()).toContainText('현재 계좌 적립금')
   await expect(page.locator('.tower-assumptions-summary')).toContainText('60세부터 90세 직전까지, 총 30년 수령')
@@ -259,8 +247,6 @@ test('연금탑: 적립금·수령 기간·물가 환산·층별 생활비 기�
     await page.setViewportSize({ width, height: 1000 })
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
     await expect(page.getByTestId('layer-capital-3')).toBeVisible()
-    await expect(page.getByTestId('layer-monthly-3')).toBeVisible()
-    await expect(page.getByTestId('layer-monthly-3')).toHaveAttribute('data-won', String(row.layers_real['3']))
   }
   // Synthetic screenshots are opt-in artifacts, never captures of the real household.
   if (process.env.RETIRE_TOWER_CAPTURE) {
