@@ -1,5 +1,6 @@
 import { useEffect, useId, useState, type ReactNode } from 'react'
-import { ArrowRight, ChevronDown, ChevronRight, Coins, Info, Landmark, MousePointer2, RefreshCw, Settings2, Sprout, Sun, Wallet } from 'lucide-react'
+import { ArrowRight, ChevronDown, ChevronRight, Coins, Info, Landmark, MousePointer2, RefreshCw, Settings2, Sprout, Sun, Wallet, X } from 'lucide-react'
+import { Popover } from 'radix-ui'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { api } from '../local-data'
@@ -28,6 +29,9 @@ export function RetirementPage({ owner, onOwnerChange, onChanged, onAssets, hidd
 export function RetirementTower({ data, error, save, reload, owner, onOwnerChange, onAssets, hidden = false, details, embedded = false, onProfileChanged }: Props) {
   const uid = useId()
   const [selected, setSelected] = useState(1)
+  // 층 상세는 별도 섹션이 아니라 누른 줄 아래 말풍선으로 (2026-11-02 사용자: "메모나 커서 아래로 내용이 뜨면"). 처음엔 닫혀 있다.
+  const [detailOpen, setDetailOpen] = useState(false)
+  const openDetail = (id: number) => { setSelected(id); setDetailOpen(true) }
   const [chosenYear, setChosenYear] = useState<number | null>(null)
   const [editor, setEditor] = useState<Editor | null>(null)
   const [editorScope, setEditorScope] = useState<Scope | null>(null)
@@ -100,15 +104,28 @@ export function RetirementTower({ data, error, save, reload, owner, onOwnerChang
     <section className="tower-hero" aria-label="우리집 4층 연금탑">
       <div className="tower-tower-card"><div className="tower-tower-heading"><div><h2>쌓인 돈이, 매달의 연금으로.</h2><span>{row ? `${year}년 월 연금` : scopeLabel} · 세전 · 오늘의 돈</span></div>
         <div className="tower-capital-total"><Coins size={16} className="tower-capital-icon"/><small>지금 모인 돈 · 2–4층</small><strong data-testid="pension-capital" data-won={hidden ? undefined : saved ?? undefined}>{saved == null ? hidden ? '••••••' : '등록 내역 없음' : `${monthly(saved)}만 원`}</strong>{dbSaved > 0 && <span className="tower-db-separate">DB 퇴직금 <b>{monthly(dbSaved)}만 원</b> 별도</span>}</div></div>
-        <div className="tower-tower-view"><figure className="tower-sculpture"><Pagoda selected={selected} onSelect={setSelected} hidden={hidden} states={LAYERS.map(l => ({ label: `${l.name}, ${layerText(l.id)}`, empty: !hasCapital(l.id) && !streams(data, owner, l.id).length, funded: hasCapital(l.id), capital: hidden || error ? null : (layerCapital(l.id) ?? 0) + (l.id === 2 ? dbSaved : 0), share: share(l.id), inactive: !hasCapital(l.id) && !currentYearText(l.id) }))}/><figcaption><MousePointer2 size={13}/>각 층을 눌러 살펴보세요</figcaption><p className="tower-color-legend">색 · 준비한 돈 있음 / 막대 · 생활비 충당률</p></figure>
-          <div className="tower-layers" role="group" aria-label="연금층 선택">{[...LAYERS].reverse().map(l => <div className="tower-layer-row" key={l.id} data-selected={selected === l.id}><button className="tower-layer-button" aria-pressed={selected === l.id} onClick={() => setSelected(l.id)} aria-label={`${l.id}층 ${l.name} 살펴보기`}>
+        <div className="tower-tower-view"><figure className="tower-sculpture"><Pagoda selected={selected} onSelect={openDetail} hidden={hidden} states={LAYERS.map(l => ({ label: `${l.name}, ${layerText(l.id)}`, empty: !hasCapital(l.id) && !streams(data, owner, l.id).length, funded: hasCapital(l.id), capital: hidden || error ? null : (layerCapital(l.id) ?? 0) + (l.id === 2 ? dbSaved : 0), share: share(l.id), inactive: !hasCapital(l.id) && !currentYearText(l.id) }))}/><figcaption><MousePointer2 size={13}/>각 층을 눌러 살펴보세요</figcaption><p className="tower-color-legend">색 · 준비한 돈 있음 / 막대 · 생활비 충당률</p></figure>
+          <div className="tower-layers" role="group" aria-label="연금층 선택">{[...LAYERS].reverse().map(l => <Popover.Root key={l.id} open={detailOpen && selected === l.id} onOpenChange={open => { if (!open) setDetailOpen(false) }}><Popover.Anchor asChild><div className="tower-layer-row" data-selected={selected === l.id}><button className="tower-layer-button" aria-pressed={selected === l.id} onClick={() => detailOpen && selected === l.id ? setDetailOpen(false) : openDetail(l.id)} aria-label={`${l.id}층 ${l.name} 살펴보기`}>
             <span className="tower-layer-name"><i style={{ background: `var(--tower-layer-${l.id})` }}/><small>{l.id}층</small>{l.name}<ChevronRight size={13}/></span>
             <span className="tower-layer-principal"><span className={`tower-layer-amount${l.id === 1 && !currentYearText(1) ? ' is-muted' : ''}`} data-testid={`layer-capital-${l.id}`} data-won={hidden || l.id === 1 ? undefined : capitalAmount(l.id) ?? undefined}>{l.id === 1 ? layerText(1) : capitalAmount(l.id) == null ? hidden ? '••••••' : '등록 내역 없음' : `${monthly(capitalAmount(l.id))}만 원`}</span><span className="tower-layer-caption">{l.id === 1 ? '월 연금 · 오늘 돈' : capitalLabel(l.id)}</span>{l.id === 2 && layerCapital(2) != null && dbSaved > 0 && <span className="tower-layer-caption">DB {monthly(dbSaved)}만 원 별도</span>}</span>
             <span className="tower-layer-projection">{l.id !== 1 && <span className="tower-layer-income"><ArrowRight size={12}/>{l.id === 4 ? '수령 계산 미연결' : layerText(l.id)}</span>}
 
             {l.id > 1 && l.id < 4 && scopedStreams.some(s => s.layer === l.id) && <span className="tower-layer-period">{activePeople.map(([who, label]) => { const periods = streams(data, who, l.id).map(s => s.payout_years).filter((v): v is number => v != null); return periods.length ? `${label} ${[...new Set(periods)].join('·')}년 수령` : '' }).filter(Boolean).join(' · ')}</span>}</span>
             <span className="tower-layer-gauge" aria-label={hidden ? '금액 숨김' : share(l.id) == null ? '생활비 기여율 계산 전' : `목표 생활비의 ${percent(share(l.id)!)}% 담당`}><span className="tower-layer-track"><i style={{ width: `${hidden ? 0 : Math.min(100, share(l.id) ?? 0)}%`, background: `var(--tower-fill-${l.id})` }}/></span><span>{hidden ? '•••' : share(l.id) != null ? <>생활비의 <b>{percent(share(l.id)!)}%</b></> : l.id === 4 ? '월 연금 연결 전' : owner !== 'together' ? '기여율은 함께 보기에서' : partial ? '가족 정보 확인 필요' : data.plan.monthly_need == null || data.plan.monthly_need === 0 ? '생활비 목표 설정 필요' : !row?.retired ? '은퇴 전' : '연금 정보 확인 필요'}</span></span>
-          </button><button type="button" className="tower-layer-edit" aria-label={`${l.name} 입력·수정하기`} onClick={() => { setSelected(l.id); setEditorScope(null); if (l.id === 4) onAssets(); else if (!hasPerson) setProfileOpen(true); else setEditor(l.id as Editor) }}>입력·수정하기</button></div>)}</div>
+          </button><button type="button" className="tower-layer-edit" aria-label={`${l.name} 입력·수정하기`} onClick={() => { setSelected(l.id); setEditorScope(null); if (l.id === 4) onAssets(); else if (!hasPerson) setProfileOpen(true); else setEditor(l.id as Editor) }}>입력·수정하기</button></div></Popover.Anchor>
+            <Popover.Portal><Popover.Content className="tower-detail tower-detail-pop tower-plan-dialog" aria-labelledby={`${uid}-detail`} side="bottom" align="start" sideOffset={6} collisionPadding={12} onOpenAutoFocus={e => e.preventDefault()} onCloseAutoFocus={e => e.preventDefault()}>
+<div className="tower-detail-heading"><span className="tower-detail-icon"><Icon size={20}/></span><div><h2 id={`${uid}-detail`}>{selected}층 · {currentLayer.name}</h2><p>{currentLayer.description}</p></div><Popover.Close className="tower-detail-close" aria-label="층 상세 닫기"><X size={16}/></Popover.Close></div>
+      <div className="tower-members">{activePeople.length ? activePeople.map(([who, label]) => <div className="tower-member" key={who}>
+        <small>{label} · {selected === 1 ? `${upcoming(who, 1)?.year ?? year}년${upcoming(who, 1) ? '부터' : ''} 월 연금 · 오늘 돈` : '현재 계좌 적립금'}</small>
+        <strong>{error ? '확인 필요' : selected === 1 ? !data.projection || !streams(data, who, 1).length ? '계산 전' : money(upcoming(who, 1)?.amount ?? amount(row, who, 1)) : capital(data, who, selected) == null ? '등록 내역 없음' : money(capital(data, who, selected))}</strong>
+        {selected === 2 && !error && accruedDb(data, who) > 0 && <span>현재 DB 퇴직금 {money(accruedDb(data, who))} 별도</span>}
+        {selected > 1 && selected < 4 && <span className="tower-member-payout">→ {year}년 월 {error || !streams(data, who, selected).length ? '계산 전' : money(amount(row, who, selected))} · 오늘 돈</span>}
+        <span>{selected === 4 ? '수령 계산 미연결' : periodText(who, selected) || '준비 정보를 입력해 주세요'}</span>
+        {selected === 1 && <span>화면 계산은 {data.assumptions.end_age}세 직전까지</span>}
+      </div>) : <p className="tower-muted">나이와 은퇴 목표를 입력하면 각자의 계획을 볼 수 있어요.</p>}</div>
+      {selected === 4 && <p className="tower-detail-note"><Info size={15}/>추가연금은 별도 연금 제도가 아닌 추가 준비 자금이에요. 현재는 등록한 금액만 보여주며, 월 수령액으로 전환하는 계산은 아직 연결되지 않았어요.</p>}
+      {selected !== 4 && currentStatus === '준비 정보 없음' && <p className="tower-detail-note">정보가 없다는 뜻이며, 실제 받을 연금이 0원이라는 뜻은 아니에요.</p>}
+            </Popover.Content></Popover.Portal></Popover.Root>)}</div>
         </div>
       </div>
       <aside className="tower-summary" aria-label="선택 연도의 연금 요약"><div className="tower-summary-kicker"><i/>{scopeLabel} · {row ? `${year}년` : '계산 전'}</div><p className="tower-summary-ages">{ageLabel}</p><div className="tower-total"><small>월</small><strong data-testid="pension-total" data-won={hidden ? undefined : total ?? undefined}>{monthly(total)}</strong><small>만 원</small></div><p className="tower-summary-note">{partial ? '계산 가능한 가족의 연금만 포함' : '입력된 연금 기준 · 세전 / 오늘의 돈'}</p>
@@ -120,23 +137,11 @@ export function RetirementTower({ data, error, save, reload, owner, onOwnerChang
         <p className="tower-excluded">4층 추가연금은 월 수령 합계에서 제외</p>
       </aside>
     </section>
-    <section className="tower-detail" aria-labelledby={`${uid}-detail`}><div className="tower-detail-heading"><span className="tower-detail-icon"><Icon size={20}/></span><div><h2 id={`${uid}-detail`}>{selected}층 · {currentLayer.name}</h2><p>{currentLayer.description}</p></div></div>
-      <div className="tower-members">{activePeople.length ? activePeople.map(([who, label]) => <div className="tower-member" key={who}>
-        <small>{label} · {selected === 1 ? `${upcoming(who, 1)?.year ?? year}년${upcoming(who, 1) ? '부터' : ''} 월 연금 · 오늘 돈` : '현재 계좌 적립금'}</small>
-        <strong>{error ? '확인 필요' : selected === 1 ? !data.projection || !streams(data, who, 1).length ? '계산 전' : money(upcoming(who, 1)?.amount ?? amount(row, who, 1)) : capital(data, who, selected) == null ? '등록 내역 없음' : money(capital(data, who, selected))}</strong>
-        {selected === 2 && !error && accruedDb(data, who) > 0 && <span>현재 DB 퇴직금 {money(accruedDb(data, who))} 별도</span>}
-        {selected > 1 && selected < 4 && <span className="tower-member-payout">→ {year}년 월 {error || !streams(data, who, selected).length ? '계산 전' : money(amount(row, who, selected))} · 오늘 돈</span>}
-        <span>{selected === 4 ? '수령 계산 미연결' : periodText(who, selected) || '준비 정보를 입력해 주세요'}</span>
-        {selected === 1 && <span>화면 계산은 {data.assumptions.end_age}세 직전까지</span>}
-      </div>) : <p className="tower-muted">나이와 은퇴 목표를 입력하면 각자의 계획을 볼 수 있어요.</p>}</div>
-      {selected === 4 && <p className="tower-detail-note"><Info size={15}/>추가연금은 별도 연금 제도가 아닌 추가 준비 자금이에요. 현재는 등록한 금액만 보여주며, 월 수령액으로 전환하는 계산은 아직 연결되지 않았어요.</p>}
-      {selected !== 4 && currentStatus === '준비 정보 없음' && <p className="tower-detail-note">정보가 없다는 뜻이며, 실제 받을 연금이 0원이라는 뜻은 아니에요.</p>}
-    </section>
     <section className="tower-flow" id={`${uid}-flow`} aria-labelledby={`${uid}-flow-title`}>
       <div className="tower-section-heading"><div><h2 id={`${uid}-flow-title`}>받는 시간표</h2><p>연도를 움직이면 위 숫자가 그 해 기준으로 바뀌어요 · 국민연금 막대 끝은 계산 범위이지 수령 종료가 아니에요</p></div>
         {row && hasInputs && !error && <div className="tower-milestones">{milestones.map(y => <button key={y} aria-pressed={year === y} onClick={() => setChosenYear(y)}>{y}년 · {y === defaultYear ? '은퇴 첫해' : y === lastYear ? '마지막 해' : [...new Set(scopedStreams.filter(s => s.start_year === y).map(s => s.label.replace(/\(.+\)/, '')))].join('·') + ' 시작'}</button>)}</div>}</div>
       {row && hasInputs && !error ? <div className="tower-timeline"><div className="tower-year-control"><label htmlFor={`${uid}-year`}>{ageLabel}</label><div className="tower-year-track"><span>{firstYear}</span><input id={`${uid}-year`} aria-label="살펴보는 연도" type="range" min={firstYear} max={lastYear} step={1} value={year} disabled={firstYear === lastYear} aria-valuetext={`${year}년, ${ageLabel}${hidden ? '' : `, 월 ${monthly(total)}만 원`}`} onChange={e => setChosenYear(Number(e.target.value))}/><span>{lastYear}</span></div><strong>{year}년</strong></div>
-        <div className="tower-time-rows">{LAYERS.map(l => <div className="tower-time-row" key={l.id}><button onClick={() => setSelected(l.id)}><i style={{ background: `var(--tower-layer-${l.id})` }}/>{l.name}</button><div className="tower-time-lanes">{l.id === 4 ? <div className="tower-band-empty">수령 계산 미연결</div> : activePeople.map(([who, label]) => {
+        <div className="tower-time-rows">{LAYERS.map(l => <div className="tower-time-row" key={l.id}><button onClick={() => openDetail(l.id)}><i style={{ background: `var(--tower-layer-${l.id})` }}/>{l.name}</button><div className="tower-time-lanes">{l.id === 4 ? <div className="tower-band-empty">수령 계산 미연결</div> : activePeople.map(([who, label]) => {
           const personStreams = streams(data, who, l.id)
           if (!personStreams.length) return <div className="tower-band-empty" key={who}>{label} · 준비 정보 없음</div>
           const start = Math.min(...personStreams.map(s => s.start_year)), end = data.base_year + data.assumptions.end_age - data.used[who]!.age
