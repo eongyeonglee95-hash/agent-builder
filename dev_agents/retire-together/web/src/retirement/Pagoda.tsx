@@ -12,7 +12,7 @@ export function Pagoda({ selected, states, onSelect, hidden }: {
   const point = (x: number, y: number) => `${x},${y}`
   const diamond = (w: number, y: number, d = w * .30) => `${point(250, y - d)} ${point(250 + w, y)} ${point(250, y + d)} ${point(250 - w, y)}`
   const floors = [{ y: 365, w: 160, h: 66 }, { y: 283, w: 124, h: 62 }, { y: 210, w: 96, h: 56 }, { y: 145, w: 73, h: 48 }]
-  return <svg className="tower-pagoda" viewBox="0 0 500 555" aria-label="석가탑의 형태를 네 연금층으로 재해석한 우리집 연금탑">
+  return <svg className="tower-pagoda" viewBox="0 0 500 555" preserveAspectRatio="xMidYMin meet" aria-label="석가탑의 형태를 네 연금층으로 재해석한 우리집 연금탑">
     <defs>
       <radialGradient id={`${id}-ground`}><stop stopColor="var(--grey-900)" stopOpacity=".16"/><stop offset="1" stopColor="var(--grey-900)" stopOpacity="0"/></radialGradient>
       <linearGradient id={`${id}-stone`} x1="0" x2="1" y2=".8"><stop stopColor="var(--grey-100)"/><stop offset="1" stopColor="var(--grey-300)"/></linearGradient>
