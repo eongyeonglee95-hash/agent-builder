@@ -1,0 +1,473 @@
+{
+  "shots": [
+    {
+      "name": "empty-home",
+      "url": "http://127.0.0.1:5197/#home",
+      "width": 1440,
+      "pageWidth": 1440,
+      "pageHeight": 1000,
+      "grids": [],
+      "headings": [
+        {
+          "text": "자산 하나부터 시작해요.",
+          "y": 198
+        }
+      ],
+      "inputs": []
+    },
+    {
+      "name": "empty-retire",
+      "url": "http://127.0.0.1:5197/#retire",
+      "width": 1440,
+      "pageWidth": 1440,
+      "pageHeight": 1000,
+      "grids": [
+        {
+          "viewport": 1440,
+          "content": 1440
+        }
+      ],
+      "headings": [],
+      "inputs": [
+        {
+          "name": "선택한 칸 값",
+          "height": 29
+        },
+        {
+          "name": "나 은퇴 나이",
+          "height": 27
+        },
+        {
+          "name": "배우자 은퇴 나이",
+          "height": 27
+        },
+        {
+          "name": "나 국민연금 월액(오늘 돈)",
+          "height": 27
+        },
+        {
+          "name": "배우자 국민연금 월액(오늘 돈)",
+          "height": 27
+        },
+        {
+          "name": "나 국민연금 개시 나이",
+          "height": 27
+        },
+        {
+          "name": "배우자 국민연금 개시 나이",
+          "height": 27
+        },
+        {
+          "name": "나 월급 (최근 3개월 평균)",
+          "height": 27
+        },
+        {
+          "name": "배우자 월급 (최근 3개월 평균)",
+          "height": 27
+        },
+        {
+          "name": "나 지금 쌓인 퇴직금",
+          "height": 27
+        },
+        {
+          "name": "배우자 지금 쌓인 퇴직금",
+          "height": 27
+        },
+        {
+          "name": "나 연금저축 연 납입",
+          "height": 27
+        },
+        {
+          "name": "배우자 연금저축 연 납입",
+          "height": 27
+        },
+        {
+          "name": "나 연금 받기 시작 나이",
+          "height": 27
+        },
+        {
+          "name": "배우자 연금 받기 시작 나이",
+          "height": 27
+        },
+        {
+          "name": "은퇴 후 부부 월 생활비",
+          "height": 27
+        },
+        {
+          "name": "연 수익률(%)",
+          "height": 27
+        },
+        {
+          "name": "물가상승률(%)",
+          "height": 27
+        }
+      ]
+    },
+    {
+      "name": "home-1440",
+      "url": "http://127.0.0.1:5197/#home",
+      "width": 1440,
+      "pageWidth": 1440,
+      "pageHeight": 2170,
+      "grids": [],
+      "headings": [
+        {
+          "text": "함께라면, 은퇴도계획이 됩니다.",
+          "y": 151
+        },
+        {
+          "text": "안녕하세요, 우리 부부의 오늘이에요 ☀",
+          "y": 345
+        },
+        {
+          "text": "총자산",
+          "y": 444
+        },
+        {
+          "text": "노후 주머니",
+          "y": 444
+        },
+        {
+          "text": "현금 주머니",
+          "y": 444
+        },
+        {
+          "text": "우리의 자산 구성",
+          "y": 590
+        },
+        {
+          "text": "함께 그리는 은퇴",
+          "y": 588
+        },
+        {
+          "text": "지금 살펴볼 이야기",
+          "y": 765
+        },
+        {
+          "text": "최근 등록·갱신한 자산",
+          "y": 1024
+        },
+        {
+          "text": "흔들리지 않는, 우리의 규칙",
+          "y": 1449
+        },
+        {
+          "text": "은퇴 후에도, 안정적인 일상",
+          "y": 1449
+        },
+        {
+          "text": "이번 달, 함께 챙겨요",
+          "y": 1884
+        }
+      ],
+      "inputs": []
+    },
+    {
+      "name": "pension-1440",
+      "url": "http://127.0.0.1:5197/#pension",
+      "width": 1440,
+      "pageWidth": 1440,
+      "pageHeight": 1413,
+      "grids": [],
+      "headings": [
+        {
+          "text": "은퇴 계획",
+          "y": 133
+        },
+        {
+          "text": "은퇴는 끝이 아니라,우리의 새로운 시작.",
+          "y": 345
+        },
+        {
+          "text": "함께 그리는 은퇴",
+          "y": 354
+        },
+        {
+          "text": "은퇴 후 소득의 흐름",
+          "y": 835
+        },
+        {
+          "text": "이번 달, 함께 챙겨요",
+          "y": 1218
+        }
+      ],
+      "inputs": []
+    },
+    {
+      "name": "rebalance-1440",
+      "url": "http://127.0.0.1:5197/#rebalance",
+      "width": 1440,
+      "pageWidth": 1440,
+      "pageHeight": 1799,
+      "grids": [],
+      "headings": [
+        {
+          "text": "리밸런싱",
+          "y": 133
+        },
+        {
+          "text": "지키고 싶은 투자 원칙",
+          "y": 316
+        },
+        {
+          "text": "배분을 살펴볼 시간이에요",
+          "y": 369
+        },
+        {
+          "text": "목표와 현재, 얼마나 다를까요?",
+          "y": 788
+        },
+        {
+          "text": "종목 잔고로 계산해 보세요",
+          "y": 1199
+        }
+      ],
+      "inputs": [
+        {
+          "name": "as_of",
+          "height": 44
+        },
+        {
+          "name": "종목 잔고 CSV",
+          "height": 49.59375
+        },
+        {
+          "name": "new_cash",
+          "height": 44
+        }
+      ]
+    },
+    {
+      "name": "workbook-1440",
+      "url": "http://127.0.0.1:5197/",
+      "width": 1440,
+      "pageWidth": 1440,
+      "pageHeight": 1000,
+      "grids": [
+        {
+          "viewport": 1440,
+          "content": 1440
+        }
+      ],
+      "headings": [],
+      "inputs": [
+        {
+          "name": "선택한 칸 값",
+          "height": 29
+        }
+      ]
+    },
+    {
+      "name": "retire-1440",
+      "url": "http://127.0.0.1:5197/#retire",
+      "width": 1440,
+      "pageWidth": 1440,
+      "pageHeight": 1000,
+      "grids": [
+        {
+          "viewport": 1440,
+          "content": 1440
+        }
+      ],
+      "headings": [],
+      "inputs": [
+        {
+          "name": "선택한 칸 값",
+          "height": 29
+        }
+      ]
+    },
+    {
+      "name": "workbook-rebalance-reload-1440",
+      "beforeReload": "http://127.0.0.1:5197/#rebalance",
+      "afterReload": "http://127.0.0.1:5197/#rebalance",
+      "nowClassic": true
+    },
+    {
+      "name": "home-390",
+      "url": "http://127.0.0.1:5197/#home",
+      "width": 390,
+      "pageWidth": 390,
+      "pageHeight": 3273,
+      "grids": [],
+      "headings": [
+        {
+          "text": "함께라면, 은퇴도계획이 됩니다.",
+          "y": 117
+        },
+        {
+          "text": "안녕하세요, 우리 부부의 오늘이에요 ☀",
+          "y": 316
+        },
+        {
+          "text": "총자산",
+          "y": 505
+        },
+        {
+          "text": "노후 주머니",
+          "y": 620
+        },
+        {
+          "text": "현금 주머니",
+          "y": 620
+        },
+        {
+          "text": "우리의 자산 구성",
+          "y": 1007
+        },
+        {
+          "text": "함께 그리는 은퇴",
+          "y": 829
+        },
+        {
+          "text": "지금 살펴볼 이야기",
+          "y": 1353
+        },
+        {
+          "text": "최근 등록·갱신한 자산",
+          "y": 1623
+        },
+        {
+          "text": "흔들리지 않는, 우리의 규칙",
+          "y": 2077
+        },
+        {
+          "text": "은퇴 후에도, 안정적인 일상",
+          "y": 2512
+        },
+        {
+          "text": "이번 달, 함께 챙겨요",
+          "y": 2814
+        }
+      ],
+      "inputs": []
+    },
+    {
+      "name": "pension-390",
+      "url": "http://127.0.0.1:5197/#pension",
+      "width": 390,
+      "pageWidth": 390,
+      "pageHeight": 1886,
+      "grids": [],
+      "headings": [
+        {
+          "text": "은퇴 계획",
+          "y": 103
+        },
+        {
+          "text": "은퇴는 끝이 아니라,우리의 새로운 시작.",
+          "y": 278
+        },
+        {
+          "text": "함께 그리는 은퇴",
+          "y": 510
+        },
+        {
+          "text": "은퇴 후 소득의 흐름",
+          "y": 1120
+        },
+        {
+          "text": "이번 달, 함께 챙겨요",
+          "y": 1511
+        }
+      ],
+      "inputs": []
+    },
+    {
+      "name": "rebalance-390",
+      "url": "http://127.0.0.1:5197/#rebalance",
+      "width": 390,
+      "pageWidth": 390,
+      "pageHeight": 2355,
+      "grids": [],
+      "headings": [
+        {
+          "text": "리밸런싱",
+          "y": 103
+        },
+        {
+          "text": "지키고 싶은 투자 원칙",
+          "y": 255
+        },
+        {
+          "text": "배분을 살펴볼 시간이에요",
+          "y": 756
+        },
+        {
+          "text": "목표와 현재, 얼마나 다를까요?",
+          "y": 910
+        },
+        {
+          "text": "종목 잔고로 계산해 보세요",
+          "y": 1429
+        }
+      ],
+      "inputs": [
+        {
+          "name": "as_of",
+          "height": 44
+        },
+        {
+          "name": "종목 잔고 CSV",
+          "height": 49.59375
+        },
+        {
+          "name": "new_cash",
+          "height": 44
+        }
+      ]
+    },
+    {
+      "name": "workbook-390",
+      "url": "http://127.0.0.1:5197/",
+      "width": 390,
+      "pageWidth": 390,
+      "pageHeight": 1000,
+      "grids": [
+        {
+          "viewport": 390,
+          "content": 1100
+        }
+      ],
+      "headings": [],
+      "inputs": [
+        {
+          "name": "선택한 칸 값",
+          "height": 29
+        }
+      ]
+    },
+    {
+      "name": "retire-390",
+      "url": "http://127.0.0.1:5197/#retire",
+      "width": 390,
+      "pageWidth": 390,
+      "pageHeight": 1000,
+      "grids": [
+        {
+          "viewport": 390,
+          "content": 1100
+        }
+      ],
+      "headings": [],
+      "inputs": [
+        {
+          "name": "선택한 칸 값",
+          "height": 29
+        }
+      ]
+    },
+    {
+      "name": "workbook-rebalance-reload-390",
+      "beforeReload": "http://127.0.0.1:5197/#rebalance",
+      "afterReload": "http://127.0.0.1:5197/#rebalance",
+      "nowClassic": true
+    },
+    {
+      "name": "registered-accounts-pools",
+      "accountCount": 2,
+      "pools": 0
+    }
+  ],
+  "errors": []
+}
