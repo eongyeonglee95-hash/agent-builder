@@ -16,9 +16,13 @@ export type DbEstimate = { method: 'reported' | 'tenure'; as_of: string; tenure:
 type Db = { years_left: number; lump_at_retire: number }
 export type Used = { age: number; retire_age: number; national_start_age: number; private_start_age: number; balances: Record<string, number>; db: Db | null }
 export type Row = { year: number; ages: Record<string, number>; retired: boolean; items: { person: 'me' | 'partner'; layer: number; real: number; nominal: number; label: string }[]; total_real: number; extra_real?: number; extra_nominal?: number; total_nominal: number; layers_real: Record<string, number>; need_real?: number | null; gap_real?: number | null; need_nominal?: number | null; gap_nominal?: number | null; coverage: { total: number; layers: Record<string, number> } | null }
+export type NationalOption = { shift: number; start_age: number; start_year: number; factor: number; monthly_real: number; gap_years: number; breakeven_age: number | null; selected: boolean }
+export type SurvivorCheck = { survivor: string; deceased: string; own_monthly: number; deceased_monthly: number; tiers: Record<string, { survivor_only: number; own_plus: number; larger: 'own_plus' | 'survivor_only' }> }
 export type Result = { plan: Plan; used: Partial<Record<'me' | 'partner', Used>>; missing: string[]; error: string | null; line: string; base_year: number
   as_of: string; db_estimates: Record<'me' | 'partner', DbEstimate>
   capital: Record<'me' | 'partner', { balances: Record<string, number>; db_accrued: number }>
+  // 국민연금 조기·연기 선택지와 유족연금 대충 보기 (서버 계산, 추천 없음)
+  national?: { options: Partial<Record<'me' | 'partner', NationalOption[]>>; survivor: Record<string, SurvivorCheck> }
   spending_target: { base_year: number; target_year: number; years: number; monthly_today: number; monthly_nominal: number; monthly_increase: number; inflation: number } | null
   assumptions: { return_rate: number; inflation: number; end_age: number; start_age_min: number; min_payout_years: number }
   projection: { rows: Row[]; summary: { retire_year: number | null; streams: { person: 'me' | 'partner'; layer: number; label: string; start_year: number; start_age: number; principal: number; payout_years: number | null; end_age_exclusive: number | null }[] } } | null }

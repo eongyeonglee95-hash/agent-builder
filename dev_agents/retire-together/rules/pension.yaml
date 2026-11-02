@@ -21,3 +21,14 @@ national_start_age:
   - {born_until: 1964, age: 63}
   - {born_until: 1968, age: 64}
   - {born_until: 9999, age: 65}
+
+# 국민연금 조기·연기 수령과 유족연금 — 국민연금공단 안내(노령연금 조기·연기수령, 유족연금). 2026-11-02 추가, 출처 재확인은 /wiki-research update
+national:
+  early_reduction_per_year: 0.06    # 조기노령연금: 1년 앞당길 때마다 6% 감액(월 0.5%), 최대 5년 → 최대 30% 감액
+  late_increase_per_year: 0.072     # 연기연금: 1년 늦출 때마다 7.2% 증액(월 0.6%), 최대 5년 → 최대 36% 증액
+  shift_years_max: 5
+  survivor_rates:                   # 유족연금 = 사망자 기본연금액 × 가입기간별 비율 (부양가족연금액은 제외, 대충 보기용)
+    under_10y: 0.40
+    under_20y: 0.50
+    over_20y: 0.60
+  survivor_overlap_rate: 0.30       # 본인 노령연금이 있으면 택1: 본인 노령연금 + 유족연금의 30%  /  유족연금만

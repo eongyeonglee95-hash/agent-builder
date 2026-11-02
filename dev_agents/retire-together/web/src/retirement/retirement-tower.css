@@ -328,3 +328,21 @@
 @media(max-width:1200px){.tower-layers{grid-template-columns:minmax(0,1fr) 100px}.tower-bracket>span{margin-left:26px}.tower-bracket-23>span{margin-left:40px}}
 @media(max-width:760px){.tower-layers{grid-template-columns:minmax(0,1fr)}.tower-bracket{display:none}}
 
+
+/* 1층 말풍선: 국민연금 조기·연기 비교, 유족연금 대충 보기 */
+.tower-detail-pop{width:min(560px,calc(100vw - 24px))}
+.tower-nat{display:grid;gap:12px;border-top:1px solid var(--border);padding-top:12px}
+.tower-nat-head{display:grid;gap:2px}.tower-nat-head strong{font-size:var(--text-sm);font-weight:650}.tower-nat-head small{font-size:var(--text-xs);color:var(--muted-foreground)}
+.tower-nat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-top:8px}
+.tower-nat-opt{display:grid;gap:3px;text-align:left;border:1px solid var(--border);border-radius:10px;background:var(--grey-50);padding:10px 11px;font-size:var(--text-xs);color:var(--muted-foreground);cursor:pointer;line-height:1.45}
+.tower-nat-opt:hover{border-color:var(--input);background:var(--background)}
+.tower-nat-opt.is-selected{border-color:var(--primary);background:var(--background)}
+.tower-nat-opt>small{font-size:var(--text-xs);font-weight:600;color:var(--grey-700)}
+.tower-nat-opt>b{font-size:var(--text-sm);font-weight:650;color:var(--foreground)}
+.tower-nat-amt{color:var(--foreground);font-weight:600}.tower-nat-amt em{font-style:normal;font-weight:400;color:var(--muted-foreground)}
+.tower-nat-opt>i{font-style:normal;margin-top:4px;font-size:var(--text-xs);color:var(--muted-foreground)}.tower-nat-opt>i.tower-nat-pick{color:var(--grey-700);text-decoration:underline;text-underline-offset:3px}
+.tower-nat-survivor summary{display:flex;align-items:center;gap:6px;font-size:var(--text-sm);font-weight:600;cursor:pointer;list-style:none;min-height:32px}.tower-nat-survivor summary::-webkit-details-marker{display:none}
+.tower-nat-survivor[open] summary svg{transform:rotate(180deg)}
+.tower-nat-sv{display:grid;gap:5px;padding:10px 12px;border-radius:10px;background:var(--grey-50);margin-top:8px;font-size:var(--text-xs)}
+.tower-nat-sv strong{font-size:var(--text-sm);font-weight:650}.tower-nat-sv>div{display:flex;justify-content:space-between;gap:10px}.tower-nat-sv b{font-weight:650;white-space:nowrap}.tower-nat-sv b i{font-style:normal;color:var(--cls-mid-bond);font-weight:600}
+.tower-nat-sv small{color:var(--muted-foreground);line-height:1.6}

@@ -37,6 +37,7 @@ export function RetirementTower({ data, error, save, reload, owner, onOwnerChang
   const [editor, setEditor] = useState<Editor | null>(null)
   const [editorScope, setEditorScope] = useState<Scope | null>(null)
   const [profileOpen, setProfileOpen] = useState(false)
+  const [busySave, setBusySave] = useState(false)
   // 자산 등록(사진·표·포털 계약)이 끝나면 적립금이 바뀌므로 다시 읽는다
   useEffect(() => { const h = () => { reload() }; window.addEventListener('retire:holdings-changed', h); return () => window.removeEventListener('retire:holdings-changed', h) }, [reload])
   const money = (won: number | null | undefined) => hidden ? '••••••' : won == null ? '—' : `${won.toLocaleString('ko-KR')}원`
@@ -142,6 +143,30 @@ export function RetirementTower({ data, error, save, reload, owner, onOwnerChang
         <span>{periodText(who, selected) || '준비 정보를 입력해 주세요'}</span>
         {selected === 1 && <span>화면 계산은 {data.assumptions.end_age}세 직전까지</span>}
       </div> }) : <p className="tower-muted">나이와 은퇴 목표를 입력하면 각자의 계획을 볼 수 있어요.</p>}</div>
+      {selected === 1 && !error && data.national && activePeople.some(([who]) => (data.national!.options[who] ?? []).length) && <div className="tower-nat">
+        {/* 조기·연기 비교: 월액·시작 연도·공백·손익분기 나이를 나란히. 어느 쪽도 추천하지 않고 고르는 건 사용자 (2026-11-02) */}
+        {activePeople.map(([who, label]) => { const opts = data.national!.options[who] ?? []; if (!opts.length) return null; const current = opts.find(o => o.selected); const show = [...new Set([-5, 0, 5, current?.shift ?? 0])].sort((a, b) => a - b).map(sh => opts.find(o => o.shift === sh)!).filter(Boolean); return <div className="tower-nat-person" key={who}>
+          <div className="tower-nat-head"><strong>{label} · 언제 받을까</strong><small>오늘 돈 · 세전 · 손익분기 = 65세에 받는 것과 누적액이 같아지는 나이</small></div>
+          <div className="tower-nat-grid" role="table" aria-label={`${label} 국민연금 조기·연기 비교`}>
+            {show.map(o => <button type="button" key={o.shift} className={`tower-nat-opt${o.selected ? ' is-selected' : ''}`} aria-pressed={o.selected} disabled={busySave} onClick={async () => { if (o.selected) return; setBusySave(true); await save({ ...data.plan, [who]: { ...(data.plan[who] ?? {}), national_start_age: o.start_age } }); setBusySave(false) }}>
+              <small>{o.shift < 0 ? `조기 ${-o.shift}년` : o.shift > 0 ? `연기 ${o.shift}년` : '정상'}</small>
+              <b>{o.start_age}세 · {o.start_year}년</b>
+              <span className="tower-nat-amt">월 {monthly(o.monthly_real)}만 원 <em>({Math.round(o.factor * 100)}%)</em></span>
+              <span>{o.gap_years ? `은퇴 뒤 공백 ${o.gap_years}년` : '공백 없음'}</span>
+              <span>{o.breakeven_age != null ? `손익분기 ${o.breakeven_age}세` : '기준'}</span>
+              {o.selected ? <i>지금 선택</i> : <i className="tower-nat-pick">이 나이로 정하기</i>}
+            </button>)}
+          </div>
+        </div> })}
+        {Object.keys(data.national.survivor).length > 0 && <details className="tower-nat-survivor"><summary>한 사람이 먼저 떠나면 — 유족연금 대충 보기<ChevronDown size={14}/></summary>
+          {Object.values(data.national.survivor).filter(sv => owner === 'together' || sv.survivor === owner).map(sv => { const t = sv.tiers.over_20y ?? Object.values(sv.tiers)[0]; const who = sv.survivor === 'me' ? '내가' : '배우자가', gone = sv.deceased === 'me' ? '내가' : '배우자가', goneName = sv.deceased === 'me' ? '내' : '배우자'; return <div className="tower-nat-sv" key={sv.survivor}>
+            <strong>{gone} 먼저 떠나면, {who} 받는 국민연금</strong>
+            <div><span>① 본인 노령연금 + 유족연금의 30%</span><b>{monthly(t.own_plus)}만 원{t.larger === 'own_plus' && <i> · 더 큼</i>}</b></div>
+            <div><span>② 유족연금만 ({goneName} 월액의 60%)</span><b>{monthly(t.survivor_only)}만 원{t.larger === 'survivor_only' && <i> · 더 큼</i>}</b></div>
+            <small>가입 20년 이상 기준(10~20년 50% · 10년 미만 40%). 부양가족연금액·세금은 뺀 대충 계산이에요. 둘 중 하나만 받을 수 있어요.</small>
+          </div> })}
+        </details>}
+      </div>}
       {selected === 3 && <button type="button" className="tower-detail-link" aria-label="개인연금 납입·수령 설정" onClick={() => { setDetailOpen(false); setEditorScope(null); if (!hasPerson) setProfileOpen(true); else setEditor(3) }}><Settings2 size={13}/>1년 납입액 · 수령 설정</button>}
       {selected === 4 && <button type="button" className="tower-detail-link" onClick={() => { setDetailOpen(false); onAssets() }}><Wallet size={13}/>등록한 자산 보기</button>}
       {selected === 4 && <p className="tower-detail-note"><Info size={15}/>세제비적격 연금보험(일반·변액연금보험)과 ISA처럼 세액공제를 받지 않은 은퇴 자금이 여기에 들어가요. 받을 때 연금소득세가 없고 해지해도 토해 낼 공제가 없어요. 월 수령액은 3층과 같은 방식으로 계산하지만 기본 합계에는 넣지 않고, 요약 카드에 ‘월급으로 나눠 쓰면 / 목돈으로 두면’ 두 숫자로 따로 보여 줘요.</p>}

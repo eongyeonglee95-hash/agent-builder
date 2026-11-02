@@ -3,7 +3,7 @@ import pytest
 from datetime import date
 
 from tools.pension import (Assumptions, Person, annuity_monthly, db_at_retire, future_value, load_pension_rules,
-                           monthly_cost_at, national_start_age, person_streams, project, spending_target, db_estimate, service_period)
+                           monthly_cost_at, national_start_age, person_streams, project, spending_target, db_estimate, service_period, national_options, survivor_check)
 
 A = Assumptions(return_rate=0.05, inflation=0.02, end_age=90, start_age_min=55, min_payout_years=10)
 
@@ -202,3 +202,28 @@ def test_extra_layer_is_computed_like_private_but_kept_out_of_base_total():
     same = project([Person("me", "나", age=50, retire_age=60, private_start_age=60, balances={3: 30_000_000, 4: 30_000_000})], A, 2026)
     r60 = next(r for r in same["rows"] if r["ages"]["me"] == 60)
     assert r60["layers_real"][3] == r60["layers_real"][4]
+
+
+def test_national_early_late_factor_and_options_breakeven():
+    """조기 1년당 6% 감액·연기 1년당 7.2% 증액(최대 5년). 손익분기: 5년 조기 ≈ 76.7세, 5년 연기 ≈ 83.9세. 추천 없음."""
+    me = Person("me", "나", age=55, retire_age=60, national_monthly=1_000_000, national_start_age=65, national_normal_age=65)
+    opts = national_options(me, A, 2026)
+    by = {o["shift"]: o for o in opts}
+    assert len(opts) == 11 and by[0]["monthly_real"] == 1_000_000 and by[0]["selected"] and by[0]["breakeven_age"] is None
+    assert by[-5]["monthly_real"] == 700_000 and by[-5]["start_age"] == 60 and by[-5]["gap_years"] == 0 and abs(by[-5]["breakeven_age"] - 76.7) < 0.1
+    assert by[5]["monthly_real"] == 1_360_000 and by[5]["start_age"] == 70 and by[5]["gap_years"] == 10 and abs(by[5]["breakeven_age"] - 83.9) < 0.1
+    early = Person("me", "나", age=55, retire_age=60, national_monthly=1_000_000, national_start_age=60, national_normal_age=65)
+    s = [x for x in person_streams(early, A) if x.layer == 1][0]
+    assert s.start_age == 60 and s.monthly_first == round(700_000 * (1 + A.inflation) ** 5)
+    # 법정 나이를 모르면(기존 테스트·입력) 배율 없이 입력 월액 그대로
+    plain = [x for x in person_streams(Person("me", "나", age=55, retire_age=60, national_monthly=1_000_000, national_start_age=60), A) if x.layer == 1][0]
+    assert plain.monthly_first == round(1_000_000 * (1 + A.inflation) ** 5)
+
+
+def test_survivor_check_is_rough_pick_larger():
+    me = Person("me", "나", 60, 60, national_monthly=1_200_000, national_start_age=65, national_normal_age=65)
+    pa = Person("partner", "배우자", 62, 60, national_monthly=1_770_000, national_start_age=65, national_normal_age=65)
+    sv = survivor_check([me, pa], A)
+    t = sv["me"]["tiers"]["over_20y"]
+    assert sv["me"]["deceased"] == "partner" and t["survivor_only"] == 1_062_000 and t["own_plus"] == round(1_200_000 + 1_770_000 * .6 * .3) and t["larger"] == "own_plus"
+    assert sv["partner"]["tiers"]["under_10y"]["survivor_only"] == 480_000
