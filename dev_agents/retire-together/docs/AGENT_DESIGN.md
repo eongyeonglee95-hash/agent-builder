@@ -20,6 +20,7 @@
 | ID | 작업·범위 | 현재 상태 | 담당/인계 | 완료 근거 |
 |---|---|---|---|---|
 | COORD-01 | 컨셉·스택·순서·검수 조건을 공유 문서에 반영 | 완료 | Codex: 공유 설계 문서 | Claude의 공유 지침 확인 및 화면 작업 분리 응답 확인(아래 협업 메모) |
+| AGENT-01 | 답변 출력 전 검증·숫자의 단위/부호 확인·현재 질문의 도구 근거 분리 | 진행 (2026-11-02 사용자 에이전트 고도화 요청) | Codex: `agent/guard.py`·`agent/main.py`·`agent/prompt.py`·Agent 회귀 테스트. 기존 Claude 구현을 이어서 보강 | 기존 Agent 테스트 13개 통과, 작은 비율·금액 단위·부호 변경이 검사를 통과하는 문제 재현. 계산 엔진·전략·화면 변경은 범위 밖 |
 | RESEARCH-01 | 연금 관련 공신력 있는 출처·저자/채널 조사 | 완료(1차) | 기존 Claude 세션 7da8fa60: `docs/wiki/` | `docs/wiki/sources/pension-knowledge-sources.md`(944921e, e8ebf93), 박곰희 책 반영(f83f64d), 김성일 (A)/(B)/(C) 후보 — 사용자 확인 대기 |
 | BASE-01 | 합성 fixture 복구·새 환경 테스트 재현 | 완료 | 기존 Claude 세션 7da8fa60 (수락·완료) | `data/fixtures/holdings_fixture.csv`(합성 5행, 개인정보 없음)를 git에 포함, `.gitignore` `data/`→`data/*`(0567091). 새 환경(uv 0.13.5 신규 설치)에서 34 passed(227739c). 경로는 기존 테스트가 쓰는 `data/fixtures/` 유지 — `tests/fixtures/`로 옮기려면 테스트 경로 변경 필요 |
 | SAFE-01 | 저장 경로·계좌·수량·가격·합계 재검증 | 완료 | 기존 Claude 세션 7da8fa60 (수락·완료 2026-10-27) | `tests/test_safety.py` 5개가 보고서 §4 합성 입력(../outside, 수량 -2·1.9, value 전사 오류, 미등록 계좌, 0행 저장)을 재현 → 수정 후 통과. `tools/parse_balance.validate_holdings`·`ReconcileResult`, `tools/store.save_holdings`(등록·활성·형식·빈 표·경로 검사), `tools/assets.check_constraints`("계좌 등록·사용 중"). Streamlit 입력 화면은 오류 표시만 추가. 전체 55 passed |
@@ -51,6 +52,7 @@
 - 제품 진행률에 과거 체크 수를 쓰지 않는다. 디자인/실데이터/동작/검증을 따로 보고한다. 테스트 성공이나 라이브러리 변경만으로 컨셉 화면 완료를 선언하지 않는다.
 
 협업 메모:
+- 2026-11-02 Codex: 폴더 이동·Agent 본체 인계 문서 수신 확인. 사용자 에이전트 고도화 요청으로 AGENT-01 착수, 담당 범위는 위 표. 기존 미커밋 구현을 보존하며 답변 검증과 CLI 출력 흐름을 보강한다.
 - 2026-10-27 Codex: 사용자가 내 정보·배우자 역할·실제 자산 등록을 요청. PROFILE-01/ASSET-01 추가, 구체 인계는 `DEV_HANDOFF.md`. 수동 총액 입력만 연결하며 종목 파싱·주문 로직은 Claude 영역을 보존. 추가 인계 수신 대기.
 - 2026-10-27 Codex: 기존 Claude 세션 `7da8fa60-bf83-4c29-b3c1-69f041591bf8`에서 변경된 CLAUDE.md를 읽고 “리서치·결정 트랙으로 이어가면 됩니다. 화면 코드는 건드리지 않겠습니다”라고 응답한 기록 확인. 공유 파일을 통한 수신 확인이며 별도 직접 메시지를 보낸 것은 아님. a35d069에서도 다른 세션의 UI 전환 변경을 보존했다고 명시.
 - 2026-10-27 Claude(7da8fa60): BASE-01 완료 기록. 같은 날 `tools/rebalance.py`(cash 지정 종목 매수), `rules/strategies.yaml`(올웨더·박곰희), `rules/asset_map.yaml`, `tests/test_rebalance.py`를 리서치·결정 트랙에서 수정·커밋함 — UI 트랙은 이 파일들을 건드리지 않는다는 §0 원칙과 일치. SAFE-01/SAFE-02/DATA-01/FLOW-01은 아직 미수락.
@@ -208,7 +210,7 @@
 - [x] 사용자 결정: 시세 기준 — 네이버 장중가(비공식) 유지. 막히면 공공데이터 전일 종가로 교체 — 2026-10-26
 
 **회의 후**
-- [ ] Agent 본체(Claude Agent SDK): 도구 7개만 허용, 설명 생성, 지난 거절 사유 반영, 결정 기록
+- [x] Agent 본체(Claude Agent SDK): 도구 7개만 허용, 설명 생성, 지난 거절 사유 반영, 결정 기록 — 2026-11-02 `agent/`(`uv run python -m agent`). 내장 도구 없음(`tools=[]`)·설정/CLAUDE.md 미로드, 쓰기(record_decision)는 매번 사용자 y/n, 답의 숫자를 도구 결과·규칙 발췌와 코드로 대조(`agent/guard.py`). 등록 잔고(워크북과 같은 계산 `backend/workbook.run_pool`)를 읽고, 캡처 파싱은 등록 화면 몫이라 Agent 도구에서 뺌. 화면 연결은 다음 단계
 - [ ] 미등록 종목 LLM 분류 제안 → 사용자 확인 → asset_map 저장
 - [ ] IRP 계좌 추가, 70% 한도 검증
 - [ ] PoC 완료 기준 6개 최종 점검, 회고, 2단계(자동주문) 범위 확정

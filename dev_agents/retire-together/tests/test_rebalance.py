@@ -190,6 +190,18 @@ def test_strategy_instrument_beats_held_ticker_on_buy():
     assert buys2 and all(o.ticker != "999999" for o in buys2)  # 공통 기본값은 보유 종목에 밀린다
 
 
+def test_strategy_instrument_without_price_still_wins_over_held_ticker():
+    """지정 종목의 현재가를 모를 때(보유하지 않았고 시세 갱신을 안 함) 보유 종목으로 몰래 바꾸지 않는다 — 지정 종목으로 금액만.
+    2026-11-02 실데이터: 중기채 매수가 KODEX 미국10년국채선물(308620) 대신 보유 ACE 종합채권으로 나오던 버그 (REBALANCING §4-1)."""
+    h = holdings()
+    d = {"stock": {"ticker": "999999", "name": "전략지정주식", "price": None, "source": "strategy"}}
+    s = strat(targets={"stock": 0.9, "gold": 0.1})
+    r = compute_rebalance(h, s, new_cash=NewCash(3_000_000, "acct_a"), accounts=ACCOUNTS, mode="buy_only", defaults=d)
+    buys = [o for o in r.orders if o.asset_class == "stock" and o.side == "매수" and o.account_id == "acct_a"]
+    assert buys and all(o.ticker == "999999" and o.qty is None and o.amount > 0 for o in buys)
+    assert "현재가 없음" in buys[0].note
+
+
 def test_strategy_labels_show_in_classes_and_order_sheet():
     """전략 labels(예: gold → '금 (=원자재)')가 자산군 표와 주문표에 나온다. 박곰희 템플릿은 YAML labels도 확인."""
     from tools.order_sheet import classes_table, orders_table

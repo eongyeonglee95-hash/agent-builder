@@ -78,45 +78,63 @@ def _holdings_frame(owner: str, live: bool) -> tuple[pd.DataFrame, dict, list[st
     return df, as_of, failed
 
 
+def _context(data: RebalanceInput) -> dict:
+    """묶음 계산에 공통으로 쓰는 규칙·등록 잔고·지난 결정 (한 번만 읽는다)."""
+    df, as_of, failed = _holdings_frame(data.owner, data.live)
+    return {"accts": load_accounts(registration.accounts_path()), "pools": load_pools(registration.accounts_path()),
+            "amap": load_asset_map(registration.asset_map_path()), "df": df, "as_of": as_of, "failed": failed,
+            "decisions": read_decisions(decisions_path()) if decisions_path().exists() else []}
+
+
+def run_pool(data: RebalanceInput, ctx: dict, pid: str):
+    """묶음 하나를 엔진으로 계산. (base, RebalanceResult | None, error | None). 잔고가 없으면 None.
+    워크북 화면과 Agent 도구(agent/tools.py)가 같은 계산을 쓴다."""
+    from tools.rebalance import NewCash, compute_rebalance
+    pool, accts = ctx["pools"][pid], ctx["accts"]
+    ids = [a for a in pool.get("accounts", []) if a in accts and accts[a].get("active", True) is not False]
+    part = ctx["df"][ctx["df"]["account_id"].isin(ids)].reset_index(drop=True)
+    if part.empty:
+        return None
+    label = pool.get("label") or pid
+    base = {"pool_id": pid, "label": label, "mode": pool.get("mode", "rebalance"), "accounts": [{"id": a, "label": accts[a].get("label", a)} for a in ids],
+            "as_of": min((ctx["as_of"][a] for a in ids if ctx["as_of"].get(a)), default=None), "last_decision": _last_decision(label, ctx["decisions"])}
+    try:
+        strategy = load_strategy(pool.get("strategy") or "all_weather")
+    except (KeyError, ValueError) as e:
+        return base, None, f"전략을 쓸 수 없어요: {e}"
+    if not strategy.targets:
+        return base, None, "이 묶음의 전략 비율이 아직 정해지지 않았어요."
+    tagged, unmapped = tag_holdings(part, ctx["amap"])
+    if unmapped:
+        return base, None, "자산군이 정해지지 않은 종목: " + ", ".join(unmapped)
+    cash = data.cash.get(pid) or PoolCash()
+    new_cash = NewCash(cash.amount, cash.account_id if cash.account_id in ids else ids[0]) if cash.amount else None
+    try:
+        defaults = defaults_with_prices(tagged, live=data.live, instruments=strategy.instruments, asset_map=ctx["amap"])
+        r = compute_rebalance(tagged, strategy, new_cash=new_cash, accounts=accts, mode=pool.get("mode", "rebalance"), defaults=defaults)
+    except ValueError as e:
+        return base, None, str(e)
+    base["new_cash_account"] = new_cash.account_id if new_cash else ids[0]
+    return base, r, None
+
+
 def rebalance_all(data: RebalanceInput) -> dict:
     from tools.explain import headline
-    from tools.rebalance import NewCash, compute_rebalance
-    accts = load_accounts(registration.accounts_path())
-    pools = load_pools(registration.accounts_path())
-    amap = load_asset_map(registration.asset_map_path())
-    df, as_of, failed = _holdings_frame(data.owner, data.live)
-    decisions = read_decisions(decisions_path()) if decisions_path().exists() else []
+    ctx = _context(data)
     out = []
-    for pid, pool in pools.items():
-        ids = [a for a in pool.get("accounts", []) if a in accts and accts[a].get("active", True) is not False]
-        part = df[df["account_id"].isin(ids)].reset_index(drop=True)
-        if part.empty:
+    for pid in ctx["pools"]:
+        ran = run_pool(data, ctx, pid)
+        if ran is None:
             continue
-        label = pool.get("label") or pid
-        base = {"pool_id": pid, "label": label, "mode": pool.get("mode", "rebalance"), "accounts": [{"id": a, "label": accts[a].get("label", a)} for a in ids],
-                "as_of": min((as_of[a] for a in ids if as_of.get(a)), default=None), "last_decision": _last_decision(label, decisions)}
-        try:
-            strategy = load_strategy(pool.get("strategy") or "all_weather")
-        except (KeyError, ValueError) as e:
-            out.append({**base, "error": f"전략을 쓸 수 없어요: {e}"}); continue
-        if not strategy.targets:
-            out.append({**base, "error": "이 묶음의 전략 비율이 아직 정해지지 않았어요."}); continue
-        tagged, unmapped = tag_holdings(part, amap)
-        if unmapped:
-            out.append({**base, "error": "자산군이 정해지지 않은 종목: " + ", ".join(unmapped)}); continue
-        cash = data.cash.get(pid) or PoolCash()
-        new_cash = NewCash(cash.amount, cash.account_id if cash.account_id in ids else ids[0]) if cash.amount else None
-        try:
-            defaults = defaults_with_prices(tagged, live=data.live, instruments=strategy.instruments, asset_map=amap)
-            r = compute_rebalance(tagged, strategy, new_cash=new_cash, accounts=accts, mode=pool.get("mode", "rebalance"), defaults=defaults)
-        except ValueError as e:
-            out.append({**base, "error": str(e)}); continue
+        base, r, error = ran
+        if error:
+            out.append({**base, "error": error}); continue
         res = asdict(r)
         out.append({**base, "strategy": r.strategy_name, "threshold_pp": round(r.threshold * 100, 2), "min_trade_krw": r.min_trade_krw,
-                    "total_value": r.total_value, "new_cash": r.new_cash, "new_cash_account": new_cash.account_id if new_cash else ids[0],
+                    "total_value": r.total_value, "new_cash": r.new_cash,
                     "classes": res["classes"], "orders": res["orders"], "triggered": r.triggered, "blocked_reason": r.blocked_reason,
                     "constraints": res["constraints"], "notes": r.notes, "headline": headline(r)})
-    return {"pools": out, "quote_failed": failed}
+    return {"pools": out, "quote_failed": ctx["failed"]}
 
 
 @router.post("/rebalance")

@@ -228,8 +228,9 @@ def compute_rebalance(
                 rows = rows[rows["role"] != "satellite"]  # 매수는 핵심 종목으로만
             rows = rows.sort_values("value", ascending=False)
             d = defaults.get(cls)
-            # 전략 지정 종목(strategies.yaml instruments)은 보유 종목보다 먼저 산다 (REBALANCING §1-2, 2026-10-26). 현재가 없으면 보유 종목으로
-            strategy_pick = bool(d and d.get("source") == "strategy" and d.get("price"))
+            # 전략 지정 종목(strategies.yaml instruments)은 보유 종목보다 먼저 산다 (REBALANCING §1-2, 2026-10-26).
+            # 현재가를 몰라도 보유 종목으로 바꾸지 않는다 — 지정 종목으로 금액만 (2026-11-02, §4-1 "추가 매수만 이 종목")
+            strategy_pick = bool(d and d.get("source") == "strategy" and d.get("ticker"))
             if len(rows) == 0 or strategy_pick:
                 if d and d.get("ticker") and d.get("confirmed", True) is False:
                     # SAFE-02: asset_map에 '확인됨'으로 없는 후보는 수량을 계산하지 않는다 — 금액만 보여 주고 사용자가 확인·등록한 뒤 수량
