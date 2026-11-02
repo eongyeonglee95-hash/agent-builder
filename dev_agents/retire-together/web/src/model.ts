@@ -1,7 +1,7 @@
 export type Owner = 'together' | 'me' | 'partner'
 export type Page = 'home' | 'assets' | 'pension' | 'stocks' | 'property' | 'rebalance'
 export type AssetClass = 'stock' | 'long_bond' | 'mid_bond' | 'gold' | 'commodity' | 'cash' | 'property' | 'mixed' | 'debt'
-export type Asset = { id: string; name: string; account: string; owner: 'me' | 'partner' | 'joint'; pocket: 'retirement' | 'cash' | 'property' | 'debt'; assetClass: AssetClass; amount: number; as_of?: string; version?: number; updated_at?: string; parent_id?: string | null; valuation_source?: 'total' | 'details'; share_percent?: number | null; full_amount?: number; scoped_owner?: string; source?: string; account_id?: string }
+export type Asset = { pension_layer?: 2 | 3 | 4 | null; pension_layer_effective?: number | null; id: string; name: string; account: string; owner: 'me' | 'partner' | 'joint'; pocket: 'retirement' | 'cash' | 'property' | 'debt'; assetClass: AssetClass; amount: number; as_of?: string; version?: number; updated_at?: string; parent_id?: string | null; valuation_source?: 'total' | 'details'; share_percent?: number | null; full_amount?: number; scoped_owner?: string; source?: string; account_id?: string }
 export type Person = { name: string; age: number | null; gender: 'female' | 'male' | 'unspecified'; role: 'wife' | 'husband' | 'partner' | null }
 export type Family = { me: Person; partner: Person | null; retirement_age: number | null; target_amount: number | null; version: number; updated_at: string }
 export type AccountGroup = { account: Asset; details: Asset[]; source: 'total' | 'details'; details_total: number; difference: number }

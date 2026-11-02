@@ -365,7 +365,9 @@ def test_capture_contract_table_previews_and_saves_as_amount_assets(client, env,
     assets = [a for a in storage.list_assets() if a["pocket"] == "retirement"]
     assert len(assets) == 2 and all(a["account"].startswith("한화생명보험 · ") and a["assetClass"] == "mixed" and a["owner"] == "me" for a in assets) and len({a["account"] for a in assets}) == 2
     from backend.retirement import layer_of
-    assert all(layer_of(a, {}) == 4 for a in assets)
+    assert all(a["pension_layer"] == 4 and layer_of(a, {}) == 4 for a in assets)
+    listed = client.get("/api/assets").json()
+    assert all(a["pension_layer_effective"] == 4 for a in listed if a["pocket"] == "retirement")
     # 같은 계약을 다시 올리면 새로 만들지 않고 금액만 갱신한다
     rows[0]["amount"] = 14_000_000
     again = client.post("/api/register/contracts", json={"owner": "me", "rows": rows})
@@ -375,6 +377,15 @@ def test_capture_contract_table_previews_and_saves_as_amount_assets(client, env,
     # 층을 퇴직연금으로 고르면 계좌 이름에 IRP를 남겨 층 판정이 따라온다
     irp = client.post("/api/register/contracts", json={"owner": "me", "rows": [{**rows[0], "product_name": "DC 적립", "product_type": "DC", "layer": 2}]})
     assert irp.status_code == 200 and layer_of([a for a in storage.list_assets() if a["name"] == "DC 적립"][0], {}) == 2
+
+
+def test_pension_layer_only_for_retirement_pocket(client):
+    base = {"request_id": "11111111-1111-4111-8111-111111111111", "name": "예금", "account": "우리은행", "owner": "me", "pocket": "cash", "assetClass": "cash", "amount": 1000, "as_of": "2026-10-01"}
+    assert client.post("/api/assets", json={**base, "pension_layer": 3}).status_code == 422
+    ok = client.post("/api/assets", json={**base, "request_id": "22222222-2222-4222-8222-222222222222", "name": "연금저축", "account": "키움 연금저축", "pocket": "retirement", "assetClass": "mixed", "pension_layer": 4})
+    assert ok.status_code == 201 and ok.json()["pension_layer"] == 4
+    listed = [a for a in client.get("/api/assets").json() if a["name"] == "연금저축"][0]
+    assert listed["pension_layer_effective"] == 4   # 이름은 연금저축(3)이지만 고른 값 4가 우선
 
 
 @pytest.mark.parametrize("label,ptype,expected", [("개인연금", "연금저축펀드", 3), ("개인연금", "일반연금보험", 4), ("개인연금", "연금저축보험", 3), ("퇴직연금", "DC", 2), ("퇴직연금", "IRP", 2), ("국민연금", "", 1), ("기타", "ISA", 4)])

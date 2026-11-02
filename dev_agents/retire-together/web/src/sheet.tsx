@@ -18,6 +18,8 @@ const CLASS_OPTS: [string, string][] = [['stock', '주식'], ['long_bond', '장�
 const GROUP_OPTS: [string, string][] = [['us', '미국'], ['kr', '국내'], ['em', '신흥국·테마'], ['income', '배당·리츠']]
 const OWNER_OPTS: [string, string][] = [['me', '나'], ['partner', '배우자'], ['joint', '공동']]
 const POCKET_OPTS: [string, string][] = [['retirement', '노후'], ['cash', '현금'], ['property', '부동산'], ['debt', '대출']]
+// 노후 자산의 연금 층 — 사용자가 직접 고른다. 비어 있으면 서버가 계좌 이름으로 추측한 값(pension_layer_effective)을 보여 준다 (2026-11-02)
+const LAYER_OPTS: [string, string][] = [['2', '퇴직연금'], ['3', '개인연금'], ['4', '추가연금']]
 const NEW_ACCOUNT = '__new__'
 const letters = (i: number) => String.fromCharCode(65 + i)
 const toInt = (s: string) => { const n = Number(String(s ?? '').replace(/[,\s원주]/g, '')); return String(s ?? '').trim() !== '' && Number.isInteger(n) ? n : null }
@@ -26,7 +28,7 @@ const today = () => new Date().toLocaleDateString('en-CA')
 let seq = 0
 const blank = (cols: Col[]): Row => ({ _key: `n${++seq}`, ...Object.fromEntries(cols.filter(c => c.kind !== 'calc').map(c => [c.key, ''])) })
 const isEmpty = (r: Row, cols: Col[]) => cols.every(c => c.kind === 'calc' || !String(r[c.key] ?? '').trim())
-const KEYS: Record<'holdings' | 'assets', string[]> = { holdings: ['account_id', 'ticker_name', 'ticker', 'qty', 'price', 'buy_value', 'asset_class', 'stock_group'], assets: ['name', 'account', 'owner', 'share_percent', 'pocket', 'assetClass', 'amount', 'as_of'] }
+const KEYS: Record<'holdings' | 'assets', string[]> = { holdings: ['account_id', 'ticker_name', 'ticker', 'qty', 'price', 'buy_value', 'asset_class', 'stock_group'], assets: ['name', 'account', 'owner', 'share_percent', 'pocket', 'pension_layer', 'assetClass', 'amount', 'as_of'] }
 const sigOf = (r: Row, keys: string[]) => JSON.stringify(keys.map(k => r[k] ?? ''))
 
 export function AssetSheet({ owner, initialTab = 'holdings', onSaved, embedded = false }: { owner: 'together' | 'me' | 'partner'; initialTab?: Tab; onSaved: (message: string) => void; embedded?: boolean }) {
@@ -68,6 +70,7 @@ export function AssetSheet({ owner, initialTab = 'holdings', onSaved, embedded =
     { key: 'owner', label: '소유자', width: 80, kind: 'select', options: OWNER_OPTS },
     { key: 'share_percent', label: '나의 지분%', width: 92, kind: 'int', align: 'right', disabled: r => r.owner !== 'joint' },
     { key: 'pocket', label: '종류', width: 80, kind: 'select', options: POCKET_OPTS },
+    { key: 'pension_layer', label: '연금 층', width: 96, kind: 'select', options: LAYER_OPTS, disabled: r => r.pocket !== 'retirement' },
     { key: 'assetClass', label: '자산군', width: 100, kind: 'select', options: CLASS_OPTS, disabled: r => r.pocket === 'property' || r.pocket === 'debt' },
     { key: 'amount', label: '금액', width: 140, kind: 'int', align: 'right' },
     { key: 'as_of', label: '기준일', width: 104, kind: 'date' },
@@ -91,7 +94,7 @@ export function AssetSheet({ owner, initialTab = 'holdings', onSaved, embedded =
       } else {
         const list = await api<Record<string, unknown>[]>('/assets')
         const visible = list.filter(a => owner === 'together' || a.owner === owner || a.owner === 'joint')
-        const rs: Row[] = visible.map(a => ({ _key: `a${++seq}`, name: String(a.name ?? ''), account: String(a.account ?? ''), owner: String(a.owner ?? 'me'), share_percent: a.share_percent ? String(a.share_percent) : '', pocket: String(a.pocket ?? ''), assetClass: String(a.assetClass ?? ''), amount: String(a.amount ?? ''), as_of: String(a.as_of ?? '') }))
+        const rs: Row[] = visible.map(a => ({ _key: `a${++seq}`, name: String(a.name ?? ''), account: String(a.account ?? ''), owner: String(a.owner ?? 'me'), share_percent: a.share_percent ? String(a.share_percent) : '', pocket: String(a.pocket ?? ''), pension_layer: a.pocket === 'retirement' ? String(a.pension_layer ?? a.pension_layer_effective ?? '') : '', assetClass: String(a.assetClass ?? ''), amount: String(a.amount ?? ''), as_of: String(a.as_of ?? '') }))
         const m: Record<string, Meta> = {}
         rs.forEach((r, i) => { const a = visible[i]; m[r._key] = { id: String(a.id), version: Number(a.version), raw: a, readonly: a.source === 'file' || a.source === 'capture', orig: sigOf(r, KEYS.assets) } })
         if (my !== loadSeq.current) return
@@ -265,7 +268,7 @@ export function AssetSheet({ owner, initialTab = 'holdings', onSaved, embedded =
           const m = meta[r._key]
           if (m?.deleted && m.id) { await api(`/assets/${m.id}?version=${m.version}`, 'DELETE'); n++; continue }
           if (isEmpty(r, cols)) continue
-          const body = { name: r.name.trim(), account: r.account.trim(), owner: r.owner, pocket: r.pocket, assetClass: r.pocket === 'property' || r.pocket === 'debt' ? r.pocket : r.assetClass, amount: toInt(r.amount), as_of: r.as_of, share_percent: r.owner === 'joint' ? toInt(r.share_percent) : null }
+          const body = { name: r.name.trim(), account: r.account.trim(), owner: r.owner, pocket: r.pocket, assetClass: r.pocket === 'property' || r.pocket === 'debt' ? r.pocket : r.assetClass, amount: toInt(r.amount), as_of: r.as_of, share_percent: r.owner === 'joint' ? toInt(r.share_percent) : null, pension_layer: r.pocket === 'retirement' && r.pension_layer ? Number(r.pension_layer) : null }
           if (m?.id) await api(`/assets/${m.id}`, 'PUT', { ...body, parent_id: (m.raw?.parent_id as string | null) ?? null, valuation_source: (m.raw?.valuation_source as string) ?? 'total', version: m.version })
           else await api('/assets', 'POST', { ...body, parent_id: null, valuation_source: 'total', request_id: crypto.randomUUID() })
           n++

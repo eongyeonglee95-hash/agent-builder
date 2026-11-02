@@ -95,7 +95,9 @@ _EXTRA = re.compile(r"ISA|연금보험|추가연금|추가 자금", re.IGNORECAS
 
 
 def layer_of(asset: dict, accounts: dict[str, dict]) -> int:
-    """노후 주머니 자산의 연금 층. 등록 계좌의 layer가 우선, 없으면 계좌 이름(IRP·퇴직·DC → 2, 연금저축 → 3, 연금보험·ISA·추가연금 → 4, 나머지 3)."""
+    """노후 주머니 자산의 연금 층. 사용자가 고른 pension_layer → 등록 계좌의 layer → 계좌 이름(IRP·퇴직·DC → 2, 연금저축 → 3, 연금보험·ISA·추가연금 → 4, 나머지 3)."""
+    if asset.get("pension_layer") in (2, 3, 4):
+        return int(asset["pension_layer"])
     acct = accounts.get(asset.get("account_id") or "")
     if acct and acct.get("layer"):
         return int(acct["layer"])

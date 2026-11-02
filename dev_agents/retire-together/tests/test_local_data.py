@@ -75,7 +75,8 @@ def test_asset_crud_is_persistent_versioned_and_audited(client):
     assert response.json()["version"] == 2
     assert client.put(f"/api/assets/{first['id']}", json={**update, "version": 1}).status_code == 409
     with TestClient(app, base_url=ORIGIN, headers=HEADERS) as reopened:
-        assert reopened.get("/api/assets").json() == [response.json()]
+        # GET 목록은 읽기 전용 파생값 pension_layer_effective(이름으로 추측한 연금 층)를 덧붙인다 — 저장값 비교에서는 뺀다 (2026-11-02)
+        assert [{k: v for k, v in a.items() if k != "pension_layer_effective"} for a in reopened.get("/api/assets").json()] == [response.json()]
     assert client.delete(f"/api/assets/{first['id']}?version=1").status_code == 409
     assert client.delete(f"/api/assets/{first['id']}?version=2").status_code == 204
     assert client.get("/api/assets").json() == []

@@ -27,7 +27,7 @@ SPREADSHEET_TITLE = "둘이서은퇴"
 
 # 탭 이름과 열 — 앱과 시트가 같은 이름을 쓴다. 열 순서를 바꾸면 기존 시트를 못 읽으니 끝에만 추가한다.
 ASSET_TAB = "자산"
-ASSET_COLUMNS = ["id", "owner", "pocket", "assetClass", "name", "account", "account_id", "amount", "as_of", "source", "version", "updated_at", "request_id",
+ASSET_COLUMNS = ["id", "owner", "pocket", "assetClass", "name", "account", "account_id", "amount", "as_of", "source", "version", "updated_at", "request_id", "pension_layer",
                  "parent_id", "valuation_source", "share_percent"]   # 뒤 3개: 세부 자산 연결·합산 기준·공동 지분(Codex UX-01 모델)
 HOLDING_TAB = "보유종목"
 HOLDING_COLUMNS = ["account_id", "ticker_name", "ticker", "qty", "price", "as_of", "updated_at", "buy_value"]
