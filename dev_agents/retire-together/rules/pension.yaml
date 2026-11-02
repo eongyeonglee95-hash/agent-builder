@@ -13,6 +13,22 @@ db:                        # 고용노동부 퇴직금 계산 안내, CALCULATIO
   service_days_per_year: 365
   minimum_service_years: 1
 
+# 2026-11-02 사용자와 구성한 생활비 검토 초안. 실제 지출/세액이 아니며 적용 전에는 저장하지 않는다.
+# 금액은 원. 의료·건보·보유세·비정기비는 사용자가 확인하고 수정할 임시 예산이다.
+spending_budget_template:
+  meal_cost: 15000
+  people: 2
+  meals_per_day: 3
+  days_per_month: 30
+  allowance_monthly: 1000000
+  living_monthly: 1000000
+  insurance_monthly: 800000
+  housing_tax_annual: 8400000
+  medical_monthly: 500000
+  health_insurance_monthly: 300000
+  irregular_monthly: 500000
+  other_monthly: 0
+
 # 국민연금 수급 개시 나이 — 출생연도별. 위에서부터 born_until 이하인 첫 줄
 national_start_age:
   - {born_until: 1952, age: 60}

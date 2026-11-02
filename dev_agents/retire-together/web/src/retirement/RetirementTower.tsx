@@ -1,5 +1,5 @@
-import { useEffect, useId, useState, type ReactNode } from 'react'
-import { ArrowRight, BookOpen, ChevronDown, ChevronRight, Info, Landmark, MousePointer2, RefreshCw, Settings2, Sprout, Sun, Wallet, X } from 'lucide-react'
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
+import { ArrowRight, BookOpen, Calculator, ChevronDown, ChevronRight, Info, Landmark, MousePointer2, RefreshCw, Settings2, Sprout, Sun, Wallet, X } from 'lucide-react'
 import { Popover } from 'radix-ui'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -10,6 +10,7 @@ import { useRetirementData, type Plan, type Result } from '../workbook/retiremen
 import { Pagoda } from './Pagoda'
 import { PlanDialog, type Editor } from './PlanDialog'
 import { SpendingGoal } from './SpendingGoal'
+import { SpendingBudgetDialog } from './SpendingBudgetDialog'
 import { LearnLayer } from './LearnLayer'
 import { IncomeChart } from './IncomeChart'
 import { accruedDb, amount, capital, extra, LAYERS, manWon, PEOPLE, layerState, percent, streams, visibleYears, type Scope } from './presentation'
@@ -38,6 +39,8 @@ export function RetirementTower({ data, error, save, reload, owner, onOwnerChang
   const [editor, setEditor] = useState<Editor | null>(null)
   const [editorScope, setEditorScope] = useState<Scope | null>(null)
   const [profileOpen, setProfileOpen] = useState(false)
+  const [budgetOpen, setBudgetOpen] = useState(false)
+  const budgetButton = useRef<HTMLButtonElement>(null)
   const [busySave, setBusySave] = useState(false)
   const [learnOpen, setLearnOpen] = useState(false)   // '이 연금 알아두기' 한 페이지
   // 자산 등록(사진·표·포털 계약)이 끝나면 적립금이 바뀌므로 다시 읽는다
@@ -182,7 +185,7 @@ export function RetirementTower({ data, error, save, reload, owner, onOwnerChang
           {dbSaved > 0 && <div><span>확정 퇴직금(DB)</span><b>{big(dbSaved)}</b></div>}
         </details>
       </div>
-      <aside className="tower-summary" aria-label="선택 연도의 연금 요약"><div className="tower-summary-kicker"><i/>{scopeLabel} · {row ? `${year}년` : '계산 전'}</div><p className="tower-summary-ages">{ageLabel}</p><p className="tower-monthly-label">매달 받는 연금 · 1–3층</p><div className="tower-total"><small>월</small><strong data-testid="pension-total" data-won={hidden ? undefined : total ?? undefined}>{monthly(total)}</strong><small>만 원</small></div><p className="tower-summary-note">{partial ? '계산 가능한 가족의 연금만 포함' : '입력된 연금 기준 · 세전 / 오늘의 돈'}</p>
+      <aside className="tower-summary" aria-label="선택 연도의 연금 요약"><div className="tower-summary-kicker"><i/>{scopeLabel} · {row ? `${year}년` : '계산 전'}</div><p className="tower-summary-ages">{ageLabel}</p><p className="tower-monthly-label">매달 받는 연금 · 1–3층</p><div className="tower-income-actions"><div className="tower-total"><small>월</small><strong data-testid="pension-total" data-won={hidden ? undefined : total ?? undefined}>{monthly(total)}</strong><small>만 원</small></div><button type="button" className="tower-budget-open" ref={budgetButton} onClick={() => setBudgetOpen(true)}><Calculator size={14}/>생활비 계산</button></div><p className="tower-summary-note">{partial ? '계산 가능한 가족의 연금만 포함' : '입력된 연금 기준 · 세전 / 오늘의 돈'}</p>
         <div className="tower-coverage">{pct != null && !hidden && <div className="tower-coverage-track" aria-hidden="true">{LAYERS.slice(0, 3).map(l => <i key={l.id} style={{ width: `${(amount(row, owner, l.id) ?? 0) / Math.max(1, total ?? 0, need ?? 0) * 100}%`, background: `var(--tower-layer-${l.id})` }}/>)}</div>}
           <div className="tower-coverage-label"><button onClick={() => setEditor('goal')}><span>{owner !== 'together' ? '부부 생활비' : '생활비 · 오늘 돈'} {data.plan.monthly_need == null ? '입력하기' : money(data.plan.monthly_need)}</span><Settings2 size={12}/></button>{pct != null && <span>{hidden ? '•••' : percent(pct)}% 충당</span>}</div></div>
         <div className="tower-gap"><h3>{!ready ? '연금 정보를 채워 주세요.' : partial ? '가족 정보를 먼저 채워 주세요.' : owner !== 'together' ? '각자의 준비를 함께 살펴요.' : !row?.retired ? '은퇴 전 수령하는 금액이에요.' : gap == null ? '바라는 한 달을 정해 볼까요?' : gap < 0 ? <>생활비까지<br/><em>월 {monthly(-gap)}만 원</em>이 더 필요해요.</> : <>입력된 연금으로<br/><em>{gap === 0 ? '생활비를 채우고 있어요.' : `월 ${monthly(gap)}만 원의 여유가 있어요.`}</em></>}</h3>{(!ready || owner !== 'together' || gap == null) && <p>{!ready ? '국민연금 예상액과 퇴직금, 연금저축 납입 계획을 알려 주세요.' : owner !== 'together' ? '생활비는 부부의 합계와 비교해요. 우리 함께 보기에서 확인하세요.' : gap != null ? '수령 시점에 따라 달라져요. 다른 나이의 흐름도 함께 살펴보세요.' : '은퇴 후 부부가 필요한 월 생활비를 입력하면 연금과 비교할 수 있어요.'}</p>}
@@ -208,6 +211,7 @@ export function RetirementTower({ data, error, save, reload, owner, onOwnerChang
     </div>
     <div className="tower-footnote"><p>층별 게이지 = 해당 층의 월 연금 ÷ 목표 월 생활비. 각 층이 생활비에서 담당하는 몫이며, 층마다 100%를 채우는 목표가 아닙니다. 현재 적립금에는 앞으로 넣을 돈과 예상 수익을 더하지 않았어요.</p><p>예측이 아닌 입력한 가정의 계산 결과입니다. 석탑의 네 층은 연금 종류를 구분합니다. 생활비 충당률은 각 항목의 막대와 숫자로 확인해 주세요.</p></div>
     {details && <details className="tower-sheet-detail"><summary>입력값·연도별 계산을 표로 보기<ChevronDown size={16}/></summary><div className="tower-sheet-grid">{details}</div></details>}
+    {budgetOpen && <SpendingBudgetDialog data={data} save={save} close={() => setBudgetOpen(false)} returnFocus={() => budgetButton.current?.focus()}/>}
     {editor !== null && <PlanDialog data={data} scope={editorScope ?? owner} section={editor} save={save} close={() => { setEditor(null); setEditorScope(null) }}/>}
     {learnOpen && <LearnLayer layer={selected} data={data} row={row} owner={owner} close={() => setLearnOpen(false)}/>}
     {profileOpen && <RetirementProfile close={() => setProfileOpen(false)} onSaved={() => { setProfileOpen(false); reload(); onProfileChanged?.() }}/>}

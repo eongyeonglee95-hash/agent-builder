@@ -30,6 +30,24 @@ def load_pension_rules(path: str | Path | None = None) -> dict:
     return yaml.safe_load(p.read_text(encoding="utf-8"))
 
 
+def spending_budget_totals(budget: dict) -> dict:
+    """오늘 돈 월 예산. 연 세금/12는 원 단위 반올림(0.5원 올림). 세액을 추정하지 않는다."""
+    for key, value in budget.items():
+        if type(value) is not int or value < 0:
+            raise ValueError("생활비 항목은 0 이상의 정수로 입력해 주세요.")
+    for key, maximum in (("people", 10), ("meals_per_day", 10), ("days_per_month", 31)):
+        if not 1 <= budget[key] <= maximum:
+            raise ValueError("식비의 인원·끼니 수·일수를 확인해 주세요.")
+    food = budget["meal_cost"] * budget["people"] * budget["meals_per_day"] * budget["days_per_month"]
+    tax = (budget["housing_tax_annual"] + 6) // 12
+    monthly = food + tax + sum(budget[key] for key in (
+        "allowance_monthly", "living_monthly", "insurance_monthly", "medical_monthly",
+        "health_insurance_monthly", "irregular_monthly", "other_monthly"))
+    if monthly > 10**12:
+        raise ValueError("월 생활비 합계는 1조 원 이하여야 해요.")
+    return {"food_monthly": food, "housing_tax_monthly": tax, "monthly_total": monthly}
+
+
 def national_start_age(birth_year: int, rules: dict) -> int:
     for row in rules["national_start_age"]:
         if birth_year <= row["born_until"]:
