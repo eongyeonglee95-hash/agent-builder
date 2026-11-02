@@ -6,16 +6,25 @@ import json
 from typing import Annotated, Literal
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Path
+from fastapi import APIRouter, HTTPException, Path, Query
 from pydantic import Field, model_validator
 
 from backend import storage
+from backend import property as prop
 from backend.property import Address, list_homes
 from backend.storage import InputModel, Money
-from tools.property_move import move_budget, price_gap
+from tools.property_move import asking_vs_trades, move_budget, price_gap
 
 router = APIRouter(prefix="/api/property-move", tags=["property-move"])
 Owner = Literal["together", "me", "partner"]
+
+
+class Living(InputModel):
+    """목표 집의 거주 정보 — 사용자가 직접 확인해 적는 메모. 자동 조회·평가 없음."""
+    school: Annotated[str, Field(max_length=300)] = ""      # 학군·통학
+    commute: Annotated[str, Field(max_length=300)] = ""     # 출퇴근·교통
+    life: Annotated[str, Field(max_length=300)] = ""        # 생활·단지(연식·세대수·관리비·편의)
+    concerns: Annotated[str, Field(max_length=300)] = ""    # 단점·확인할 것
 
 
 class Candidate(InputModel):
@@ -31,6 +40,7 @@ class Candidate(InputModel):
     asking_date: dt.date | None = None
     purchase_costs: Money | None = None
     memo: Annotated[str, Field(max_length=300)] = ""
+    living: Living = Living()
 
     @model_validator(mode="after")
     def consistent(self):
@@ -202,3 +212,14 @@ def untrack(candidate_id: UUID, day: Annotated[str, Path(pattern=r"^\d{4}-\d{2}-
         _table(conn)
         conn.execute("DELETE FROM property_track WHERE owner=? AND candidate_id=? AND day=?", (owner, str(candidate_id), day))
     return result(read_plan(owner), owner)
+
+
+@router.get("/price-check")
+def price_check(sigungu: Annotated[str, Query(pattern=r"^\d{5}$")], name: Annotated[str, Query(min_length=1, max_length=100)],
+                area: Annotated[float, Query(gt=0, le=2000)] | None = None, months: Annotated[int, Query(ge=1, le=36)] = 12,
+                dong: Annotated[str, Query(max_length=20)] | None = None, asking: Annotated[int, Query(gt=0, le=1_000_000_000_000_000)] | None = None):
+    """호가를 과거 실거래(국토부, 최대 36개월)와 나란히. 판단은 사용자 몫 — 숫자만 준다."""
+    if not prop.market_key():   # 모듈 경유 호출: 테스트가 인증키를 비우고, 실제 조회를 막는다
+        return {"configured": False, "months": months, "trades": [], "analysis": asking_vs_trades(asking, [])}
+    trades = prop.recent_trades(sigungu, name, area, months, dong)
+    return {"configured": True, "months": months, "trades": trades[:60], "analysis": asking_vs_trades(asking, trades)}

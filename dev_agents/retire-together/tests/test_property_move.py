@@ -181,3 +181,33 @@ def test_manual_track_uses_sent_price_and_can_be_deleted(client):
     assert client.get("/api/property-move?owner=me").json()["track"] == {}
     r = client.delete(f"/api/property-move/track/{c['id']}/{row['day']}?owner=together")
     assert r.status_code == 200 and r.json()["track"][c["id"]] == []
+
+
+# ── 호가 vs 과거 실거래 ───────────────────────────────────────
+def test_asking_vs_trades_gives_numbers_only():
+    from tools.property_move import asking_vs_trades
+    trades = [{"price": 1_000_000_000, "date": "2026-09-10", "floor": 12, "area": 84.9},
+              {"price": 960_000_000, "date": "2026-06-02", "floor": 3, "area": 84.9},
+              {"price": 1_020_000_000, "date": "2026-10-20", "floor": 20, "area": 84.9},
+              {"price": 940_000_000, "date": "2026-01-15", "floor": 7, "area": 84.9}]
+    a = asking_vs_trades(1_100_000_000, trades)
+    assert (a["count"], a["low"], a["high"], a["median"]) == (4, 940_000_000, 1_020_000_000, 980_000_000)
+    assert a["latest"] == 1_020_000_000 and a["latest_date"] == "2026-10-20" and (a["first_date"], a["last_date"]) == ("2026-01-15", "2026-10-20")
+    assert a["premium_latest"] == 80_000_000 and a["premium_latest_pct"] == 7.8
+    assert a["premium_median"] == 120_000_000 and a["premium_median_pct"] == 12.2
+    assert "verdict" not in a and all(not isinstance(v, str) or v[:4].isdigit() for v in a.values())   # 판단 문구 없음
+    assert asking_vs_trades(None, trades)["premium_latest"] is None
+    assert asking_vs_trades(900_000_000, [])["count"] == 0
+    with pytest.raises(ValueError):
+        asking_vs_trades(0, trades)
+
+
+def test_price_check_without_key_and_living_notes_round_trip(client):
+    r = client.get("/api/property-move/price-check?sigungu=11110&name=검증용&area=84&asking=1000000000&months=24")
+    assert r.status_code == 200 and r.json()["configured"] is False and r.json()["analysis"]["count"] == 0
+    assert client.get("/api/property-move/price-check?sigungu=11110&name=검증용&months=37").status_code == 422
+    c = candidate(living={"school": "초등 도보 5분", "commute": "", "life": "2008년 입주 · 1,200세대", "concerns": "대로변 소음"})
+    r = save(client, dict(version=0, candidates=[c]))
+    assert r.status_code == 200, r.text
+    assert r.json()["plan"]["candidates"][0]["living"] == {"school": "초등 도보 5분", "commute": "", "life": "2008년 입주 · 1,200세대", "concerns": "대로변 소음"}
+    assert save(client, dict(version=1, candidates=[candidate(living={"school": "x" * 301})])).status_code == 422
