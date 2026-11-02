@@ -354,8 +354,9 @@ def sheet_rows(owner: Literal["together", "me", "partner"] = "together"):
 
 # ---------- 연금 계약 표 (통합연금포털 캡처) ----------
 
-LAYER_LABELS = {1: "국민연금", 2: "퇴직연금 · DC·IRP", 3: "개인연금 · 연금저축·연금보험", 4: "추가 자금 · ISA 등"}
+LAYER_LABELS = {1: "국민연금", 2: "퇴직연금 · DC·IRP", 3: "개인연금 · 연금저축(세제적격)", 4: "추가연금 · 연금보험(세제비적격)·ISA"}
 _LAYER2 = re.compile(r"IRP|퇴직|DC|DB", re.IGNORECASE)
+_LAYER4 = re.compile(r"ISA|연금보험|추가연금", re.IGNORECASE)   # backend.retirement._EXTRA 와 같은 뜻
 
 
 def guess_layer(label: str, product_type: str = "") -> int:
@@ -365,7 +366,9 @@ def guess_layer(label: str, product_type: str = "") -> int:
         return 1
     if _LAYER2.search(text):
         return 2
-    if "ISA" in text.upper():
+    if "연금저축" in text:
+        return 3
+    if _LAYER4.search(text):
         return 4
     return 3
 
@@ -412,10 +415,12 @@ def _layer_account(row: ContractRow) -> str:
     base = " · ".join(x for x in (row.company.strip(), row.product_name.strip()) if x)
     if row.layer == 2 and not _LAYER2.search(base):
         base += " · IRP"
-    if row.layer == 4 and "ISA" not in base.upper():
-        base += " · ISA"
+    if row.layer == 4 and not _LAYER4.search(base):
+        base += " · 추가연금"
     if row.layer == 3:
-        base = _LAYER2.sub("", base).replace("ISA", "").strip(" ·") or row.company.strip()
+        base = _LAYER4.sub("", _LAYER2.sub("", base)).strip(" ·") or row.company.strip()
+        if "연금저축" not in base:
+            base += " · 연금저축"
     return base[:100]
 
 

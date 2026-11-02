@@ -90,15 +90,21 @@ def save_plan(data: PlanInput) -> dict:
 
 
 _IRP = re.compile(r"IRP|퇴직|DC", re.IGNORECASE)
+# 세제비적격(연금보험·변액연금보험)·ISA·그 밖의 은퇴 자금은 4층. 연금저축(펀드·보험·신탁)은 세제적격이라 3층 (2026-11-02 사용자 "일반연금보험은 세제비적격, 추가연금으로")
+_EXTRA = re.compile(r"ISA|연금보험|추가연금|추가 자금", re.IGNORECASE)
 
 
 def layer_of(asset: dict, accounts: dict[str, dict]) -> int:
-    """노후 주머니 자산의 연금 층. 등록 계좌의 layer가 우선, 없으면 계좌 이름(IRP·퇴직·DC → 2, ISA → 4, 나머지 3)."""
+    """노후 주머니 자산의 연금 층. 등록 계좌의 layer가 우선, 없으면 계좌 이름(IRP·퇴직·DC → 2, 연금저축 → 3, 연금보험·ISA·추가연금 → 4, 나머지 3)."""
     acct = accounts.get(asset.get("account_id") or "")
     if acct and acct.get("layer"):
         return int(acct["layer"])
     name = asset.get("account", "")
-    return 2 if _IRP.search(name) else 4 if "ISA" in name.upper() else 3
+    if _IRP.search(name):
+        return 2
+    if "연금저축" in name:
+        return 3
+    return 4 if _EXTRA.search(name) else 3
 
 
 def balances() -> dict[str, dict[int, int]]:

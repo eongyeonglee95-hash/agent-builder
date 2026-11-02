@@ -355,7 +355,7 @@ def test_capture_contract_table_previews_and_saves_as_amount_assets(client, env,
     assert r.status_code == 200, r.text
     g = r.json()["groups"][0]
     assert g["kind"] == "contracts" and g["account_label"] == "개인연금" and g["rows"] == []
-    assert [c["layer"] for c in g["contracts"]] == [3, 3] and g["computed_total"] == 56_509_075 and g["reconciled"] is True
+    assert [c["layer"] for c in g["contracts"]] == [4, 4] and g["computed_total"] == 56_509_075 and g["reconciled"] is True   # 일반연금보험은 세제비적격 → 추가연금
     assert [c["overlap"] for c in g["contracts"]] == [False, False]
     rows = [{"company": c["company"], "product_type": c["product_type"], "product_name": c["product_name"], "amount": c["amount"], "as_of": c["as_of"],
              "payout_start_date": c["payout_start_date"], "layer": c["layer"]} for c in g["contracts"]]
@@ -365,7 +365,7 @@ def test_capture_contract_table_previews_and_saves_as_amount_assets(client, env,
     assets = [a for a in storage.list_assets() if a["pocket"] == "retirement"]
     assert len(assets) == 2 and all(a["account"].startswith("한화생명보험 · ") and a["assetClass"] == "mixed" and a["owner"] == "me" for a in assets) and len({a["account"] for a in assets}) == 2
     from backend.retirement import layer_of
-    assert all(layer_of(a, {}) == 3 for a in assets)
+    assert all(layer_of(a, {}) == 4 for a in assets)
     # 같은 계약을 다시 올리면 새로 만들지 않고 금액만 갱신한다
     rows[0]["amount"] = 14_000_000
     again = client.post("/api/register/contracts", json={"owner": "me", "rows": rows})
@@ -377,7 +377,7 @@ def test_capture_contract_table_previews_and_saves_as_amount_assets(client, env,
     assert irp.status_code == 200 and layer_of([a for a in storage.list_assets() if a["name"] == "DC 적립"][0], {}) == 2
 
 
-@pytest.mark.parametrize("label,ptype,expected", [("개인연금", "연금저축펀드", 3), ("개인연금", "일반연금보험", 3), ("퇴직연금", "DC", 2), ("퇴직연금", "IRP", 2), ("국민연금", "", 1), ("기타", "ISA", 4)])
+@pytest.mark.parametrize("label,ptype,expected", [("개인연금", "연금저축펀드", 3), ("개인연금", "일반연금보험", 4), ("개인연금", "연금저축보험", 3), ("퇴직연금", "DC", 2), ("퇴직연금", "IRP", 2), ("국민연금", "", 1), ("기타", "ISA", 4)])
 def test_guess_layer(label, ptype, expected):
     assert registration.guess_layer(label, ptype) == expected
 
