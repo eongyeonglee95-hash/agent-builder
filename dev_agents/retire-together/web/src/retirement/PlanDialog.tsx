@@ -22,6 +22,17 @@ export function PlanDialog({ data, scope, section, save, close }: {
     <span>{label}</span><span className="tower-input-unit"><Input aria-label={`${who === 'me' ? '나' : '배우자'} ${label}`} type="number" inputMode="numeric" min={unit === '세' ? 18 : 0} max={unit === '세' ? 100 : 1e12} step={1}
       value={draft[who][field] ?? ''} placeholder={placeholder == null ? '' : String(placeholder)} onChange={e => update(who, field, e.target.value, unit === '세')}/><span>{unit}</span></span><small>{hint}</small>
   </label>
+  const nationalStart = (who: 'me' | 'partner') => {
+    const used = data.used[who]
+    const auto = used?.national_start_age
+    const age = draft[who].national_start_age ?? auto
+    const year = used && age != null ? data.base_year + (age - used.age) : null
+    return <details className="tower-field tower-field-detail" key="national_start" open={draft[who].national_start_age != null}>
+      <summary><span>받기 시작 {age != null ? `${age}세` : '—'}{year != null && ` · ${year}년`}</span><small>{draft[who].national_start_age == null ? '출생연도 기준 · 바꾸려면 누르세요' : '직접 정한 나이 · 비우면 출생연도 기준'}</small></summary>
+      <span className="tower-input-unit"><Input aria-label={`${who === 'me' ? '나' : '배우자'} 국민연금 개시 나이`} type="number" inputMode="numeric" min={18} max={100} step={1} value={draft[who].national_start_age ?? ''} placeholder={auto == null ? '' : String(auto)} onChange={e => update(who, 'national_start_age', e.target.value, true)}/><span>세</span></span>
+      <small>조기 수령은 최대 5년 앞, 연기 수령은 최대 5년 뒤까지예요. 금액이 달라지는 건 아직 반영하지 않아요.</small>
+    </details>
+  }
   async function submit() {
     setBusy(true); setError('')
     try {
@@ -32,12 +43,12 @@ export function PlanDialog({ data, scope, section, save, close }: {
   }
   return <Dialog open onOpenChange={open => { if (!open && !busy) close() }}>
     <DialogContent className="tower-plan-dialog max-h-[88dvh] overflow-y-auto sm:max-w-xl" onEscapeKeyDown={e => { if (busy) e.preventDefault() }} onPointerDownOutside={e => { if (busy) e.preventDefault() }}>
-      <DialogHeader><DialogTitle>{TITLES[section]}</DialogTitle><DialogDescription>저장하면 등록한 적립금과 함께 다시 계산합니다. 금액은 원 단위로 입력해 주세요.</DialogDescription></DialogHeader>
+      <DialogHeader><DialogTitle>{TITLES[section]}</DialogTitle><DialogDescription>{section === 1 ? <>월액 한 칸이면 돼요. 납부 월수·납부 총액은 넣지 않아도 됩니다. <a href="https://www.fss.or.kr/fss/lifeplan/myAnntyCtrt/list.do?menuNo=200945" target="_blank" rel="noreferrer">통합연금포털에서 확인</a></> : '저장하면 등록한 적립금과 함께 다시 계산합니다. 금액은 원 단위로 입력해 주세요.'}</DialogDescription></DialogHeader>
       <form onSubmit={e => { e.preventDefault(); submit() }} className="tower-plan-form">
         {typeof section === 'number' || section === 'timing' ? people.map(([who, name]) => <fieldset key={who} disabled={busy}><legend>{name}</legend><div className="tower-form-grid">
           {section === 1 && <>
-            {personField(who, '국민연금 예상 월액', 'national_monthly', '원', '공단에서 확인한 예상 월액 · 오늘 돈')}
-            {personField(who, '국민연금 개시 나이', 'national_start_age', '세', '비우면 출생연도 기준', data.used[who]?.national_start_age)}
+            {personField(who, '예상 연금 월액', 'national_monthly', '원', '공단 우편 안내문이나 통합연금포털의 "예상연금수령액(원/월)"을 그대로 적어요 · 오늘 돈')}
+            {nationalStart(who)}
           </>}
           {section === 2 && <>
             {personField(who, '월급 (최근 3개월 평균)', 'db_monthly_wage', '원', 'DB형 퇴직금 계산에 사용')}
