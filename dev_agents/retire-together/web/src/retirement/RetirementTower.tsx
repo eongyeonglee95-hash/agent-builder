@@ -2,7 +2,6 @@ import { useEffect, useId, useState, type ReactNode } from 'react'
 import { ArrowRight, ChevronDown, ChevronRight, Coins, Info, Landmark, MousePointer2, RefreshCw, Settings2, Sprout, Sun, Wallet, X } from 'lucide-react'
 import { Popover } from 'radix-ui'
 import { Button } from '@/components/ui/button'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { api } from '../local-data'
 import { ProfileForm } from '../forms'
@@ -115,13 +114,8 @@ export function RetirementTower({ data, error, save, reload, owner, onOwnerChang
 
             {l.id > 1 && l.id < 4 && scopedStreams.some(s => s.layer === l.id) && <span className="tower-layer-period">{activePeople.map(([who, label]) => { const periods = streams(data, who, l.id).map(s => s.payout_years).filter((v): v is number => v != null); return periods.length ? `${label} ${[...new Set(periods)].join('·')}년 수령` : '' }).filter(Boolean).join(' · ')}</span>}</span>
             <span className="tower-layer-gauge" aria-label={hidden ? '금액 숨김' : share(l.id) == null ? '생활비 기여율 계산 전' : `목표 생활비의 ${percent(share(l.id)!)}% 담당`}><span className="tower-layer-track"><i style={{ width: `${hidden ? 0 : Math.min(100, share(l.id) ?? 0)}%`, background: `var(--tower-fill-${l.id})` }}/></span><span>{hidden ? '•••' : share(l.id) != null ? <>생활비의 <b>{percent(share(l.id)!)}%</b></> : l.id === 4 ? '월 연금 연결 전' : owner !== 'together' ? '기여율은 함께 보기에서' : partial ? '가족 정보 확인 필요' : data.plan.monthly_need == null || data.plan.monthly_need === 0 ? '생활비 목표 설정 필요' : !row?.retired ? '은퇴 전' : '연금 정보 확인 필요'}</span></span>
-          </button>{l.id === 1 ? <button type="button" className="tower-layer-edit" aria-label={`${l.name} 입력·수정하기`} onClick={() => { setSelected(l.id); setEditorScope(null); if (!hasPerson) setProfileOpen(true); else setEditor(1) }}>입력·수정하기</button>
-            : <DropdownMenu><DropdownMenuTrigger asChild><button type="button" className="tower-layer-edit" aria-label={`${l.name} 입력·수정하기`} onClick={() => setSelected(l.id)}>입력·수정하기<ChevronDown size={13}/></button></DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="tower-layer-menu">{/* 적립금은 '우리 자산'에 등록한 돈에서 온다 (2026-11-02 사용자: "처음에 자산 등록하는 것처럼 자산 등록하기나 보여주기가 떠야"). 수령 나이·기간·DB는 연금 설정 */}
-                <DropdownMenuItem onSelect={() => (onRegister ?? onAssets)()}>{l.id === 2 ? 'DC·IRP 적립금 등록하기' : l.id === 3 ? '연금저축 적립금 등록하기' : '추가 자금 등록하기'}<small>사진 · 파일 · 직접 입력</small></DropdownMenuItem>
-                <DropdownMenuItem onSelect={onAssets}>등록한 자산 보기</DropdownMenuItem>
-                {l.id < 4 && <DropdownMenuItem onSelect={() => { setEditorScope(null); if (!hasPerson) setProfileOpen(true); else setEditor(l.id as Editor) }}>{l.id === 2 ? 'DB 퇴직금·수령 설정' : '수령 설정 · 개시 나이와 기간'}</DropdownMenuItem>}
-              </DropdownMenuContent></DropdownMenu>}</div></Popover.Anchor>
+          </button>{l.id <= 2 ? <button type="button" className="tower-layer-edit" aria-label={`${l.name} 입력·수정하기`} onClick={() => { setSelected(l.id); setEditorScope(null); if (!hasPerson) setProfileOpen(true); else setEditor(l.id as Editor) }}>입력·수정하기</button>
+            : <button type="button" className="tower-layer-edit" aria-label={`${l.name} 자산 등록하기`} onClick={() => { setSelected(l.id); (onRegister ?? onAssets)() }}>자산 등록하기</button>}{/* 개인·추가연금 적립금은 공통 '자산 등록하기'(사진·파일·직접)로 (2026-11-02 사용자: "처음에 자산 등록하기로 되어야, 그건 공통") */}</div></Popover.Anchor>
             <Popover.Portal><Popover.Content className="tower-detail tower-detail-pop tower-plan-dialog" aria-labelledby={`${uid}-detail`} side="bottom" align="start" sideOffset={6} collisionPadding={12} onOpenAutoFocus={e => e.preventDefault()} onCloseAutoFocus={e => e.preventDefault()}>
 <div className="tower-detail-heading"><span className="tower-detail-icon"><Icon size={20}/></span><div><h2 id={`${uid}-detail`}>{selected}층 · {currentLayer.name}</h2><p>{currentLayer.description}</p></div><Popover.Close className="tower-detail-close" aria-label="층 상세 닫기"><X size={16}/></Popover.Close></div>
       <div className="tower-members">{activePeople.length ? activePeople.map(([who, label]) => <div className="tower-member" key={who}>
@@ -132,6 +126,8 @@ export function RetirementTower({ data, error, save, reload, owner, onOwnerChang
         <span>{selected === 4 ? '수령 계산 미연결' : periodText(who, selected) || '준비 정보를 입력해 주세요'}</span>
         {selected === 1 && <span>화면 계산은 {data.assumptions.end_age}세 직전까지</span>}
       </div>) : <p className="tower-muted">나이와 은퇴 목표를 입력하면 각자의 계획을 볼 수 있어요.</p>}</div>
+      {selected === 3 && <button type="button" className="tower-detail-link" aria-label="개인연금 납입·수령 설정" onClick={() => { setDetailOpen(false); setEditorScope(null); if (!hasPerson) setProfileOpen(true); else setEditor(3) }}><Settings2 size={13}/>1년 납입액 · 수령 설정</button>}
+      {selected === 4 && <button type="button" className="tower-detail-link" onClick={() => { setDetailOpen(false); onAssets() }}><Wallet size={13}/>등록한 자산 보기</button>}
       {selected === 4 && <p className="tower-detail-note"><Info size={15}/>추가연금은 별도 연금 제도가 아닌 추가 준비 자금이에요. 현재는 등록한 금액만 보여주며, 월 수령액으로 전환하는 계산은 아직 연결되지 않았어요.</p>}
       {selected !== 4 && currentStatus === '준비 정보 없음' && <p className="tower-detail-note">정보가 없다는 뜻이며, 실제 받을 연금이 0원이라는 뜻은 아니에요.</p>}
             </Popover.Content></Popover.Portal></Popover.Root>)}</div>

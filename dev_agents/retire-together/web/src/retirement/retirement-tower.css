@@ -315,7 +315,5 @@
 
 /* 2026-11-02 적립금 머리 숫자에 확정 DB 퇴직금 합산 · 입력 버튼 메뉴 */
 .tower-db-separate b[data-testid]{font-weight:600}
-.tower-layer-edit svg{margin-left:3px;vertical-align:-2px}
-.tower-layer-menu{min-width:240px;font-family:var(--font-sans)}
-.tower-layer-menu [role=menuitem]{display:grid;gap:1px;padding:8px 10px}
-.tower-layer-menu [role=menuitem] small{font-size:var(--text-xs);color:var(--muted-foreground)}
+.tower-detail-link{justify-self:start;display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:8px;background:var(--background);padding:6px 10px;font-size:var(--text-xs);color:var(--grey-700);cursor:pointer}
+.tower-detail-link:hover{background:var(--muted)}
