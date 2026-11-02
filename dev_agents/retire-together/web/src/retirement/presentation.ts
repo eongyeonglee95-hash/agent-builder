@@ -48,3 +48,13 @@ export function layerState(data: Result, scope: Scope, year: number, layer: numb
   if (!active) return layer === 1 ? '계산 기간 밖' : '수령 기간 종료'
   return '수령 중'
 }
+
+// 큰 금액은 억·만 단위, 소수점 없이 ("2억 32만"). 월 단위 작은 돈은 기존 monthly(소수 한 자리)를 쓴다.
+export function manWon(won: number) {
+  const sign = won < 0 ? '-' : ''
+  const abs = Math.abs(won)
+  let eok = Math.floor(abs / 1e8), man = Math.round((abs % 1e8) / 1e4)
+  if (man === 10000) { eok += 1; man = 0 }
+  if (eok > 0) return `${sign}${eok.toLocaleString('ko-KR')}억${man ? ` ${man.toLocaleString('ko-KR')}만` : ''}`
+  return `${sign}${man.toLocaleString('ko-KR')}만`
+}

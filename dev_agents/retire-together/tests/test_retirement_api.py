@@ -90,7 +90,7 @@ def test_layer_of_uses_account_registry_then_name():
     assert retirement.layer_of({"account": "연금저축계좌(신)"}, {}) == 3
 
 
-def test_db_from_wage_and_hire_year(client):
+def test_db_from_reported_accrual_and_wage(client):
     _family(client)
     body = {"me": {"db_monthly_wage": 5_000_000, "db_accrued": 50_000_000}, "partner": {"db_monthly_wage": 6_000_000, "db_accrued": 90_000_000}, "version": 0}
     d = client.put("/api/retirement/plan", json=body).json()
@@ -101,6 +101,51 @@ def test_db_from_wage_and_hire_year(client):
     assert {(s["person"], s["label"]) for s in streams} >= {("me", "퇴직연금(DB)"), ("partner", "퇴직연금(DB)")}
     assert next(s for s in streams if s["person"] == "me")["principal"] == round(150_000_000 * 1.02**20)
     assert client.put("/api/retirement/plan", json={"me": {"db_accrued": -1}, "version": 1}).status_code == 422
+
+
+def test_db_preview_matches_save_without_writing_or_double_counting(client):
+    _family(client)
+    _asset(client, "IRP", "나 IRP", "me", 30_000_000)
+    payload = {"me": {"db_method": "tenure", "db_start_date": "2020-01-01", "db_monthly_wage": 3_650_000,
+                      "db_accrued": 90_000_000}, "partner": {"db_accrued": 50_000_000}, "version": 0}
+    preview = client.post("/api/retirement/preview", json=payload)
+    assert preview.status_code == 200, preview.text
+    d = preview.json()
+    assert client.get("/api/retirement").json()["plan"]["version"] == 0
+    expected = (date.today() - date(2020, 1, 1)).days * 10_000
+    assert d["db_estimates"]["me"]["accrued_now"] == expected
+    assert d["capital"]["me"] == {"balances": {"2": 30_000_000}, "db_accrued": expected}
+    assert d["capital"]["partner"]["db_accrued"] == 50_000_000
+    saved = client.put("/api/retirement/plan", json=payload).json()
+    for key in ("db_estimates", "capital", "used", "projection"):
+        assert saved[key] == d[key]
+    assert client.get("/api/retirement").json()["db_estimates"] == saved["db_estimates"]
+    assert client.put("/api/retirement/plan", json=payload).status_code == 409
+    # Switching back restores the original company amount; no conversion overwrites it.
+    payload["me"]["db_method"] = "reported"
+    payload["version"] = 1
+    manual = client.put("/api/retirement/plan", json=payload).json()
+    assert manual["capital"]["me"]["db_accrued"] == 90_000_000
+
+
+@pytest.mark.parametrize("start", ["2026-02-30", "2999-01-01", "2020/01/01", 1577836800])
+def test_db_invalid_start_date_rejected(client, start):
+    body = {"me": {"db_start_date": start}, "version": 0}
+    assert client.post("/api/retirement/preview", json=body).status_code == 422
+    assert client.put("/api/retirement/plan", json=body).status_code == 422
+    assert client.get("/api/retirement").json()["plan"]["version"] == 0
+
+
+def test_db_incomplete_preview_and_capital_without_family(client):
+    body = {"me": {"db_method": "tenure"}, "version": 0}
+    preview = client.post("/api/retirement/preview", json=body).json()
+    assert preview["db_estimates"]["me"]["accrued_now"] is None
+    assert client.put("/api/retirement/plan", json=body).status_code == 422
+    body["me"].update(db_start_date="2020-01-01", db_monthly_wage=3_650_000)
+    d = client.put("/api/retirement/plan", json=body).json()
+    assert d["capital"]["me"]["db_accrued"] > 0
+    assert d["db_estimates"]["me"]["lump_at_retire"] is None
+    assert d["projection"] is None
 
 
 def test_spending_target_recomputes_with_saved_goal_inflation_and_retirement(client):

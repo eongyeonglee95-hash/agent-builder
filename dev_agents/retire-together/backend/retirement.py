@@ -11,15 +11,15 @@ from __future__ import annotations
 import datetime as dt
 import json
 import re
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, HTTPException
-from pydantic import Field
+from pydantic import Field, field_validator
 
 from backend import registration, storage
 from backend.storage import InputModel
 from tools.assets import load_accounts
-from tools.pension import (LAYER_LABELS, Assumptions, Person, db_at_retire, load_pension_rules, national_start_age, project, spending_target)
+from tools.pension import (LAYER_LABELS, Assumptions, Person, db_estimate, load_pension_rules, national_start_age, project, spending_target)
 
 router = APIRouter(prefix="/api/retirement", tags=["retirement"])
 
@@ -34,9 +34,20 @@ class PersonPlan(InputModel):
     private_start_age: Age | None = None    # 비우면 max(55, 은퇴 나이)
     irp_annual: Won = 0                     # 퇴직연금(DC 회사 적립 + IRP 본인 납입) 연 납입
     savings_annual: Won = 0                 # 연금저축 연 납입
-    db_monthly_wage: Won = 0                # DB형 월급 (최근 3개월 급여 총액 ÷ 3)
+    db_monthly_wage: Won = 0                # DB형 세전 월 평균급여 (최근 3개월 급여 총액 ÷ 3)
     db_accrued: Won = 0                     # DB형 지금 쌓인 퇴직금 (회사 '예상 퇴직금 조회')
-    db_lump: Won = 0                        # (예전 입력) 회사가 알려 준 은퇴 시 예상 퇴직금 — 임금·입사 연도가 있으면 쓰지 않는다
+    db_lump: Won = 0                        # 예전 입력: 회사가 알려 준 은퇴 시 예상 퇴직금
+    db_method: Literal["reported", "tenure"] = "reported"
+    db_start_date: Annotated[str, Field(pattern=r"^\d{4}-\d{2}-\d{2}$")] | None = None
+
+    @field_validator("db_start_date")
+    @classmethod
+    def check_start_date(cls, value):
+        if value is not None:
+            day = dt.date.fromisoformat(value)
+            if day > dt.date.today():
+                raise ValueError("입사일은 오늘보다 늦을 수 없어요")
+        return value
 
 
 class PlanInput(InputModel):
@@ -61,7 +72,7 @@ def get_plan() -> dict:
         return {**base, "version": 0}
     saved = json.loads(row["payload"])
     for who in ("me", "partner"):
-        saved[who] = {k: v for k, v in (saved.get(who) or {}).items() if k in PersonPlan.model_fields}
+        saved[who] = {**base[who], **{k: v for k, v in (saved.get(who) or {}).items() if k in PersonPlan.model_fields}}
     return {**base, **{k: v for k, v in saved.items() if k in base}, "version": row["version"]}
 
 
@@ -101,32 +112,40 @@ def balances() -> dict[str, dict[int, int]]:
     return out
 
 
-def build(plan: dict, family: dict | None, bal: dict[str, dict[int, int]], base_year: int, rules: dict) -> dict:
+def build(plan: dict, family: dict | None, bal: dict[str, dict[int, int]], base_year: int, rules: dict,
+          as_of: dt.date | None = None) -> dict:
     """계획·가족 정보·적립금 → 계산에 쓴 사람별 값(기본값 채움)과 시뮬레이션. 빠진 입력은 missing으로 알린다."""
     a = Assumptions.from_rules(rules, return_rate=plan.get("return_rate"), inflation=plan.get("inflation"))
     family = family or {}
     me_f, pa_f = family.get("me") or {}, family.get("partner") or {}
     goal = family.get("retirement_age")
-    missing, people, used = [], [], {}
+    as_of = as_of or dt.date(base_year, 1, 1)
+    missing, people, used, db_estimates = [], [], {}, {}
     for key, label, f in (("me", "나", me_f), ("partner", "배우자", pa_f)):
+        age, pp = f.get("age"), plan.get(key) or {}
+        retire = pp.get("retire_age")
+        if retire is None and goal is not None and age is not None:
+            retire = goal if key == "me" else (goal + age - me_f["age"] if me_f.get("age") is not None else goal)
+        estimate = db_estimate(monthly_wage=pp.get("db_monthly_wage") or 0,
+                               accrued_now=pp.get("db_accrued") or 0,
+                               start_date=dt.date.fromisoformat(pp["db_start_date"]) if pp.get("db_start_date") else None,
+                               as_of=as_of, years_left=max(retire - age, 0) if retire is not None and age is not None else None,
+                               method=pp.get("db_method") or "reported", rules=rules)
+        db_estimates[key] = estimate
         if key == "partner" and not pa_f:
             continue
-        age, pp = f.get("age"), plan.get(key) or {}
         if age is None:
             missing.append(f"{label} 나이")
             continue
-        retire = pp.get("retire_age")
-        if retire is None and goal is not None:
-            retire = goal if key == "me" else (goal + age - me_f["age"] if me_f.get("age") is not None else goal)
         if retire is None:
             missing.append(f"{label} 은퇴 나이")
             continue
         b = bal.get(key, {})
         wage, accrued = pp.get("db_monthly_wage") or 0, pp.get("db_accrued") or 0
         db = None
-        if wage or accrued:
+        if wage or accrued or pp.get("db_method") == "tenure":
             left = max(retire - age, 0)
-            db = {"years_left": left, "lump_at_retire": db_at_retire(accrued, wage, left)}
+            db = {"years_left": left, "lump_at_retire": estimate["lump_at_retire"] or 0}
         p = Person(key, label, age, retire,
                    national_monthly=pp.get("national_monthly") or 0,
                    national_start_age=pp.get("national_start_age") or national_start_age(base_year - age, rules),
@@ -138,9 +157,10 @@ def build(plan: dict, family: dict | None, bal: dict[str, dict[int, int]], base_
         used[key] = {"age": age, "retire_age": retire, "national_start_age": p.national_start_age,
                      "private_start_age": p.private_start_age, "balances": {str(k): v for k, v in b.items()}, "db": db}
     result = {"plan": plan, "used": used, "missing": missing, "assumptions": a.__dict__, "base_year": base_year,
+              "as_of": as_of.isoformat(), "db_estimates": db_estimates,
               "layer_labels": LAYER_LABELS, "projection": None, "error": None, "spending_target": None,
               "capital": {key: {"balances": {str(k): v for k, v in bal.get(key, {}).items() if k in (2, 3, 4)},
-                                "db_accrued": (plan.get(key) or {}).get("db_accrued") or 0}
+                                "db_accrued": db_estimates[key]["accrued_now"] or 0}
                           for key in ("me", "partner")}}
     if not people or "me" not in used:   # 가구 은퇴 기준은 나 — 내 값이 빠지면 계산하지 않는다
         return result
@@ -176,7 +196,8 @@ def line(result: dict) -> str:
 
 
 def current() -> dict:
-    out = build(get_plan(), storage.get_family(), balances(), dt.date.today().year, load_pension_rules())
+    today = dt.date.today()
+    out = build(get_plan(), storage.get_family(), balances(), today.year, load_pension_rules(), as_of=today)
     out["line"] = line(out)
     return out
 
@@ -188,5 +209,15 @@ def retirement_api():
 
 @router.put("/plan")
 def save_plan_api(data: PlanInput):
+    for label, person in (("나", data.me), ("배우자", data.partner)):
+        if person.db_method == "tenure" and (not person.db_start_date or not person.db_monthly_wage):
+            raise HTTPException(422, f"{label}: 입사일로 계산하려면 입사일과 세전 월 평균급여를 입력해 주세요.")
     save_plan(data)
     return current()
+
+
+@router.post("/preview")
+def preview_plan_api(data: PlanInput):
+    """입력 중 계산만 수행한다. 저장·버전 변경·자산 갱신 없음."""
+    today = dt.date.today()
+    return build(data.model_dump(), storage.get_family(), balances(), today.year, load_pension_rules(), as_of=today)

@@ -132,7 +132,7 @@ export function Workbook({ onClassic }: { onClassic: () => void }) {
       {sheet === 'holdings' && <AssetSheet key={`h-${owner}-${rev}`} owner={owner} initialTab="holdings" embedded onSaved={changed}/>}
       {sheet === 'assets' && <AssetSheet key={`a-${owner}-${rev}`} owner={owner} initialTab="assets" embedded onSaved={changed}/>}
       {sheet === 'rebalance' && <RebalancePlan owner={owner} live={live} rev={rev} onChanged={changed} onError={setError} onRegister={() => setImportMode('capture')}/>}
-      {sheet === 'retire' && <div className="min-h-0 flex-1 overflow-y-auto bg-grey-50"><RetirementTower data={retire.data} error={retire.error} save={retire.save} reload={retire.reload} owner={owner} onOwnerChange={setOwner} onAssets={() => setSheet('assets')} onProfileChanged={() => changed('가족 정보를 저장했어요.')} details={<ReadGrid label="은퇴 시트" widths={[200, 130, 130, 110, 110, 120, 110, 260]} rows={retire.rows}/>}/></div>}
+      {sheet === 'retire' && <div className="min-h-0 flex-1 overflow-y-auto bg-grey-50"><RetirementTower data={retire.data} error={retire.error} save={retire.save} reload={retire.reload} owner={owner} onOwnerChange={setOwner} onAssets={() => setSheet('assets')} onRegister={() => setImportMode('capture')} onProfileChanged={() => changed('가족 정보를 저장했어요.')} details={<ReadGrid label="은퇴 시트" widths={[200, 130, 130, 110, 110, 120, 110, 260]} rows={retire.rows}/>}/></div>}
     </main>
 
     <nav className="flex h-9 shrink-0 items-stretch border-t border-grey-300 bg-grey-100 text-sm" role="tablist" aria-label="시트">

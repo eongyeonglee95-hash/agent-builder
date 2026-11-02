@@ -14,7 +14,9 @@
 from __future__ import annotations
 
 import os
+import calendar
 from dataclasses import dataclass, field
+from datetime import date
 from pathlib import Path
 
 import yaml
@@ -59,6 +61,66 @@ def db_at_retire(accrued_now: int, monthly_wage: int, years_left: int) -> int:
     if accrued_now < 0 or monthly_wage < 0:
         raise ValueError("퇴직금·월급은 0 이상이어야 해요")
     return accrued_now + monthly_wage * max(0, years_left)
+
+
+def _anniversary(day: date, years: int) -> date:
+    year = day.year + years
+    return day.replace(year=year, day=min(day.day, calendar.monthrange(year, day.month)[1]))
+
+
+def service_period(start: date, end: date) -> dict:
+    """기준일 직전까지 근속. 달력상 년·개월과 실제 일수를 함께 반환한다."""
+    if start > end:
+        raise ValueError("입사일은 기준일보다 늦을 수 없어요")
+    months = (end.year - start.year) * 12 + end.month - start.month
+    anchor = end.replace(day=min(start.day, calendar.monthrange(end.year, end.month)[1]))
+    if anchor > end:
+        months -= 1
+    return {"years": months // 12, "months": months % 12, "days": (end - start).days}
+
+
+def db_estimate(*, monthly_wage: int, accrued_now: int, start_date: date | None,
+                as_of: date, years_left: int | None, method: str, rules: dict) -> dict:
+    """DB형 세전·오늘 돈 추정. 회사 확인액과 입사일 추정을 더하지 않는다.
+
+    자동 방식은 월 평균급여를 30일분 평균임금의 근사값으로 사용한다.
+    법정 확정액이 아니며, 중간정산/제외기간/상여·연차/통상임금 비교는 미반영.
+    """
+    if min(monthly_wage, accrued_now) < 0:
+        raise ValueError("퇴직금·월급은 0 이상이어야 해요")
+    if method not in ("reported", "tenure"):
+        raise ValueError("퇴직금 계산 방식을 확인해 주세요")
+    period = service_period(start_date, as_of) if start_date else None
+    missing = []
+    if method == "tenure":
+        if not start_date:
+            missing.append("입사일")
+        if not monthly_wage:
+            missing.append("세전 월 평균급여")
+    result = {"method": method, "as_of": as_of.isoformat(), "tenure": period,
+              "missing": missing, "accrued_now": None, "lump_at_retire": None, "timeline": []}
+    if missing:
+        return result
+
+    def amount_at(years: int) -> dict:
+        day = _anniversary(as_of, years)
+        tenure = service_period(start_date, day) if start_date else None
+        if method == "tenure":
+            eligible = day >= _anniversary(start_date, rules["db"]["minimum_service_years"])
+            amount = round(monthly_wage * tenure["days"] / rules["db"]["service_days_per_year"]) if eligible else 0
+        else:
+            eligible = None
+            amount = db_at_retire(accrued_now, monthly_wage, years)
+        return {"year": day.year, "date": day.isoformat(), "tenure": tenure,
+                "amount": amount, "eligible": eligible}
+
+    current = amount_at(0)
+    result["accrued_now"] = current["amount"]
+    result["eligible_now"] = current["eligible"]
+    if years_left is not None:
+        result["timeline"] = [amount_at(y) for y in range(max(0, years_left) + 1)]
+        result["lump_at_retire"] = result["timeline"][-1]["amount"]
+    return result
 
 
 def monthly_cost_at(monthly_today: int, inflation: float, years: int) -> int:

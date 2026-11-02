@@ -9,12 +9,15 @@ import type { Cell } from './ReadGrid'
 // '은퇴' 시트 (RETIRE-01). 위: 입력 칸(나·배우자), 아래: 연도별 월 수령액(세전·오늘 돈). 계산은 전부 서버(tools/pension.py).
 // 적립금은 '자산' 시트의 노후 주머니를 그대로 쓴다 — 여기서 다시 받지 않는다.
 
-export type PersonPlan = { retire_age: number | null; national_monthly: number; national_start_age: number | null; private_start_age: number | null; irp_annual: number; savings_annual: number; db_lump: number; db_monthly_wage: number; db_accrued: number }
+export type PersonPlan = { retire_age: number | null; national_monthly: number; national_start_age: number | null; private_start_age: number | null; irp_annual: number; savings_annual: number; db_lump: number; db_monthly_wage: number; db_accrued: number; db_method: 'reported' | 'tenure'; db_start_date: string | null }
 export type Plan = { me: PersonPlan; partner: PersonPlan; monthly_need: number | null; return_rate: number | null; inflation: number | null; version: number }
+export type ServicePeriod = { years: number; months: number; days: number }
+export type DbEstimate = { method: 'reported' | 'tenure'; as_of: string; tenure: ServicePeriod | null; missing: string[]; accrued_now: number | null; lump_at_retire: number | null; eligible_now?: boolean | null; timeline: { year: number; date: string; tenure: ServicePeriod | null; amount: number; eligible: boolean | null }[] }
 type Db = { years_left: number; lump_at_retire: number }
 export type Used = { age: number; retire_age: number; national_start_age: number; private_start_age: number; balances: Record<string, number>; db: Db | null }
 export type Row = { year: number; ages: Record<string, number>; retired: boolean; items: { person: 'me' | 'partner'; layer: number; real: number; nominal: number; label: string }[]; total_real: number; total_nominal: number; layers_real: Record<string, number>; need_real?: number | null; gap_real?: number | null; need_nominal?: number | null; gap_nominal?: number | null; coverage: { total: number; layers: Record<string, number> } | null }
 export type Result = { plan: Plan; used: Partial<Record<'me' | 'partner', Used>>; missing: string[]; error: string | null; line: string; base_year: number
+  as_of: string; db_estimates: Record<'me' | 'partner', DbEstimate>
   capital: Record<'me' | 'partner', { balances: Record<string, number>; db_accrued: number }>
   spending_target: { base_year: number; target_year: number; years: number; monthly_today: number; monthly_nominal: number; monthly_increase: number; inflation: number } | null
   assumptions: { return_rate: number; inflation: number; end_age: number; start_age_min: number; min_payout_years: number }
@@ -52,7 +55,7 @@ export function useRetirementRows({ rev, onChanged, onError }: Opts) {
     const setP = (who: 'me' | 'partner', k: keyof PersonPlan, v: string, zero: boolean) => {
       const n = num(v)
       if ((p[who][k] ?? null) === (zero ? n ?? 0 : n)) return
-      save({ ...p, [who]: { ...p[who], [k]: zero ? n ?? 0 : n } })
+      save({ ...p, [who]: { ...p[who], [k]: zero ? n ?? 0 : n, ...(k === 'db_accrued' ? { db_method: 'reported' as const } : {}) } })
     }
     const setH = (k: 'monthly_need' | 'return_rate' | 'inflation', v: string) => {
       const t = v.trim(), n = k === 'monthly_need' ? num(t) : t === '' ? null : Number(t.replace('%', '')) / 100
@@ -77,9 +80,10 @@ export function useRetirementRows({ rev, onChanged, onError }: Opts) {
     edit('국민연금 월액(오늘 돈)', 'national_monthly', true, () => '0', '국민연금공단 ‘내 연금 알아보기’의 예상 월액')
     edit('국민연금 개시 나이', 'national_start_age', false, u => u ? String(u.national_start_age) : '', '비우면 출생연도 기준')
     out.push([{ v: '퇴직연금 (DB형)', section: true, span: W }])
-    edit('월급 (최근 3개월 평균)', 'db_monthly_wage', true, () => '0', '급여명세 3개월 총액 ÷ 3')
-    edit('지금 쌓인 퇴직금', 'db_accrued', true, () => '0', '회사 인사시스템 ‘예상 퇴직금 조회’ 금액')
-    dbRow('→ 은퇴 때 퇴직금', '지금 퇴직금 + 월급 × 남은 근무 연수 (오늘 돈)')
+    out.push([{ v: '현재 계산 방식' }, ...WHO.map(([who]) => ({ v: p[who].db_method === 'tenure' ? `입사일 ${p[who].db_start_date}` : '회사 확인금액', tone: 'muted' as const })), { v: '상단 퇴직연금 입력·수정하기에서 방식과 입사일을 바꿔요', span: W - 3, tone: 'muted' }])
+    edit('월급 (최근 3개월 평균)', 'db_monthly_wage', true, () => '0', '세전 급여명세 3개월 총액 ÷ 3')
+    edit('지금 쌓인 퇴직금', 'db_accrued', true, () => '0', '회사 조회 금액 · 수정하면 회사 확인금액 방식으로 전환')
+    dbRow('→ 은퇴 때 퇴직금', '선택한 DB 계산 방식의 예상액 · 세전·오늘 돈')
     if (WHO.some(([k]) => (data.used[k]?.balances['2'] ?? 0) > 0 || p[k].irp_annual > 0)) {
       read('IRP 적립금', u => u.balances['2'] ?? 0, '‘자산’ 시트의 IRP 계좌 합계')
       edit('IRP 연 납입', 'irp_annual', true, () => '0', '은퇴 나이까지')
@@ -141,7 +145,7 @@ export function useRetirementRows({ rev, onChanged, onError }: Opts) {
 const LATER_KEY = 'retire.pensionPrompt.later'
 const FIELDS = [
   ['national_monthly', '국민연금', '국민연금 예상 월액', '국민연금공단 ‘내 연금 알아보기’'],
-  ['db_monthly_wage', '퇴직연금', '월급 (최근 3개월 평균)', '급여명세 3개월 총액 ÷ 3'],
+  ['db_monthly_wage', '퇴직연금', '월급 (최근 3개월 평균)', '세전 급여명세 3개월 총액 ÷ 3'],
   ['db_accrued', '퇴직연금', '지금 쌓인 퇴직금', '회사 ‘예상 퇴직금 조회’'],
   ['savings_annual', '개인연금', '연금저축 1년 납입액', '앞으로 1년에 넣을 돈 · 적립금은 등록한 계좌에서'],
 ] as const
@@ -158,7 +162,10 @@ export function PensionDialog({ open, data, onLater, onSave, focus }: { open: bo
   async function submit() {
     setBusy(true)
     const next: Plan = { ...data.plan, me: { ...data.plan.me }, partner: { ...data.plan.partner } }
-    for (const [w] of who) for (const [k] of FIELDS) next[w][k as Field] = Number(vals[`${w}.${k}`] || 0)
+    for (const [w] of who) for (const [k] of FIELDS) {
+      next[w][k as Field] = Number(vals[`${w}.${k}`] || 0)
+      if (k === 'db_accrued' && next[w][k] !== data.plan[w][k]) next[w].db_method = 'reported'
+    }
     try { await onSave(next) } finally { setBusy(false) }
   }
   return <Dialog open={open} onOpenChange={o => { if (!o) onLater() }}>

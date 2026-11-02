@@ -1,0 +1,26 @@
+.tower-db-fields {grid-column:1/-1;min-width:0;display:grid;gap:12px}
+.tower-db-heading,.tower-db-tenure {display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.tower-db-heading {font-size:var(--text-sm)}
+.tower-db-heading>span,.tower-db-tenure>span {color:var(--muted-foreground);font-size:var(--text-xs)}
+.tower-db-method {display:grid;grid-template-columns:1fr 1fr;gap:4px;background:var(--muted);padding:4px;border-radius:10px}
+.tower-db-method button {min-height:38px;padding:7px;border:1px solid transparent;border-radius:7px;font-size:var(--text-xs);color:var(--muted-foreground)}
+.tower-db-method button[aria-pressed=true] {background:var(--background);color:var(--foreground);border-color:var(--input);font-weight:600}
+.tower-db-method button:focus-visible,.tower-db-timeline input:focus-visible {outline:2px solid var(--ring);outline-offset:2px}
+.tower-db-inputs {display:grid;grid-template-columns:1fr 1fr;gap:12px;min-width:0}
+.tower-db-inputs input {min-width:0;width:100%}
+.tower-db-preview {background:var(--grey-50);padding:14px;border:1px solid var(--border);border-radius:12px;min-width:0;font-size:var(--text-xs)}
+.tower-db-preview p {color:var(--muted-foreground);line-height:1.7;margin:8px 0 0}
+.tower-db-preview button,.tower-db-basis a {text-decoration:underline;text-underline-offset:3px}
+.tower-db-tenure>strong {font-size:var(--text-sm)}
+.tower-db-amounts {display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0 0}
+.tower-db-amounts dt {color:var(--muted-foreground);line-height:1.6}
+.tower-db-amounts dd {font-size:var(--text-lg);font-weight:700;letter-spacing:-.4px;margin:3px 0 0;overflow-wrap:anywhere}
+.tower-db-timeline {margin-top:16px;padding-top:14px;border-top:1px solid var(--border)}
+.tower-db-timeline label {display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.tower-db-timeline label strong {font-size:var(--text-sm)}
+.tower-db-timeline input {display:block;width:100%;accent-color:var(--cls-long-bond);min-height:28px;margin:5px 0}
+.tower-db-year-labels {display:flex;justify-content:space-between;gap:5px;flex-wrap:wrap;color:var(--muted-foreground)}
+.tower-db-basis {font-size:var(--text-xs);color:var(--muted-foreground);line-height:1.7}
+.tower-db-basis summary {cursor:pointer}
+.tower-db-basis p {margin:6px 0}
+@media(max-width:600px){.tower-db-inputs{grid-template-columns:1fr}.tower-db-amounts dd{font-size:var(--text-base)}.tower-db-year-labels>span:nth-child(2){order:3;flex-basis:100%;text-align:center}}
