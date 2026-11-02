@@ -20,7 +20,7 @@ import { RetirementTower } from '../retirement/RetirementTower'
 
 type Owner = 'together' | 'me' | 'partner'
 type SheetKey = 'summary' | 'holdings' | 'assets' | 'rebalance' | 'retire'
-const SHEETS: [SheetKey, string][] = [['summary', '요약'], ['holdings', '보유종목'], ['assets', '자산'], ['rebalance', '리밸런싱'], ['retire', '노후 주머니']]
+const SHEETS: [SheetKey, string][] = [['summary', '요약'], ['holdings', '보유종목'], ['assets', '자산'], ['rebalance', '리밸런싱'], ['retire', '연금']]
 const CLASS: Record<string, [string, string]> = { stock: ['주식', 'var(--cls-stock)'], long_bond: ['장기채', 'var(--cls-long-bond)'], mid_bond: ['중기채', 'var(--cls-mid-bond)'], gold: ['금', 'var(--cls-gold)'], commodity: ['원자재', 'var(--cls-commodity)'], cash: ['현금', 'var(--cls-cash)'], mixed: ['혼합·미분류', 'var(--grey-300)'] }
 const OWNER_LABEL: Record<string, string> = { me: '나', partner: '배우자', joint: '공동' }
 
