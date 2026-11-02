@@ -285,3 +285,6 @@
   .tower-flow .tower-band small {display:none}
   .tower-flow .tower-flow-empty {flex-direction:column;align-items:flex-start}
 }
+
+/* 연금은퇴 실제 보기: 데스크톱 상단바('은퇴 계획' · 내 자산/예시 보기)는 빈 줄이라 숨김. 모바일은 메뉴 버튼이 있어 유지 */
+@media(min-width:901px){.tower-shell>.topbar{display:none}.tower-shell .tower-workspace{padding-top:30px}}
