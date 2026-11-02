@@ -1,5 +1,5 @@
 .tower-income-chart {
-  --income-layer-1:var(--grey-700);--income-layer-2:var(--cls-long-bond);--income-layer-3:var(--cls-mid-bond);
+  --income-layer-1:var(--tower-layer-1);--income-layer-2:var(--tower-layer-2);--income-layer-3:var(--tower-layer-3);
   border:1px solid var(--border);border-radius:20px;background:var(--card);padding:24px 26px 16px;min-width:0;
   box-shadow:0 4px 20px color-mix(in srgb,var(--foreground) 2%,transparent);font-variant-numeric:tabular-nums;
 }
