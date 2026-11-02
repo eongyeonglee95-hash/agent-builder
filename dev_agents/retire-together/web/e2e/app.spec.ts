@@ -412,7 +412,7 @@ test('첫 화면은 엑셀 워크북: 한 줄 요약·시트 탭·보고서·다
   expect(errors).toEqual([])
 })
 
-test('은퇴 시트: 국민연금 월액을 넣으면 저장하고 연도별 수령액을 다시 계산한다', async ({ page, request }) => {
+test('은퇴: 첫 화면 팝업·연금 카드에서 입력하면 저장하고 은퇴 시트가 다시 계산한다', async ({ page, request }) => {
   const errors: string[] = []
   page.on('pageerror', e => errors.push(e.message))
   if (!(await (await request.get('/api/family')).json())?.me?.age) {
@@ -424,16 +424,34 @@ test('은퇴 시트: 국민연금 월액을 넣으면 저장하고 연도별 수
     expect(saved.ok()).toBe(true)
   }
   await page.goto('/#retire')
+  const popup = page.getByRole('dialog', { name: '국민연금·퇴직연금·개인연금을 입력해 주세요' })
+  await expect(popup).toBeVisible()
+  await popup.getByRole('textbox', { name: '나 국민연금 예상 월액' }).fill('1000000')
+  await popup.getByRole('textbox', { name: '나 지금 쌓인 퇴직금' }).fill('50000000')
+  await popup.getByRole('button', { name: '저장' }).click()
+  await expect(popup).not.toBeVisible()
   const grid = page.getByRole('grid', { name: '은퇴 시트' })
-  await expect(grid).toBeVisible()
   await expect(grid).toContainText('세전·오늘 돈 기준')
-  const input = page.getByRole('textbox', { name: '나 국민연금 월액(오늘 돈)' })
-  await input.fill('1000000')
-  await input.press('Enter')
   await expect(grid).toContainText('나 국민연금 시작')
-  await expect(grid).toContainText('1,000,000')
+  await expect(grid).toContainText('50,000,000')   // 은퇴 때 퇴직금 (월급 미입력 → 지금 퇴직금 그대로)
+  await page.reload()
+  await expect(grid).toBeVisible()
+  await expect(page.getByRole('dialog')).toHaveCount(0)   // 입력했으면 다시 묻지 않는다
+  // 예전 화면 '연금 · 은퇴' 카드: 입력한 값이 보이고, 아이콘을 누르면 같은 팝업이 그 칸부터 열린다
+  await page.goto('/#pension')
+  const layers = page.locator('.pension-layers')
+  await expect(layers).toContainText('나 월 100만원')
+  await expect(layers).toContainText('나 5,000만원')
+  await page.getByRole('button', { name: '개인연금 입력하기' }).click()
+  const again = page.getByRole('dialog', { name: '국민연금·퇴직연금·개인연금을 입력해 주세요' })
+  await expect(again.getByRole('textbox', { name: '나 연금저축 1년 납입액' })).toBeFocused()
+  await again.getByRole('textbox', { name: '나 연금저축 1년 납입액' }).fill('6000000')
+  await again.getByRole('button', { name: '저장' }).click()
+  await expect(layers).toContainText('납입 나 600만원')
   const saved = await (await request.get('/api/retirement')).json()
   expect(saved.plan.me.national_monthly).toBe(1_000_000)
+  expect(saved.plan.me.db_accrued).toBe(50_000_000)
+  expect(saved.plan.me.savings_annual).toBe(6_000_000)
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 900 })
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
