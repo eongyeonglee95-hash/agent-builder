@@ -1,12 +1,26 @@
-/* Each pension has a stable accent. Balances never fill or rebuild the tower. */
-.tower-pagoda .tower-tier .tower-stone-front {fill:var(--grey-200)}
-.tower-pagoda .tower-tier .tower-stone-side {fill:var(--grey-300)}
-.tower-pagoda .tower-tier .tower-stone-top {fill:var(--grey-100)}
-.tower-pagoda .tower-tier .tower-roof-top {fill:color-mix(in srgb,var(--tower-accent) 18%,var(--grey-100))}
-.tower-pagoda .tower-tier .tower-roof-slope {fill:color-mix(in srgb,var(--tower-accent) 9%,var(--background))}
+/* A softly tinted stone for each pension. Light top faces and shaded sides keep
+   the carving legible; balances never fill or rebuild the tower. */
+.tower-pagoda .tower-tier {
+  --tower-stone-front-color:color-mix(in srgb,var(--tower-accent) 32%,var(--grey-100));
+  --tower-stone-side-color:color-mix(in srgb,var(--tower-accent) 44%,var(--grey-300));
+  --tower-stone-top-color:color-mix(in srgb,var(--tower-accent) 18%,var(--background));
+  --tower-roof-top-color:color-mix(in srgb,var(--tower-accent) 28%,var(--grey-100));
+  --tower-roof-slope-color:color-mix(in srgb,var(--tower-accent) 16%,var(--background));
+}
+.tower-pagoda .tower-tier:is([aria-pressed=true],:focus-visible) {
+  --tower-stone-front-color:color-mix(in srgb,var(--tower-accent) 48%,var(--grey-100));
+  --tower-stone-side-color:color-mix(in srgb,var(--tower-accent) 58%,var(--grey-300));
+  --tower-stone-top-color:color-mix(in srgb,var(--tower-accent) 30%,var(--background));
+  --tower-roof-top-color:color-mix(in srgb,var(--tower-accent) 44%,var(--grey-100));
+  --tower-roof-slope-color:color-mix(in srgb,var(--tower-accent) 28%,var(--background));
+}
+.tower-pagoda .tower-tier .tower-stone-front {fill:var(--tower-stone-front-color)}
+.tower-pagoda .tower-tier .tower-stone-side {fill:var(--tower-stone-side-color)}
+.tower-pagoda .tower-tier .tower-stone-top {fill:var(--tower-stone-top-color)}
+.tower-pagoda .tower-tier .tower-roof-top {fill:var(--tower-roof-top-color)}
+.tower-pagoda .tower-tier .tower-roof-slope {fill:var(--tower-roof-slope-color)}
+.tower-pagoda .tower-tier :is(.tower-stone-front,.tower-stone-side,.tower-stone-top,.tower-roof-top,.tower-roof-slope) {transition:fill .18s ease}
 .tower-pagoda .tower-tier .tower-tier-accent {stroke:var(--tower-accent);stroke-width:4;opacity:.8}
-.tower-pagoda .tower-tier[aria-pressed=true] .tower-roof-top {fill:color-mix(in srgb,var(--tower-accent) 30%,var(--grey-100))}
-.tower-pagoda .tower-tier[aria-pressed=true] .tower-roof-slope {fill:color-mix(in srgb,var(--tower-accent) 18%,var(--background))}
 .tower-pagoda .tower-tier[aria-pressed=true] .tower-tier-accent,.tower-pagoda .tower-tier:focus-visible .tower-tier-accent {stroke-width:6;opacity:1}
 .tower-pagoda .tower-tier .tower-carved-number {fill:var(--grey-700);font-weight:600}
 .tower-color-legend {color:var(--muted-foreground);font-size:var(--text-xs);text-align:center;margin-top:5px!important;line-height:1.5}
