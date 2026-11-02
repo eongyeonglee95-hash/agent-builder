@@ -1,0 +1,19 @@
+# 연금 수령 시뮬레이션 기본값 — docs/CALCULATION_RULES.md §4 (RETIRE-01)
+# 2026-10-26 사용자 확정값. 화면(워크북 '은퇴' 시트)에서 바꾼 값은 저장된 계획이 우선한다.
+assumptions:
+  return_rate: 0.05        # 명목 연 수익률 (연금계좌 자산배분형)
+  inflation: 0.02          # 물가상승률 — 국민연금 연 상승, '오늘 돈' 환산에 쓴다
+  end_age: 90              # 사적연금 확정기간형 종료 나이 = 시뮬레이션 끝 (국민연금은 종신이지만 여기까지만 본다)
+
+private:                   # 퇴직연금(DC·IRP)·연금저축
+  start_age_min: 55        # 제도상 최소 개시 나이
+  min_payout_years: 10     # 제도상 최소 수령 기간
+
+# 국민연금 수급 개시 나이 — 출생연도별. 위에서부터 born_until 이하인 첫 줄
+national_start_age:
+  - {born_until: 1952, age: 60}
+  - {born_until: 1956, age: 61}
+  - {born_until: 1960, age: 62}
+  - {born_until: 1964, age: 63}
+  - {born_until: 1968, age: 64}
+  - {born_until: 9999, age: 65}

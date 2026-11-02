@@ -1,0 +1,112 @@
+"""tools/pension — CALCULATION_RULES §4 공식을 손으로 계산한 값과 대조한다."""
+import pytest
+
+from tools.pension import (Assumptions, Person, annuity_monthly, db_at_retire, future_value, load_pension_rules,
+                           national_start_age, person_streams, project)
+
+A = Assumptions(return_rate=0.05, inflation=0.02, end_age=90, start_age_min=55, min_payout_years=10)
+
+
+def test_rules_file_matches_confirmed_defaults():
+    rules = load_pension_rules()
+    a = Assumptions.from_rules(rules)
+    assert (a.return_rate, a.inflation, a.end_age, a.start_age_min, a.min_payout_years) == (0.05, 0.02, 90, 55, 10)
+    assert Assumptions.from_rules(rules, return_rate=0.04, inflation=None).return_rate == 0.04
+
+
+@pytest.mark.parametrize("year,age", [(1952, 60), (1953, 61), (1960, 62), (1964, 63), (1968, 64), (1969, 65), (1986, 65)])
+def test_national_start_age_by_birth_year(year, age):
+    assert national_start_age(year, load_pension_rules()) == age
+
+
+def test_future_value_formula():
+    # 1,000만 × 1.05^10 + 100만 × (1.05^10 − 1)/0.05
+    assert future_value(10_000_000, 1_000_000, 0.05, 10) == pytest.approx(10_000_000 * 1.05**10 + 1_000_000 * (1.05**10 - 1) / 0.05)
+    assert future_value(10_000_000, 1_000_000, 0.0, 10) == 20_000_000
+
+
+def test_contributions_stop_at_retirement_then_only_grow():
+    # 5년 납입 뒤 5년 더 불어남
+    expect = 1_000_000 * (1.05**5 - 1) / 0.05 * 1.05**5
+    assert future_value(0, 1_000_000, 0.05, 10, contrib_years=5) == pytest.approx(expect)
+    assert future_value(0, 1_000_000, 0.05, 10, contrib_years=0) == 0
+
+
+def test_annuity_monthly_formula_and_zero_rate():
+    rm = 1.05 ** (1 / 12) - 1
+    assert annuity_monthly(100_000_000, 0.05, 120) == pytest.approx(100_000_000 * rm / (1 - (1 + rm) ** -120))
+    assert annuity_monthly(120_000_000, 0.0, 120) == 1_000_000
+    with pytest.raises(ValueError):
+        annuity_monthly(1, 0.05, 0)
+
+
+def test_national_pension_is_flat_in_todays_money_and_rises_nominally():
+    p = Person("me", "나", age=60, retire_age=60, national_monthly=1_000_000, national_start_age=65)
+    out = project([p], A, 2026)
+    y65 = next(r for r in out["rows"] if r["ages"]["me"] == 65)
+    y70 = next(r for r in out["rows"] if r["ages"]["me"] == 70)
+    assert y65["total_real"] == 1_000_000 and y70["total_real"] == 1_000_000
+    assert y65["total_nominal"] == round(1_000_000 * 1.02**5)
+    assert y70["total_nominal"] == pytest.approx(1_000_000 * 1.02**10, abs=2)
+    assert next(r for r in out["rows"] if r["ages"]["me"] == 64)["total_real"] == 0
+
+
+def test_private_payout_is_level_nominal_and_ends_at_end_age():
+    p = Person("me", "나", age=50, retire_age=55, private_start_age=55, balances={3: 100_000_000}, annual={3: 6_000_000})
+    [s] = person_streams(p, A)
+    fv = future_value(100_000_000, 6_000_000, 0.05, 5, 5)
+    assert s.principal == round(fv) and s.monthly_first == round(annuity_monthly(fv, 0.05, 35 * 12))
+    rows = project([p], A, 2026)["rows"]
+    assert {r["total_nominal"] for r in rows if 55 <= r["ages"]["me"] < 90} == {s.monthly_first}
+    assert rows[-1]["ages"]["me"] == 89 and rows[-1]["total_nominal"] == s.monthly_first
+    # 오늘 돈으로는 물가만큼 줄어든다
+    r55, r56 = rows[5], rows[6]
+    assert r56["total_real"] < r55["total_real"]
+
+
+def test_household_is_staircase_and_need_gap():
+    me = Person("me", "나", age=40, retire_age=60, national_monthly=1_000_000, national_start_age=65,
+                private_start_age=60, balances={3: 60_000_000}, annual={3: 6_000_000})
+    partner = Person("partner", "배우자", age=42, retire_age=62, national_monthly=800_000, national_start_age=65,
+                     private_start_age=62, balances={2: 30_000_000})
+    out = project([me, partner], A, 2026, monthly_need=3_000_000)
+    s = out["summary"]
+    assert s["retire_year"] == 2046
+    totals = {r["year"]: r["total_real"] for r in out["rows"]}
+    # 2046 나 개인연금+배우자 퇴직연금(62세) → 2049 배우자 국민연금(65세) → 2051 나 국민연금(65세)
+    assert totals[2046] < totals[2049] < totals[2051]
+    assert s["all_started_year"] == 2051
+    row = next(r for r in out["rows"] if r["year"] == 2046)
+    assert row["gap_real"] == row["total_real"] - 3_000_000
+    assert s["short_years"] == sum(1 for r in out["rows"] if r["retired"] and r["gap_real"] < 0)
+    assert next(r for r in out["rows"] if r["year"] == 2030)["need_real"] is None   # 은퇴 전엔 생활비 비교 안 함
+
+
+def test_db_lump_moves_to_irp_at_retirement():
+    p = Person("me", "나", age=50, retire_age=60, private_start_age=55, db_lump=100_000_000)
+    [s] = person_streams(p, A)
+    assert s.label == "퇴직연금(DB)" and s.start_age == 60
+    assert s.principal == round(100_000_000 * 1.02**10)
+
+
+def test_rules_are_enforced():
+    with pytest.raises(ValueError, match="55세 이상"):
+        person_streams(Person("me", "나", age=40, retire_age=50, private_start_age=50, balances={3: 1}), A)
+    with pytest.raises(ValueError, match="최소 10년"):
+        person_streams(Person("me", "나", age=40, retire_age=60, private_start_age=85, balances={3: 1}), A)
+    with pytest.raises(ValueError, match="0 이상"):
+        person_streams(Person("me", "나", age=40, retire_age=60, annual={3: -1}), A)
+
+
+def test_already_started_person_uses_current_age():
+    p = Person("me", "나", age=70, retire_age=60, national_monthly=500_000, national_start_age=65, balances={3: 50_000_000})
+    rows = project([p], A, 2026)["rows"]
+    assert rows[0]["total_real"] > 500_000 and rows[0]["retired"]
+
+
+def test_db_at_retire_is_accrued_plus_wage_per_year_left():
+    assert db_at_retire(55_000_000, 5_000_000, 20) == 155_000_000   # 지금 5,500만 + 월급 500만 × 20년
+    assert db_at_retire(55_000_000, 0, 20) == 55_000_000            # 월급을 모르면 지금 퇴직금만
+    assert db_at_retire(55_000_000, 5_000_000, -3) == 55_000_000    # 이미 은퇴 나이를 지났으면 더 쌓이지 않음
+    with pytest.raises(ValueError, match="0 이상"):
+        db_at_retire(-1, 5_000_000, 1)

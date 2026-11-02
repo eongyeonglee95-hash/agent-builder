@@ -72,3 +72,6 @@
 - (코드) n8n 배우기 1단계: 읽기 전용 점검 `GET /api/workbook/check`(할 일 여부 + 코드가 만든 알림 문장), `automation/n8n/`에 월 1회 점검 워크플로(25일 9시→점검→조건→텔레그램)와 README. n8n은 주문하지 않고 로컬에서만
 - (문서, 2026-10-30 Codex) `dev_agents/saju/research/08_명리도서_학습로드맵.md`에 현재 서점 근거·도서 비교·독서 순서를 추가하고 `skills/saju-research/` 재사용 스킬 및 `CODEX_HANDOFF.md`를 작성. 기존 Claude 리서치는 보존, 수신 확인은 별도 대기.
 - (문서, 2026-10-30 Codex) 사주핑 사용자 캡처 24장을 열람하고 기존 `research/09`를 재사용해 `dev_agents/saju/CODEX_HANDOFF.md`에 화면 근거의 한계·차별화 가정 수정·선택형 신년운세 검토 후보를 추가. 제품 결정·구현·원본 이미지 저장은 없음.
+- (코드·문서) RETIRE-01 1단계: 연금 수령 시뮬레이션 엔진 `tools/pension.py`(CALCULATION_RULES §4, 기본값 `rules/pension.yaml`), `/api/retirement`·`/api/retirement/plan`(로컬 SQLite retirement_plan 표, 버전 검사), 워크북 '은퇴' 시트(입력 칸·연도별 월 수령액·생활비 대비·한 줄 요약). §4에 구현 방식(납입은 은퇴까지, DB→IRP, 오늘 돈 환산, 층 분류) 추가
+- (코드·문서) RETIRE-01 DB형 퇴직금: 은퇴 시트 입력을 월 평균임금·입사 연도로 바꾸고 '지금 그만두면'·'은퇴 때' 퇴직금을 계산(`tools.pension.db_severance`). DC·IRP 칸은 적립금이 있을 때만 표시. §4 DB 계산 방식 갱신
+- (코드·문서) RETIRE-01 DB 입력 단순화(사용자 요청): 월급(최근 3개월 평균)·지금 쌓인 퇴직금 두 칸 → 은퇴 때 퇴직금 = 지금 퇴직금 + 월급 × 남은 근무 연수(`tools.pension.db_at_retire`). 입사 연도 칸 제거, §4 갱신

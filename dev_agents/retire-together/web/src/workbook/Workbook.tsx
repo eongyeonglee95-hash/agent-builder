@@ -11,14 +11,15 @@ import { AssetSheet } from '../sheet'
 import { UploadFlow } from '../register'
 import { ReadGrid, type Cell } from './ReadGrid'
 import { usePortfolioRows } from './portfolio'
+import { useRetirementRows } from './retirement'
 
 // 첫 화면 — 엑셀 워크북 (2026-10-28 사용자 "처음부터 엑셀처럼", "먼저 엑셀 형태로 자산을 다 보여준 다음 다른 버전으로 보기").
-// 시트: 요약 · 보유종목 · 자산 · 리밸런싱. 맨 위 한 줄 요약(서버 템플릿), 보고서 엑셀 내려받기. 숫자는 전부 서버 계산.
+// 시트: 요약 · 보유종목 · 자산 · 리밸런싱 · 은퇴(RETIRE-01 연금 수령 시뮬레이션). 맨 위 한 줄 요약(서버 템플릿), 보고서 엑셀 내려받기. 숫자는 전부 서버 계산.
 // 리밸런싱 시트의 결정 줄: 직접 주문할게요(수락)·이번엔 넘기기(보류) + 사유 → DECISIONS.md (자동주문 없음).
 
 type Owner = 'together' | 'me' | 'partner'
-type SheetKey = 'summary' | 'holdings' | 'assets' | 'rebalance'
-const SHEETS: [SheetKey, string][] = [['summary', '요약'], ['holdings', '보유종목'], ['assets', '자산'], ['rebalance', '리밸런싱']]
+type SheetKey = 'summary' | 'holdings' | 'assets' | 'rebalance' | 'retire'
+const SHEETS: [SheetKey, string][] = [['summary', '요약'], ['holdings', '보유종목'], ['assets', '자산'], ['rebalance', '리밸런싱'], ['retire', '은퇴']]
 const CLASS: Record<string, [string, string]> = { stock: ['주식', 'var(--cls-stock)'], long_bond: ['장기채', 'var(--cls-long-bond)'], mid_bond: ['중기채', 'var(--cls-mid-bond)'], gold: ['금', 'var(--cls-gold)'], commodity: ['원자재', 'var(--cls-commodity)'], cash: ['현금', 'var(--cls-cash)'], mixed: ['혼합·미분류', 'var(--grey-300)'] }
 const OWNER_LABEL: Record<string, string> = { me: '나', partner: '배우자', joint: '공동' }
 
@@ -71,6 +72,7 @@ export function Workbook({ onClassic }: { onClassic: () => void }) {
   useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(''), 3500); return () => clearTimeout(t) }, [toast])
   const changed = useCallback((msg: string) => { setToast(msg); setRev(r => r + 1) }, [])
   const portfolioRows = usePortfolioRows({ rev, onChanged: changed, onError: setError })
+  const retire = useRetirementRows({ rev, onChanged: changed, onError: setError })
 
   const summaryRows = useMemo<Cell[][]>(() => {
     if (!data) return []
@@ -183,12 +185,13 @@ export function Workbook({ onClassic }: { onClassic: () => void }) {
       {sheet === 'holdings' && <AssetSheet key={`h-${owner}-${rev}`} owner={owner} initialTab="holdings" embedded onSaved={changed}/>}
       {sheet === 'assets' && <AssetSheet key={`a-${owner}-${rev}`} owner={owner} initialTab="assets" embedded onSaved={changed}/>}
       {sheet === 'rebalance' && (pools ? <ReadGrid label="리밸런싱 시트" widths={[200, 120, 110, 120, 110, 270, 290]} rows={[...portfolioRows, ...rebalanceRows]}/> : <div className="p-6 text-sm text-grey-600">계산하는 중…</div>)}
+      {sheet === 'retire' && (retire.rows.length ? <ReadGrid label="은퇴 시트" widths={[200, 130, 130, 110, 110, 120, 110, 260]} rows={retire.rows}/> : <div className="p-6 text-sm text-grey-600">계산하는 중…</div>)}
     </main>
 
     <nav className="flex h-9 shrink-0 items-stretch border-t border-grey-300 bg-grey-100 text-sm" role="tablist" aria-label="시트">
       {SHEETS.map(([k, l]) => <button key={k} role="tab" aria-selected={sheet === k} onClick={() => setSheet(k)}
         className={cn('border-r border-grey-300 px-5 text-grey-700 transition-colors hover:bg-white', sheet === k && 'bg-white font-semibold text-sheet-select shadow-[inset_0_-2px_0_var(--sheet-select)]')}>{l}</button>)}
-      <span className="ml-auto hidden items-center px-4 text-xs text-grey-600 md:flex">{sheet === 'rebalance' ? '이번 달 납입 칸에 금액을 넣으면 다시 계산해요 · 결정은 기록만 하고 주문은 증권사 앱에서' : sheet === 'summary' ? '숫자는 등록한 잔고와 장부로 계산했어요' : '칸을 눌러 바로 고치고, 엑셀에서 복사해 붙여 넣어도 돼요'}</span>
+      <span className="ml-auto hidden items-center px-4 text-xs text-grey-600 md:flex">{sheet === 'retire' ? '칸에 넣으면 저장하고 다시 계산해요 · 부부 전체 기준, 세전·오늘 돈' : sheet === 'rebalance' ? '이번 달 납입 칸에 금액을 넣으면 다시 계산해요 · 결정은 기록만 하고 주문은 증권사 앱에서' : sheet === 'summary' ? '숫자는 등록한 잔고와 장부로 계산했어요' : '칸을 눌러 바로 고치고, 엑셀에서 복사해 붙여 넣어도 돼요'}</span>
     </nav>
 
     <Dialog open={importMode !== null} onOpenChange={o => { if (!o) setImportMode(null) }}>
