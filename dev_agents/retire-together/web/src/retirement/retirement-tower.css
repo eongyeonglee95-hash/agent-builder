@@ -328,7 +328,3 @@
 @media(max-width:1200px){.tower-layers{grid-template-columns:minmax(0,1fr) 100px}.tower-bracket>span{margin-left:26px}.tower-bracket-23>span{margin-left:40px}}
 @media(max-width:760px){.tower-layers{grid-template-columns:minmax(0,1fr)}.tower-bracket{display:none}}
 
-/* 4층 줄: '월로 나눠 쓰면 월액'을 적립금보다 눈에 띄게 */
-.tower-layer-row .tower-layer-extra-emph{align-items:baseline;gap:0 6px;color:var(--muted-foreground)}
-.tower-layer-row .tower-layer-extra-emph b{font-size:var(--text-lg);font-weight:750;color:var(--foreground);letter-spacing:-.3px}
-.tower-layer-row .tower-layer-lump{font-size:var(--text-base);font-weight:600;color:var(--grey-700)}
