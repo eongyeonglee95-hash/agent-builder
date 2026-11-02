@@ -449,3 +449,7 @@
 .tower-layer-total .tower-layer-gauge{display:grid;grid-template-columns:96px auto;gap:8px;align-items:center}
 .tower-layer-total .tower-layer-track{display:block;height:6px}
 @container tower-row (max-width:400px){.tower-layers .tower-layer-row .tower-layer-gauge{grid-template-columns:64px auto}}
+/* 합계 줄이 카드 밖으로 밀리던 것 — 버튼 열만큼 오른쪽 여백을 두고 칸은 내용 폭만큼 */
+.tower-layer-total{grid-template-columns:auto minmax(0,1fr) auto auto auto;padding-right:92px;min-width:0}
+.tower-layer-total-spacer{display:none}
+.tower-layer-total .tower-layer-gauge{grid-template-columns:72px auto}
