@@ -3,6 +3,7 @@ import { RefreshCw } from 'lucide-react'
 import { api } from '../local-data'
 import { money } from '../model'
 import type { Address } from '../property-entry'
+import type { PriceCheck } from './types'
 
 export type Trade = { name: string; area: number; price: number; date: string; floor: number | null; kind: string }
 type TradeState = { loading: boolean; configured?: boolean; trades: Trade[]; error?: string }
@@ -56,4 +57,23 @@ export function TradeReport({ market, hidden, purchase, onPick }: { market: Mark
       {onPick && t && <button type="button" className="property-move-button" onClick={() => onPick(t)}>선택한 실거래를 계획 매수가로 사용</button>}
     </>}
   </div>
+}
+
+// 호가 vs 과거 실거래: 서버가 숫자만 돌려준다(적정 판단 없음). 패널을 펼쳤을 때만 조회한다.
+export function usePriceCheck(address: Address | null | undefined, name: string, area: number | null | undefined, asking: number | null, months: number) {
+  const [state, setState] = useState<{ loading: boolean; data: PriceCheck | null; error?: string }>({ loading: false, data: null })
+  const [rev, setRev] = useState(0)
+  const sigungu = address?.sigungu_code, building = address?.building || name
+  const dong = address?.jibun.split(' ').reverse().find(w => /\S+(동|가|리)$/.test(w))
+  useEffect(() => {
+    if (!sigungu || !area) { setState({ loading: false, data: null }); return }
+    const controller = new AbortController()
+    let live = true
+    setState(s => ({ loading: true, data: s.data }))
+    api<PriceCheck>(`/property-move/price-check?${new URLSearchParams({ sigungu, name: building, area: String(area), months: String(months), ...(asking ? { asking: String(asking) } : {}), ...(dong ? { dong } : {}) })}`, 'GET', undefined, controller.signal)
+      .then(d => { if (live) setState({ loading: false, data: d }) })
+      .catch(e => { if (live) setState({ loading: false, data: null, error: controller.signal.aborted ? '조회 시간이 길어지고 있어요. 다시 조회해 주세요.' : e.message }) })
+    return () => { live = false; controller.abort() }
+  }, [sigungu, building, area, asking, months, dong, rev])
+  return { ...state, ready: !!sigungu && !!area, retry: () => setRev(v => v + 1) }
 }

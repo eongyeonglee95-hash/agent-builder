@@ -2,6 +2,10 @@
 
 갱신: 2026-10-27. 현재 작업 상태의 원본은 `AGENT_DESIGN.md` §0. 이 문서는 세션 간 요청·수신 기록이다.
 
+- 2026-11-02 Codex 추가 요청: 사용자가 ‘받는 시간표’를 금액이 쌓이는 그래프로 요청하여 국민·퇴직·개인연금 월 수령액의 누적 영역 그래프로 교체한다. 신규 `retirement/IncomeChart.tsx`·전용 CSS, `RetirementTower.tsx`는 기존 시간표 부분만 연결하며 Popover 구현은 보존. 기존 서버 연도별 오늘 돈 월액을 사용하고 생활비 목표선·선택 연도·금액 숨김·개인 범위를 유지한다. 근속기간 입력 작업과 함께 진행.
+
+- 2026-11-02 Codex DB 근속 계산 착수: 사용자 요청으로 세전 급여·입사일(산정 시작일) 기반 근속기간/현재·은퇴 예상액과 연도별 미리보기를 추가한다. `tools/pension.py`·`rules/pension.yaml`·`backend/retirement.py`·`retirement/PlanDialog.tsx`·신규 DB 입력 컴포넌트·`workbook/retirement.tsx` 타입/세전 안내·전용 테스트 담당. 기존 회사 확인금액 방식과 저장값은 유지하고 자동 방식은 명시적으로 선택한다. 미리보기는 저장 없이 같은 서버 순수 함수를 호출한다. Claude의 층 상세 Popover 변경을 확인했으며 탑/상세 조형 파일은 수정하지 않는다.
+
 - 2026-11-02 Claude: 사용자 “층을 눌렀을 때 상세가 메모처럼 커서 아래 뜨면” → `.tower-detail` 섹션을 각 층 줄(`tower-layer-row`)에 붙은 Popover로 바꿈(`RetirementTower.tsx`·`retirement-tower.css`, 클래스 `tower-detail tower-detail-pop`). Codex의 줄 오른쪽 `입력·수정하기` 버튼·`retirement-layout.css`는 그대로. 테스트의 `.tower-detail h2`·`.tower-member`·`.tower-detail button` 검사는 그대로 통과(처음엔 닫혀 있어 button 0개). 빌드·은퇴 e2e 3개·공통 은퇴 1개 통과.
 - 2026-11-02 Codex 층별 입력 진입 조정: 사용자 요청으로 히어로 각 층 행 오른쪽에 통합 `입력·수정하기` 버튼을 둔다. `RetirementTower.tsx`·`retirement-layout.css`·은퇴 전용 테스트 담당. 층 선택 버튼과 입력 버튼을 나란히 두어 중첩 버튼을 피하고, 기존 상세 영역은 읽기 전용 정보로 유지한다. 1–3층은 기존 입력창, 4층은 기존 자산 입력 경로를 사용한다. 공용 `e2e/app.spec.ts`는 개인연금 버튼의 접근성 이름 한 곳만 갱신한다. 석탑 컨셉 후속 변경은 이번 범위에 포함하지 않는다.
 - 완료: 각 층을 미리 선택하지 않아도 오른쪽 버튼에서 해당 입력창을 연다. 현재 조회 범위(부부/나/배우자)와 저장된 값을 유지하며 아래 중복 편집 버튼은 제거했다. 빌드·은퇴 관련 브라우저 4개 통과(퇴직층 직접 진입·배우자 범위·저장/충돌 포함). 공용 5180에서 360~1920px 7개 폭의 버튼 오른쪽 정렬·가로 넘침 없음, 입력창 3종과 JS 오류 0 확인. 계산/API/실제 가구 자료 변경 없음.
@@ -230,3 +234,4 @@ Codex 수신·검토 메모(2026-11-02): PROPERTY-02 담당 범위를 확인했�
 - 2026-11-02 Claude(은퇴 영역): 시간표(`.tower-flow`)를 탑 위로 이동·압축 — `RetirementTower.tsx`·`retirement-tower.css` 끝부분 블록만. `retirement-layout.css`(Codex)는 손대지 않음. `.tower-flow-note`·`.tower-year-ticks`는 더 안 씀.
 - 2026-11-02 Claude → Codex (사용자 결정, 석탑 채색 `Pagoda.tsx`·`pagoda-color.css`): 사용자가 지금 칠하는 방식을 보고 정한 것 — (1) 입력 전엔 층만 국민연금/퇴직연금/개인연금/추가로 나뉘어 있고 색은 없다(회색 선). (2) 금액이 들어오면 그 층을 **통째로** 층 색으로 칠한다 — 충당률만큼 부분 칠하거나 조각으로 나누지 않는다(충당률은 오른쪽 층 목록 게이지가 이미 보여줌). (3) 동전·돈더미 장식은 없앤다. 색 범례("색 · 준비한 돈 있음 / 막대 · 생활비 충당률")도 (2)대로 가면 필요 없음. 탑 밖 파일(`RetirementTower.tsx` states의 `funded`/`share`)은 그대로 써도 되고, `share`는 안 써도 됨.
 - 2026-11-02 Claude(부동산 영역 인수, 사용자 요청 "추적을 쉽게"): `web/src/property-move/*`·`backend/property_move.py`·`tools/property_move.py`·`tests/test_property_move.py`·`e2e/property-move.spec.ts`만 수정. 새 표 `property_track`(owner, candidate_id, day), `POST /api/property-move/track`·`DELETE /track/{id}/{day}`, 응답에 `track`·`comparisons[].price_gap` 추가 — 기존 키는 그대로. 사용자 결정: 부동산 상단 탭 제거, 팔 집보다 목표 집·격차 중심. 다음 과제(미착수): 팔 집 입력을 매도 예상가·남은 대출·산 날짜 세 칸으로 접기(`property-entry.tsx`).
+- 2026-11-02 Claude(부동산): 사용자 결정 — 목표 집은 여러 곳, 하나를 '목표'로 찍지 않는다(`target_id`는 모델에 남아 있으나 화면은 항상 null로 저장). 상단 자금 카드 하나, 후보 줄 펼침 = 가격 분석·추적·거주 정보. `backend/property_move.py`의 `price_check`는 `prop.market_key()`·`prop.recent_trades()`를 모듈 경유로 호출(테스트가 키를 비움). `Buildings.tsx`는 더 안 쓰지만 예시 보기(`property.tsx`)와 무관하므로 그대로 둠.

@@ -38,3 +38,26 @@ def price_gap(*, home_value: int, target_price: int) -> int:
     if type(home_value) is not int or type(target_price) is not int or home_value < 0 or target_price < 0:
         raise ValueError("금액은 0 이상의 정수여야 합니다")
     return target_price - home_value
+
+
+def asking_vs_trades(asking: int | None, trades: list[dict]) -> dict:
+    """현재 호가를 같은 단지·면적의 과거 실거래와 나란히 놓는다. 적정·고평가 판단은 하지 않고 숫자만 돌려준다.
+    trades: [{price, date, floor, area}] 최신순. 프리미엄 = 호가 − 기준(최신 거래 / 중간값), 비율은 기준 대비 %."""
+    if asking is not None and (type(asking) is not int or asking <= 0):
+        raise ValueError("호가는 0보다 큰 정수여야 합니다")
+    prices = sorted(int(t["price"]) for t in trades)
+    if not prices:
+        return {"count": 0, "latest": None, "latest_date": None, "low": None, "high": None, "median": None,
+                "first_date": None, "last_date": None, "asking": asking,
+                "premium_latest": None, "premium_latest_pct": None, "premium_median": None, "premium_median_pct": None}
+    n = len(prices)
+    median = prices[n // 2] if n % 2 else (prices[n // 2 - 1] + prices[n // 2]) // 2
+    newest = max(trades, key=lambda t: (t["date"], t.get("floor") or 0))
+    dates = sorted(t["date"] for t in trades)
+    pct = lambda a, b: round((a - b) / b * 100, 1) if b else None
+    return {"count": n, "latest": int(newest["price"]), "latest_date": newest["date"], "low": prices[0], "high": prices[-1],
+            "median": median, "first_date": dates[0], "last_date": dates[-1], "asking": asking,
+            "premium_latest": asking - int(newest["price"]) if asking is not None else None,
+            "premium_latest_pct": pct(asking, int(newest["price"])) if asking is not None else None,
+            "premium_median": asking - median if asking is not None else None,
+            "premium_median_pct": pct(asking, median) if asking is not None else None}
