@@ -1,22 +1,10 @@
+# 작업공간 공통. 각 에이전트 폴더의 .gitignore가 그 폴더 규칙을 맡는다
+# (둘이서은퇴의 실제 잔고·캡처 제외 규칙은 dev_agents/retire-together/.gitignore)
+.DS_Store
 .venv/
 __pycache__/
 *.pyc
 .pytest_cache/
 .env
-# 실제 잔고·캡처(계좌번호·이름 포함)는 절대 올리지 않는다
-data/*
-!data/.gitkeep
-!data/fixtures/
-.DS_Store
-.streamlit/secrets.toml
-.taskmaster/
-
-# AI 도구 세션 상태 (oh-my-claudecode 등) — 환경 파일, 저장소에 올리지 않는다
 .omc/
-web/node_modules/
-web/dist/
-web/*.tsbuildinfo
-web/test-results/
-web/playwright-report/
-
-web/test-results-*/
+.playwright-mcp/
