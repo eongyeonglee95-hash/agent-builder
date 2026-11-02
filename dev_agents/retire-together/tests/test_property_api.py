@@ -167,3 +167,18 @@ def test_key_from_dotenv(client, tmp_path, monkeypatch):
     monkeypatch.delenv("RETIRE_MOLIT_KEY", raising=False)
     (tmp_path / ".env").write_text("OTHER=1\nexport RETIRE_MOLIT_KEY=\"abc%2Bxyz1234\"\n", encoding="utf-8")
     assert prop.market_key() == "abc+xyz1234"
+
+
+def test_address_based_trade_lookup_reaches_home_and_analysis_without_ledger_write(client, monkeypatch):
+    from backend import property as prop
+    row = {"name": "힐스테이트동대구센트럴", "dong": "신천동", "jibun": "1547", "area": 84.9921,
+           "price": 660000000, "date": "2026-10-08", "floor": 26, "kind": "중개거래"}
+    monkeypatch.setattr(prop, "market_key", lambda: "test")
+    monkeypatch.setattr(prop, "_month_trades", lambda *args: [row])
+    query = {"sigungu": "27140", "name": "힐스테이트 벤처밸리", "jibun": "대구 동구 신천동 1547", "area": 84, "months": 1}
+    before = client.get("/api/assets").json()
+    hits = client.get("/api/property/trades", params=query).json()["trades"]
+    assert hits == [row]
+    # price-check 최소 기간은 1개월. 같은 주소 식별이 분석에도 전달되어야 한다.
+    assert client.get("/api/property-move/price-check", params=query).json()["analysis"]["latest"] == 660000000
+    assert client.get("/api/assets").json() == before

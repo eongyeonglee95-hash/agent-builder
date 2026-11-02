@@ -56,6 +56,7 @@ _FIELDS = {
     "name": ("aptNm", "아파트"), "price": ("dealAmount", "거래금액"), "area": ("excluUseAr", "전용면적"),
     "year": ("dealYear", "년"), "month": ("dealMonth", "월"), "day": ("dealDay", "일"), "floor": ("floor", "층"),
     "dong": ("umdNm", "법정동"), "cancel": ("cdealType", "해제여부"), "kind": ("dealingGbn", "거래유형"),
+    "jibun": ("jibun", "지번"), "apt_seq": ("aptSeq",),
 }
 
 
@@ -82,6 +83,7 @@ def parse_trades(xml_text: str) -> list[dict]:
             continue
         floor = get("floor")
         rows.append({"name": get("name"), "dong": get("dong"), "area": area, "price": price, "date": date,
+                     "jibun": get("jibun"), "apt_seq": get("apt_seq"),
                      "floor": int(floor) if floor.lstrip("-").isdigit() else None, "kind": get("kind")})
     return rows
 
@@ -92,15 +94,29 @@ def dong_of(jibun: str | None) -> str | None:
     return next((w for w in reversed(words) if re.fullmatch(r"\S+(동|가|리|로\d*가)", w)), None)
 
 
+def parcel_of(jibun: str | None) -> str | None:
+    """전체 지번 주소 또는 필지 번호 → 정규화한 필지. 건물 이름의 숫자는 사용하지 않는다."""
+    hit = re.search(r"(?:^|\s)(산\s*)?(\d+)(?:-(\d+))?\s*$", jibun or "")
+    if not hit:
+        return None
+    return ("산" if hit[1] else "") + str(int(hit[2])) + (f"-{int(hit[3])}" if hit[3] and int(hit[3]) else "")
+
+
 def match_trades(rows: list[dict], name: str, area_m2: float | None = None, tolerance: float = 2.0,
-                 dong: str | None = None) -> list[dict]:
+                 dong: str | None = None, jibun: str | None = None) -> list[dict]:
     """같은 동·같은 단지(이름 포함 관계)·같은 면적(±tolerance㎡) 거래만, 최근 것부터.
 
     거래 쪽 이름이 더 짧을 때(예: 단지명 '삼성')는 4글자 이상일 때만 포함으로 본다 — 옆 동네 '삼성'이 섞이지 않게.
     """
     key = _norm(name)
+    dong = dong_of(jibun) or dong
+    parcel = parcel_of(jibun)
 
     def same(r):
+        # 시군구는 조회 API가 한정한다. 동+필지가 확인되면 개명 전후 이름에 의존하지 않는다.
+        # 같은 브랜드라도 다른 필지면 제외한다. 주소가 없는 구형 응답만 이름으로 비교한다.
+        if dong and parcel and r.get("dong") and parcel_of(r.get("jibun")):
+            return r["dong"] == dong and parcel_of(r["jibun"]) == parcel
         other = _norm(r["name"])
         return bool(key) and (key in other or (len(other) >= 4 and other in key))
     hits = [r for r in rows if same(r) and (not dong or not r.get("dong") or r["dong"] == dong)]

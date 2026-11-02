@@ -348,3 +348,65 @@
 .tower-nat-sv small{color:var(--muted-foreground);line-height:1.6}
 
 .tower-detail-learn{border-color:color-mix(in srgb,var(--primary) 35%,var(--border));color:var(--foreground);font-weight:600}
+
+/* 2026-11-02 층 목록을 표 하나로 — 흰 바탕, 가는 줄, 열 네 개(이름 · 월 수령 · 준비금 · 생활비 충당) + 버튼. 괄호선·상단 자산 접힘은 합계 줄로 통합 */
+.tower-layers{grid-template-columns:minmax(0,1fr);gap:0;column-gap:0}
+.tower-layers>.tower-layer-row{grid-column:auto;border-radius:0;background:var(--background);border:0;border-bottom:1px solid var(--border)}
+.tower-layers>.tower-layer-row:hover{background:var(--grey-50)}
+.tower-layers>.tower-layer-row[data-selected=true]{background:color-mix(in srgb,var(--primary) 4%,var(--background));box-shadow:inset 3px 0 0 var(--primary)}
+.tower-layers .tower-layer-row .tower-layer-button{grid-template-columns:104px minmax(0,1.15fr) minmax(0,1fr) 128px;grid-template-areas:"name monthly balance gauge";align-items:center;column-gap:12px;row-gap:0;padding:10px 12px;min-height:52px}
+.tower-layers .tower-layer-row .tower-layer-name{grid-area:name}
+.tower-layers .tower-layer-row .tower-layer-monthly{grid-area:monthly;display:flex;align-items:baseline;gap:4px;min-width:0}
+.tower-layers .tower-layer-row .tower-layer-balance{grid-area:balance;font-size:var(--text-sm);color:var(--foreground);font-weight:550;min-width:0}
+.tower-layers .tower-layer-row .tower-layer-gauge{grid-area:gauge;display:grid;grid-template-columns:minmax(0,1fr) 46px;align-items:center;gap:8px;margin:0}
+.tower-layers .tower-layer-row .tower-layer-gauge>span:last-child{text-align:right;white-space:nowrap;font-size:var(--text-xs);color:var(--muted-foreground)}
+.tower-layers .tower-layer-row .tower-layer-gauge b{font-size:var(--text-sm);color:var(--foreground)}
+.tower-layers .tower-layer-row .tower-layer-track{height:6px}
+.tower-layers .tower-layer-row .tower-layer-amount{font-size:var(--text-lg);line-height:1.3;gap:2px 4px}
+.tower-layers .tower-layer-row .tower-layer-amount.is-muted{font-size:var(--text-xs)}
+.tower-layers .tower-layer-row .tower-layer-period{display:none}
+.tower-layer-star{color:var(--cls-gold);font-weight:700;font-size:var(--text-sm)}
+.is-dash{color:var(--muted-foreground);font-weight:400}
+.tower-workspace .tower-layer-edit{width:72px;padding:6px 0;text-align:center;margin-right:10px}
+.tower-layer-head,.tower-layer-total{display:grid;grid-template-columns:104px minmax(0,1.15fr) minmax(0,1fr) 128px 82px;column-gap:12px;align-items:center;padding:0 12px}
+.tower-layer-head{font-size:var(--text-xs);color:var(--muted-foreground);padding-bottom:6px;border-bottom:1px solid var(--border)}
+.tower-layer-total{padding-top:10px;padding-bottom:4px;font-size:var(--text-sm)}
+.tower-layer-total .tower-layer-name{font-weight:700}
+.tower-layer-total .tower-layer-monthly,.tower-layer-total .tower-layer-balance{display:grid;gap:1px;min-width:0}
+.tower-layer-total b{font-weight:700;color:var(--foreground)}
+.tower-layer-total small{font-size:var(--text-xs);color:var(--muted-foreground);line-height:1.4}
+.tower-layer-total .tower-layer-gauge{display:grid;grid-template-columns:minmax(0,1fr) 46px;align-items:center;gap:8px}
+.tower-layer-total .tower-layer-gauge>span:last-child{text-align:right;font-size:var(--text-xs)}
+.tower-layer-total .tower-layer-track{height:6px}
+.tower-layer-footnote{margin:8px 12px 0;font-size:var(--text-xs);color:var(--muted-foreground)}
+@container tower-row (max-width:460px){
+  .tower-layers .tower-layer-row .tower-layer-button{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"name name" "monthly balance" "gauge gauge";row-gap:4px}
+}
+@media(max-width:760px){.tower-layer-head{display:none}.tower-layer-total{grid-template-columns:72px minmax(0,1fr) minmax(0,1fr);}.tower-layer-total .tower-layer-gauge,.tower-layer-total .tower-layer-total-spacer{display:none}}
+
+/* 석탑은 왼쪽에 붙이고, 글자(표)에 폭을 더 준다 (2026-11-02 사용자) */
+.tower-workspace .tower-tower-card .tower-tower-view{grid-template-columns:232px minmax(0,1fr);gap:14px;padding:4px 16px 14px 8px;align-items:start}
+.tower-workspace .tower-tower-card .tower-pagoda{max-width:232px;height:300px;margin-inline:0}
+.tower-workspace .tower-tower-card .tower-sculpture{align-self:start}
+.tower-workspace .tower-tower-card .tower-layers{max-width:none;justify-self:stretch}
+@media(max-width:1200px){.tower-workspace .tower-tower-card .tower-tower-view{grid-template-columns:200px minmax(0,1fr)}.tower-workspace .tower-tower-card .tower-pagoda{max-width:200px;height:260px}}
+@media(max-width:760px){.tower-workspace .tower-tower-card .tower-tower-view{grid-template-columns:minmax(0,1fr)}.tower-workspace .tower-tower-card .tower-pagoda{max-width:220px;height:220px;margin-inline:auto}}
+/* 표 폭 확보: 요약 카드 조금 좁게, 석탑 200px, 좁을 땐 게이지 막대를 숨기고 %만 */
+.tower-hero{grid-template-columns:minmax(0,1fr) 272px;gap:14px}
+.tower-workspace .tower-tower-card .tower-tower-view{grid-template-columns:200px minmax(0,1fr);gap:10px}
+.tower-workspace .tower-tower-card .tower-pagoda{max-width:200px;height:272px}
+.tower-layers .tower-layer-row .tower-layer-button{grid-template-columns:92px minmax(0,1.1fr) minmax(0,1fr) 104px;column-gap:10px;padding:9px 10px}
+.tower-layer-head,.tower-layer-total{grid-template-columns:92px minmax(0,1.1fr) minmax(0,1fr) 104px 82px;column-gap:10px;padding-inline:10px}
+.tower-layers .tower-layer-row .tower-layer-name{font-size:var(--text-sm)}
+.tower-layers .tower-layer-row .tower-layer-amount{font-size:var(--text-base)}
+.tower-layers .tower-layer-row .tower-layer-amount b{font-size:var(--text-lg)}
+@container tower-row (max-width:560px){
+  .tower-layers .tower-layer-row .tower-layer-button{grid-template-columns:88px minmax(0,1.1fr) minmax(0,1fr) 52px;grid-template-areas:"name monthly balance gauge"}
+  .tower-layers .tower-layer-row .tower-layer-gauge{grid-template-columns:1fr}
+  .tower-layers .tower-layer-row .tower-layer-track{display:none}
+}
+@container tower-row (max-width:400px){
+  .tower-layers .tower-layer-row .tower-layer-button{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:"name name" "monthly balance" "gauge gauge";row-gap:4px}
+  .tower-layers .tower-layer-row .tower-layer-track{display:block}
+}
+@media(max-width:760px){.tower-layer-head{display:none}.tower-layer-total{grid-template-columns:72px minmax(0,1fr) minmax(0,1fr)}}

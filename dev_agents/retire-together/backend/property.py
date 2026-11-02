@@ -26,6 +26,8 @@ from backend.storage import InputModel, Money
 from tools.property import asking_summary, dong_of, home_metrics, match_trades, parse_trades, pyeong
 
 router = APIRouter(prefix="/api/property", tags=["property"])
+from backend.property_market import router as market_router
+router.include_router(market_router)
 
 Share = Annotated[int, Field(strict=True, ge=1, le=99)]
 Text = Annotated[str, Field(max_length=200)]
@@ -123,7 +125,7 @@ def _auto_value(address: dict | None, name: str, area: float | None, purchase_pr
     """시세를 입력받지 않을 때: 최근 12개월 같은 단지·면적 실거래 → 없으면 산 가격 → 없으면 0. 출처를 함께 남긴다."""
     if address and address.get("sigungu_code") and market_key():
         try:
-            hits = recent_trades(address["sigungu_code"], address.get("building") or name, area, 12, dong_of(address.get("jibun")))
+            hits = recent_trades(address["sigungu_code"], address.get("building") or name, area, 12, dong_of(address.get("jibun")), address.get("jibun"))
         except HTTPException:
             hits = []
         if hits:
@@ -362,22 +364,23 @@ def save_market_key(data: KeyInput):
     return {"configured": True}
 
 
-def recent_trades(sigungu: str, name: str, area: float | None, months: int, dong: str | None = None) -> list[dict]:
+def recent_trades(sigungu: str, name: str, area: float | None, months: int, dong: str | None = None, jibun: str | None = None) -> list[dict]:
     key = market_key()
     if not key:
         return []
     today = dt.date.today()
     yms = [f"{(today.year * 12 + today.month - 1 - i) // 12}{(today.month - 1 - i) % 12 + 1:02d}" for i in range(months)]
-    return match_trades([r for ym in yms for r in _month_trades(sigungu, ym, key)], name, area, dong=dong)
+    return match_trades([r for ym in yms for r in _month_trades(sigungu, ym, key)], name, area, dong=dong, jibun=jibun)
 
 
 @router.get("/trades")
 def trades(sigungu: Annotated[str, Query(pattern=r"^\d{5}$")], name: Annotated[str, Query(min_length=1, max_length=100)],
            area: Annotated[float, Query(gt=0, le=2000)] | None = None, months: Annotated[int, Query(ge=1, le=12)] = 12,
-           dong: Annotated[str, Query(max_length=20)] | None = None):
+           dong: Annotated[str, Query(max_length=20)] | None = None,
+           jibun: Annotated[str, Query(max_length=200)] | None = None):
     if not market_key():
         return {"configured": False, "trades": []}
-    return {"configured": True, "months": months, "trades": recent_trades(sigungu, name, area, months, dong)[:30]}
+    return {"configured": True, "months": months, "trades": recent_trades(sigungu, name, area, months, dong, jibun)[:30]}
 
 
 @router.post("/{asset_id}/refresh")
