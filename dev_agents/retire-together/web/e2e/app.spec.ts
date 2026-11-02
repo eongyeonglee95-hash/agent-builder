@@ -438,13 +438,13 @@ test('은퇴: 첫 화면 팝업·연금 카드에서 입력하면 저장하고 �
   await expect(grid).toContainText('나 국민연금 시작')
   await expect(grid).toContainText('50,000,000')   // 은퇴 때 퇴직금 (월급 미입력 → 지금 퇴직금 그대로)
   await page.reload()
-  await expect(page.getByRole('heading', { name: '노후 주머니' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '연금', exact: true })).toBeVisible()
   await page.getByText('입력값·연도별 계산을 표로 보기', { exact: true }).click()
   await expect(grid).toBeVisible()
   await expect(page.getByRole('dialog')).toHaveCount(0)   // 입력했으면 다시 묻지 않는다
   // 두 보기의 연금탑은 같은 저장 계획을 사용한다.
   await page.goto('/#pension')
-  await expect(page.getByRole('heading', { name: '노후 주머니' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '연금', exact: true })).toBeVisible()
   await page.getByRole('button', { name: '3층 개인연금 살펴보기', exact: true }).click()
   await page.getByRole('button', { name: '개인연금 입력하기', exact: true }).click()
   const again = page.getByRole('dialog', { name: '개인연금 입력', exact: true })

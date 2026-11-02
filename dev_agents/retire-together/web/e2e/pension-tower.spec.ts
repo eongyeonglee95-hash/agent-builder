@@ -14,7 +14,7 @@ test('연금탑: 서버 합계·부부 나이·개인 범위·입력 저장·다
   const errors: string[] = []
   page.on('pageerror', e => errors.push(e.message))
   await page.goto('/#sheet-retire')
-  await expect(page.getByRole('heading', { name: '노후 주머니' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '연금', exact: true })).toBeVisible()
   const year = data.base_year + 25
   const slider = page.getByRole('slider', { name: '살펴보는 연도' })
   await slider.fill(String(year))
@@ -41,7 +41,7 @@ test('연금탑: 서버 합계·부부 나이·개인 범위·입력 저장·다
   // Stop together at the older person's model horizon, not an apparent pension cut.
   expect(Number(await slider.getAttribute('max'))).toBe(data.base_year + data.assumptions.end_age - 43 - 1)
   await page.reload()
-  await expect(page.getByRole('heading', { name: '노후 주머니' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '연금', exact: true })).toBeVisible()
   await expect(page).toHaveURL(/#sheet-retire$/)
   await page.goto('/#pension')
   await page.getByRole('slider', { name: '살펴보는 연도' }).fill(String(year))
@@ -93,7 +93,7 @@ test('연금탑: 저장 실패는 초안을 유지하고, 불완전한 가족·�
   await expect(page.getByTestId('pension-total')).toHaveCount(0)
   await page.unroute('**/api/retirement')
   await page.getByRole('button', { name: '다시 불러오기', exact: true }).click()
-  await expect(page.getByRole('heading', { name: '노후 주머니' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '연금', exact: true })).toBeVisible()
 })
 
 test('연금탑: 적립금·수령 기간·물가 환산·층별 생활비 기여율을 연결한다', async ({ page, request }) => {

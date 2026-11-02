@@ -91,7 +91,7 @@ export function RetirementTower({ data, error, save, reload, owner, onOwnerChang
   const bridgeRow = retireYear != null ? data.projection?.rows.find(r => r.year === retireYear) : undefined
   const bridge = ready && retireYear != null && npStart != null && npStart > retireYear && bridgeRow ? { from: retireYear, to: npStart - 1, years: npStart - retireYear, amount: amount(bridgeRow, owner) ?? 0 } : null
   return <div className={`tower-workspace${embedded ? ' tower-embedded' : ''}`}>
-    <div className="tower-intro"><h1>노후 주머니</h1>
+    <div className="tower-intro"><h1>연금</h1>
       <div className="tower-intro-actions"><div className="tower-toolbar"><button onClick={() => setProfileOpen(true)}>내 정보</button><button onClick={() => hasPerson ? setEditor('timing') : setProfileOpen(true)}>은퇴·수령 시점</button><button onClick={() => setEditor('assumptions')}><Settings2 size={14}/>계산 가정</button></div>
       <div className="tower-scope" role="group" aria-label="연금 조회 범위">{([['together', '우리 함께'], ['me', '나'], ['partner', '배우자']] as const).map(([key, label]) => <button key={key} aria-pressed={owner === key} onClick={() => onOwnerChange(key)}>{label}</button>)}</div></div>
     </div>
