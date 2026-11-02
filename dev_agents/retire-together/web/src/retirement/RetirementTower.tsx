@@ -1,5 +1,5 @@
 import { useEffect, useId, useState, type ReactNode } from 'react'
-import { ArrowRight, ChevronDown, ChevronRight, Info, Landmark, MousePointer2, RefreshCw, Settings2, Sprout, Sun, Wallet, X } from 'lucide-react'
+import { ArrowRight, BookOpen, ChevronDown, ChevronRight, Info, Landmark, MousePointer2, RefreshCw, Settings2, Sprout, Sun, Wallet, X } from 'lucide-react'
 import { Popover } from 'radix-ui'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -10,6 +10,7 @@ import { useRetirementData, type Plan, type Result } from '../workbook/retiremen
 import { Pagoda } from './Pagoda'
 import { PlanDialog, type Editor } from './PlanDialog'
 import { SpendingGoal } from './SpendingGoal'
+import { LearnLayer } from './LearnLayer'
 import { IncomeChart } from './IncomeChart'
 import { accruedDb, amount, capital, extra, LAYERS, manWon, PEOPLE, layerState, percent, streams, visibleYears, type Scope } from './presentation'
 import './retirement-tower.css'
@@ -38,6 +39,7 @@ export function RetirementTower({ data, error, save, reload, owner, onOwnerChang
   const [editorScope, setEditorScope] = useState<Scope | null>(null)
   const [profileOpen, setProfileOpen] = useState(false)
   const [busySave, setBusySave] = useState(false)
+  const [learnOpen, setLearnOpen] = useState(false)   // '이 연금 알아두기' 한 페이지
   // 자산 등록(사진·표·포털 계약)이 끝나면 적립금이 바뀌므로 다시 읽는다
   useEffect(() => { const h = () => { reload() }; window.addEventListener('retire:holdings-changed', h); return () => window.removeEventListener('retire:holdings-changed', h) }, [reload])
   const money = (won: number | null | undefined) => hidden ? '••••••' : won == null ? '—' : `${won.toLocaleString('ko-KR')}원`
@@ -143,6 +145,7 @@ export function RetirementTower({ data, error, save, reload, owner, onOwnerChang
         <span>{periodText(who, selected) || '준비 정보를 입력해 주세요'}</span>
         {selected === 1 && <span>화면 계산은 {data.assumptions.end_age}세 직전까지</span>}
       </div> }) : <p className="tower-muted">나이와 은퇴 목표를 입력하면 각자의 계획을 볼 수 있어요.</p>}</div>
+      <button type="button" className="tower-detail-link tower-detail-learn" aria-label={`${currentLayer.name} 알아두기`} onClick={() => { setDetailOpen(false); setLearnOpen(true) }}><BookOpen size={13}/>이 연금 알아두기 — 세금·한도·조심할 것</button>
       {selected === 1 && !error && data.national && activePeople.some(([who]) => (data.national!.options[who] ?? []).length) && <div className="tower-nat">
         {/* 조기·연기 비교: 월액·시작 연도·공백·손익분기 나이를 나란히. 어느 쪽도 추천하지 않고 고르는 건 사용자 (2026-11-02) */}
         {activePeople.map(([who, label]) => { const opts = data.national!.options[who] ?? []; if (!opts.length) return null; const current = opts.find(o => o.selected); const show = [...new Set([-5, 0, 5, current?.shift ?? 0])].sort((a, b) => a - b).map(sh => opts.find(o => o.shift === sh)!).filter(Boolean); return <div className="tower-nat-person" key={who}>
@@ -209,6 +212,7 @@ export function RetirementTower({ data, error, save, reload, owner, onOwnerChang
     <div className="tower-footnote"><p>층별 게이지 = 해당 층의 월 연금 ÷ 목표 월 생활비. 각 층이 생활비에서 담당하는 몫이며, 층마다 100%를 채우는 목표가 아닙니다. 현재 적립금에는 앞으로 넣을 돈과 예상 수익을 더하지 않았어요.</p><p>예측이 아닌 입력한 가정의 계산 결과입니다. 석탑의 네 층은 연금 종류를 구분합니다. 생활비 충당률은 각 항목의 막대와 숫자로 확인해 주세요.</p></div>
     {details && <details className="tower-sheet-detail"><summary>입력값·연도별 계산을 표로 보기<ChevronDown size={16}/></summary><div className="tower-sheet-grid">{details}</div></details>}
     {editor !== null && <PlanDialog data={data} scope={editorScope ?? owner} section={editor} save={save} close={() => { setEditor(null); setEditorScope(null) }}/>}
+    {learnOpen && <LearnLayer layer={selected} data={data} row={row} owner={owner} close={() => setLearnOpen(false)}/>}
     {profileOpen && <RetirementProfile close={() => setProfileOpen(false)} onSaved={() => { setProfileOpen(false); reload(); onProfileChanged?.() }}/>}
   </div>
 }

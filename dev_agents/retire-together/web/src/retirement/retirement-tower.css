@@ -346,3 +346,5 @@
 .tower-nat-sv{display:grid;gap:5px;padding:10px 12px;border-radius:10px;background:var(--grey-50);margin-top:8px;font-size:var(--text-xs)}
 .tower-nat-sv strong{font-size:var(--text-sm);font-weight:650}.tower-nat-sv>div{display:flex;justify-content:space-between;gap:10px}.tower-nat-sv b{font-weight:650;white-space:nowrap}.tower-nat-sv b i{font-style:normal;color:var(--cls-mid-bond);font-weight:600}
 .tower-nat-sv small{color:var(--muted-foreground);line-height:1.6}
+
+.tower-detail-learn{border-color:color-mix(in srgb,var(--primary) 35%,var(--border));color:var(--foreground);font-weight:600}

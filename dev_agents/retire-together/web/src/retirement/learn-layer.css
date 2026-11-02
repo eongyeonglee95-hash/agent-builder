@@ -1,0 +1,21 @@
+/* '이 연금 알아두기' 한 페이지 — theme.css 토큰만 사용 */
+.learn-dialog{font-family:var(--font-sans);word-break:keep-all;line-height:1.6}
+.learn-body{display:grid;gap:14px;margin-top:4px}
+.learn-section{display:grid;gap:8px;padding:14px 16px;border:1px solid var(--border);border-radius:12px;background:var(--card)}
+.learn-section h3{margin:0;font-size:var(--text-sm);font-weight:700;letter-spacing:-.2px}
+.learn-section p,.learn-section li{margin:0;font-size:var(--text-sm);color:var(--grey-700)}
+.learn-section ul{margin:0;padding-left:18px;display:grid;gap:6px}
+.learn-section b{color:var(--foreground);font-weight:650}
+.learn-section.is-warn{background:color-mix(in srgb,var(--cls-gold) 9%,var(--background));border-color:color-mix(in srgb,var(--cls-gold) 40%,var(--border))}
+.learn-table{width:100%;border-collapse:collapse;font-size:var(--text-sm);font-feature-settings:"tnum"}
+.learn-table th{text-align:left;font-weight:500;color:var(--muted-foreground);font-size:var(--text-xs);padding:4px 8px 6px 0;border-bottom:1px solid var(--border)}
+.learn-table td{padding:7px 8px 7px 0;border-bottom:1px solid var(--border);white-space:nowrap}
+.learn-table td:first-child{font-weight:600}
+.learn-table td.is-over{color:var(--destructive);font-weight:600}
+.learn-note{font-size:var(--text-xs)!important;color:var(--muted-foreground)!important}
+.learn-sources{display:grid;gap:6px;font-size:var(--text-xs);color:var(--muted-foreground);padding:4px 2px 0}
+.learn-sources p{display:flex;gap:6px;align-items:flex-start;margin:0;line-height:1.6}.learn-sources p svg{flex-shrink:0;margin-top:3px}
+.learn-sources code{font-size:var(--text-xs);background:var(--muted);padding:0 4px;border-radius:4px}
+.learn-sources ul{margin:0;padding-left:18px;display:grid;gap:2px}
+.learn-sources a{display:inline-flex;align-items:center;gap:4px;color:var(--grey-700);text-decoration:underline;text-underline-offset:3px}
+@media(max-width:600px){.learn-table{display:block;overflow-x:auto}.learn-section{padding:12px}}
