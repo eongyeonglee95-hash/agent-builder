@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input'
 import type { PersonPlan, Plan, Result } from '../workbook/retirement'
 import { PEOPLE, type Scope } from './presentation'
+import { DbRetirementFields, useDbPreview } from './DbRetirementFields'
 
 export type Editor = 1 | 2 | 3 | 'goal' | 'timing' | 'assumptions'
 const TITLES = { 1: '국민연금 입력', 2: '퇴직연금 입력', 3: '개인연금 입력', goal: '은퇴 후 생활비', timing: '은퇴·수령 시점', assumptions: '계산 가정' }
@@ -14,6 +15,7 @@ export function PlanDialog({ data, scope, section, save, close }: {
   const [draft, setDraft] = useState(() => structuredClone(data.plan))
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const dbPreview = useDbPreview(draft, section === 2)
   const people = PEOPLE.filter(([key]) => (scope === 'together' || key === scope) && (key === 'me' || data.used.partner))
   const update = (who: 'me' | 'partner', field: keyof PersonPlan, value: string, nullable = false) => {
     setDraft(p => ({ ...p, [who]: { ...p[who], [field]: value === '' && nullable ? null : Number(value) } }))
@@ -51,8 +53,8 @@ export function PlanDialog({ data, scope, section, save, close }: {
             {nationalStart(who)}
           </>}
           {section === 2 && <>
-            {personField(who, '월급 (최근 3개월 평균)', 'db_monthly_wage', '원', 'DB형 퇴직금 계산에 사용')}
-            {personField(who, '지금 쌓인 퇴직금', 'db_accrued', '원', '회사에서 확인한 현재 예상 퇴직금')}
+            <DbRetirementFields who={who} value={draft[who]} asOf={data.as_of} preview={dbPreview}
+              onChange={change => setDraft(p => ({ ...p, [who]: { ...p[who], ...change } }))}/>
             {personField(who, 'DC·IRP 연 납입', 'irp_annual', '원', '은퇴 또는 수령 개시 전까지 넣을 돈')}
             <p className="tower-form-note">DC·IRP 적립금은 등록한 계좌에서 가져와요. DB 퇴직금과 같은 돈을 중복 입력하지 않도록 확인해 주세요.</p>
           </>}

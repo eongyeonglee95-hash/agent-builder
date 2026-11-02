@@ -9,6 +9,10 @@ private:                   # 퇴직연금(DC·IRP)·연금저축
   start_age_min: 55        # 제도상 최소 개시 나이
   min_payout_years: 10     # 제도상 최소 수령 기간
 
+db:                        # 고용노동부 퇴직금 계산 안내, CALCULATION_RULES §4
+  service_days_per_year: 365
+  minimum_service_years: 1
+
 # 국민연금 수급 개시 나이 — 출생연도별. 위에서부터 born_until 이하인 첫 줄
 national_start_age:
   - {born_until: 1952, age: 60}

@@ -1,8 +1,9 @@
 """tools/pension — CALCULATION_RULES §4 공식을 손으로 계산한 값과 대조한다."""
 import pytest
+from datetime import date
 
 from tools.pension import (Assumptions, Person, annuity_monthly, db_at_retire, future_value, load_pension_rules,
-                           monthly_cost_at, national_start_age, person_streams, project, spending_target)
+                           monthly_cost_at, national_start_age, person_streams, project, spending_target, db_estimate, service_period)
 
 A = Assumptions(return_rate=0.05, inflation=0.02, end_age=90, start_age_min=55, min_payout_years=10)
 
@@ -110,6 +111,39 @@ def test_db_at_retire_is_accrued_plus_wage_per_year_left():
     assert db_at_retire(55_000_000, 5_000_000, -3) == 55_000_000    # 이미 은퇴 나이를 지났으면 더 쌓이지 않음
     with pytest.raises(ValueError, match="0 이상"):
         db_at_retire(-1, 5_000_000, 1)
+
+
+def test_db_tenure_uses_actual_days_and_does_not_add_reported_amount():
+    args = dict(monthly_wage=3_650_000, accrued_now=90_000_000, start_date=date(2020, 1, 1),
+                as_of=date(2026, 1, 1), years_left=20, method="tenure", rules=load_pension_rules())
+    result = db_estimate(**args)
+    assert result["tenure"] == {"years": 6, "months": 0, "days": 2192}
+    assert result["accrued_now"] == 21_920_000
+    assert result["timeline"][-1]["date"] == "2046-01-01"
+    assert result["lump_at_retire"] == 94_970_000  # 9,497 days, includes leap days
+    later = db_estimate(**{**args, "as_of": date(2026, 1, 2)})
+    assert later["accrued_now"] == 21_930_000
+    reported = db_estimate(**{**args, "method": "reported"})
+    assert reported["accrued_now"] == 90_000_000
+    assert reported["lump_at_retire"] == 163_000_000
+
+
+def test_db_tenure_partial_year_eligibility_leap_day_and_missing_input():
+    args = dict(monthly_wage=3_650_000, accrued_now=0, start_date=date(2025, 1, 2),
+                as_of=date(2026, 1, 1), years_left=1, method="tenure", rules=load_pension_rules())
+    result = db_estimate(**args)
+    assert result["accrued_now"] == 0 and result["eligible_now"] is False
+    assert result["lump_at_retire"] == 7_290_000
+    assert db_estimate(**{**args, "as_of": date(2026, 1, 2)})["accrued_now"] == 3_650_000
+    leap = db_estimate(**{**args, "start_date": date(2020, 2, 29), "as_of": date(2024, 2, 29)})
+    assert leap["timeline"][-1]["date"] == "2025-02-28"
+    assert service_period(date(2020, 2, 29), date(2021, 2, 28)) == {"years": 1, "months": 0, "days": 365}
+    incomplete = db_estimate(**{**args, "start_date": None, "monthly_wage": 0})
+    assert len(incomplete["missing"]) == 2 and incomplete["accrued_now"] is None
+    assert incomplete["timeline"] == []
+    assert db_estimate(**{**args, "years_left": -2})["timeline"] == [result["timeline"][0]]
+    with pytest.raises(ValueError, match="입사일"):
+        db_estimate(**{**args, "start_date": date(2026, 1, 2)})
 
 
 def test_spending_target_is_same_lifestyle_in_retirement_year_money():
