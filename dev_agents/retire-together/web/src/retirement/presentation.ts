@@ -5,8 +5,8 @@ export const PEOPLE = [['me', '나'], ['partner', '배우자']] as const
 export const LAYERS = [
   { id: 1, name: '국민연금', caption: '일상의 기초', description: '공단 예상 월액으로 그리는 기본 소득' },
   { id: 2, name: '퇴직연금', caption: '쌓아온 시간', description: 'DB 퇴직금과 DC·IRP 적립금으로 계산해요' },
-  { id: 3, name: '개인연금', caption: '준비한 내일', description: '등록한 연금저축과 앞으로의 납입을 반영해요' },
-  { id: 4, name: '추가연금', caption: '더하는 여유', description: 'ISA 등 은퇴에 쓰기로 정한 추가 자금' },
+  { id: 3, name: '개인연금', caption: '준비한 내일', description: '세제적격 연금저축·IRP 개인납입 — 넣을 때 세액공제, 받을 때 연금소득세' },
+  { id: 4, name: '추가연금', caption: '더하는 여유', description: '세제비적격 연금보험 · ISA 등 — 세액공제는 없지만 받을 때 세금 부담이 적고 급하면 해지해 쓸 수 있어요' },
 ] as const
 
 export const amount = (row: Row | undefined, scope: Scope, layer?: number) => {

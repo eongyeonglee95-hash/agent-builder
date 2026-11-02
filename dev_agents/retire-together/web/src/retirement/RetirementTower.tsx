@@ -129,7 +129,7 @@ export function RetirementTower({ data, error, save, reload, owner, onOwnerChang
       </div>) : <p className="tower-muted">나이와 은퇴 목표를 입력하면 각자의 계획을 볼 수 있어요.</p>}</div>
       {selected === 3 && <button type="button" className="tower-detail-link" aria-label="개인연금 납입·수령 설정" onClick={() => { setDetailOpen(false); setEditorScope(null); if (!hasPerson) setProfileOpen(true); else setEditor(3) }}><Settings2 size={13}/>1년 납입액 · 수령 설정</button>}
       {selected === 4 && <button type="button" className="tower-detail-link" onClick={() => { setDetailOpen(false); onAssets() }}><Wallet size={13}/>등록한 자산 보기</button>}
-      {selected === 4 && <p className="tower-detail-note"><Info size={15}/>추가연금은 별도 연금 제도가 아닌 추가 준비 자금이에요. 현재는 등록한 금액만 보여주며, 월 수령액으로 전환하는 계산은 아직 연결되지 않았어요.</p>}
+      {selected === 4 && <p className="tower-detail-note"><Info size={15}/>세제비적격 연금보험(일반·변액연금보험)과 ISA처럼 세액공제를 받지 않은 은퇴 자금이 여기에 들어가요. 받을 때 연금소득세가 없고 해지해도 토해 낼 공제가 없어요. 현재는 등록한 금액만 보여주며, 월 수령액 계산은 다음 단계예요.</p>}
       {selected !== 4 && currentStatus === '준비 정보 없음' && <p className="tower-detail-note">정보가 없다는 뜻이며, 실제 받을 연금이 0원이라는 뜻은 아니에요.</p>}
             </Popover.Content></Popover.Portal></Popover.Root>)}</div>
         </div>
