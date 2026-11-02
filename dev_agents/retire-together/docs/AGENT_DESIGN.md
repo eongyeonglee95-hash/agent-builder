@@ -20,7 +20,7 @@
 | ID | 작업·범위 | 현재 상태 | 담당/인계 | 완료 근거 |
 |---|---|---|---|---|
 | COORD-01 | 컨셉·스택·순서·검수 조건을 공유 문서에 반영 | 완료 | Codex: 공유 설계 문서 | Claude의 공유 지침 확인 및 화면 작업 분리 응답 확인(아래 협업 메모) |
-| AGENT-01 | 답변 출력 전 검증·숫자의 단위/부호 확인·현재 질문의 도구 근거 분리 | 진행 (2026-11-02 사용자 에이전트 고도화 요청) | Codex: `agent/guard.py`·`agent/main.py`·`agent/prompt.py`·Agent 회귀 테스트. 기존 Claude 구현을 이어서 보강 | 기존 Agent 테스트 13개 통과, 작은 비율·금액 단위·부호 변경이 검사를 통과하는 문제 재현. 계산 엔진·전략·화면 변경은 범위 밖 |
+| AGENT-01 | 답변 출력 전 검증·숫자의 단위/부호 확인·현재 질문의 도구 근거 분리 | 완료 (로컬 회귀 검증, 2026-11-02) | Codex: `agent/guard.py`·`agent/main.py`·`agent/prompt.py`·Agent 회귀 테스트. 기존 Claude 구현을 이어서 보강 | 새 회귀 31개 포함 전체 Python 225 passed. 단위·부호·작은 비율 오류, 이전 질문 근거 재사용, 오류·미완료 응답 출력 차단. 실모델 대화·화면 연결은 미검증. 숫자의 계좌/종목 귀속 검증·계산 스냅샷 공유는 후속 |
 | RESEARCH-01 | 연금 관련 공신력 있는 출처·저자/채널 조사 | 완료(1차) | 기존 Claude 세션 7da8fa60: `docs/wiki/` | `docs/wiki/sources/pension-knowledge-sources.md`(944921e, e8ebf93), 박곰희 책 반영(f83f64d), 김성일 (A)/(B)/(C) 후보 — 사용자 확인 대기 |
 | BASE-01 | 합성 fixture 복구·새 환경 테스트 재현 | 완료 | 기존 Claude 세션 7da8fa60 (수락·완료) | `data/fixtures/holdings_fixture.csv`(합성 5행, 개인정보 없음)를 git에 포함, `.gitignore` `data/`→`data/*`(0567091). 새 환경(uv 0.13.5 신규 설치)에서 34 passed(227739c). 경로는 기존 테스트가 쓰는 `data/fixtures/` 유지 — `tests/fixtures/`로 옮기려면 테스트 경로 변경 필요 |
 | SAFE-01 | 저장 경로·계좌·수량·가격·합계 재검증 | 완료 | 기존 Claude 세션 7da8fa60 (수락·완료 2026-10-27) | `tests/test_safety.py` 5개가 보고서 §4 합성 입력(../outside, 수량 -2·1.9, value 전사 오류, 미등록 계좌, 0행 저장)을 재현 → 수정 후 통과. `tools/parse_balance.validate_holdings`·`ReconcileResult`, `tools/store.save_holdings`(등록·활성·형식·빈 표·경로 검사), `tools/assets.check_constraints`("계좌 등록·사용 중"). Streamlit 입력 화면은 오류 표시만 추가. 전체 55 passed |

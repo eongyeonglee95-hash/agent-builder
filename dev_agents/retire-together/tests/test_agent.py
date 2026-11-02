@@ -115,7 +115,7 @@ def test_guard_flags_numbers_not_in_tool_results_and_forbidden_words():
     ok = guard.check_answer("총 평가액은 3,000,000원이고 주식이 70.0%p 높아요. 2번 연속 보류예요.", tool_text)
     assert ok.ok
     bad = guard.check_answer("목표로 맞추려면 2,100,000원어치 팔아야 합니다. 주식은 오를 것 같아요", tool_text)
-    assert bad.unverified == ["2100000"]
+    assert bad.unverified == ["2100000원"]
     assert "팔아야 합니다" in bad.forbidden and "오를 것" in bad.forbidden
 
 

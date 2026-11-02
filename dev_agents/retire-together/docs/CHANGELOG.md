@@ -1,7 +1,7 @@
 # CHANGELOG
 
 ## 2026-11-02
-- Codex: AGENT-01 착수. Agent 인계 수신·담당 범위를 AGENT_DESIGN/DEV_HANDOFF에 기록. 숫자 단위·부호·작은 비율 검사와 출력 전 검증을 보강한다.
+- Codex: AGENT-01 완료. 숫자 단위·음수/± 부호·작은 비율/수량을 검사하고 답변은 검증 후 출력. 현재 질문의 도구 근거를 분리하며 SDK 오류/미완료·검증 실패는 고정 안내와 비정상 종료 코드로 처리. 새 회귀 31개 포함 Python 225 passed, 실모델 대화·화면 연결 미검증. 인계·담당·남은 설계 과제를 AGENT_DESIGN/DEV_HANDOFF에 기록.
 - (코드) 엔진 버그 수정: 전략 지정 종목의 현재가를 모르면(미보유·시세 갱신 안 함) 보유 종목으로 몰래 바꿔 사던 것 → 지정 종목으로 금액만. 실데이터에서 중기채 매수가 KODEX 미국10년국채선물(308620) 대신 ACE 종합채권으로 나오던 문제(REBALANCING §4-1 위반, Agent 첫 실행에서 발견). `tests/test_rebalance.py` 1개 추가, 전체 194 통과
 - (코드) Agent 본체: `agent/`(tools·prompt·guard·main), `uv run python -m agent`. 도구 7개(list_pools·tag_assets·compute_rebalance·explain_inputs·build_order_sheet·read_decisions·record_decision)만, 결정 기록은 사용자 확인 후. `backend/workbook.py`에서 묶음 하나 계산(`run_pool`)을 떼어 화면과 Agent가 같이 씀. `tests/test_agent.py` 13개, 전체 193 통과, 실데이터 한 번 실행 확인
 - (구조) 저장소를 여러 에이전트 작업공간으로 개편: 둘이서은퇴 전체를 `dev_agents/retire-together/`로 옮김(cooking·saju·tarot과 나란히). 바깥 폴더·git은 그대로, 루트에는 작업공간 CLAUDE.md·AGENTS.md·.gitignore만. 코드 경로는 모두 상대 경로라 수정 없음. `.venv`는 새 폴더에서 다시 만듦. pytest 180·웹 빌드 통과
