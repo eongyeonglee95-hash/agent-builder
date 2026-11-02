@@ -38,3 +38,57 @@
   .tower-workspace .tower-layer-gauge {grid-column:1/-1}
   .tower-workspace .tower-layer-gauge>span:last-child {white-space:normal}
 }
+
+/* The row's selection and editing controls are siblings, never nested buttons. */
+.tower-layer-row {
+  position:relative;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  align-items:center;
+  min-width:0;
+  border:1px solid transparent;
+  border-radius:12px;
+  background:var(--grey-50);
+  container:tower-row / inline-size;
+}
+.tower-layer-row:hover {border-color:var(--input)}
+.tower-layer-row[data-selected=true] {border-color:var(--primary);background:var(--background)}
+.tower-layer-row .tower-layer-button {
+  grid-template-columns:minmax(0,1fr);
+  grid-template-areas:"name" "principal" "gauge";
+  gap:4px 8px;
+  padding:8px 10px;
+  border:0;
+  border-radius:inherit;
+  background:transparent;
+  box-shadow:none;
+}
+.tower-layer-row .tower-layer-button:before {display:none}
+.tower-layer-row .tower-layer-name {grid-area:name}
+.tower-layer-row .tower-layer-principal {grid-area:principal;overflow-wrap:anywhere}
+.tower-layer-row .tower-layer-projection {grid-area:projection;display:none}
+.tower-layer-row .tower-layer-caption {display:none}
+.tower-layer-row .tower-layer-gauge {grid-area:gauge;min-width:0}
+.tower-layer-row .tower-layer-gauge>span:last-child {white-space:normal}
+.tower-workspace .tower-layer-edit {
+  margin-right:8px;
+  min-height:36px;
+  padding:6px 8px;
+  border:1px solid var(--border);
+  border-radius:8px;
+  background:var(--background);
+  color:var(--foreground);
+  font-size:var(--text-xs);
+  line-height:1.4;
+  white-space:nowrap;
+}
+.tower-workspace .tower-layer-edit:hover {border-color:var(--primary);background:var(--muted)}
+@container tower-row (min-width:280px) {
+  .tower-layer-row .tower-layer-button {grid-template-columns:84px minmax(0,1fr);grid-template-areas:"name principal" "gauge gauge"}
+}
+@container tower-row (min-width:430px) {
+  .tower-layer-row .tower-layer-button {grid-template-columns:84px minmax(0,1fr) 96px;grid-template-areas:"name principal gauge" "name projection gauge"}
+  .tower-layer-row .tower-layer-projection {display:grid;gap:0;min-width:0}
+  .tower-layer-row .tower-layer-projection:empty {display:none}
+  .tower-layer-row .tower-layer-income {white-space:normal}
+}
