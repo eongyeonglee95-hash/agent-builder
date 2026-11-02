@@ -6,7 +6,8 @@
 
 허용 도구는 agent/tools.py의 7개뿐이다. 내장 도구(Bash·파일 읽기/쓰기·웹 등)는 tools=[]로 아예 주지 않고,
 설정 파일·CLAUDE.md·스킬·다른 MCP 서버도 읽지 않는다. 쓰기 도구(record_decision)는 매번 사용자 확인을 받는다.
-답이 끝나면 agent/guard.py가 금지 표현과 '도구 결과에 없는 숫자'를 검사해 경고를 붙인다.
+답을 모아 agent/guard.py로 금지 표현과 숫자의 단위·부호를 검사한 뒤에만 출력한다.
+검증 실패나 SDK 오류/미완료 응답은 고정 안내로 대체하며, 단일 질문 실행은 비정상 종료 코드를 반환한다.
 """
 from __future__ import annotations
 
@@ -89,22 +90,37 @@ async def chat(first: str | None, owner: str, live: bool, model: str | None) -> 
                     return 0
                 if prompt in ("", "끝", "exit", "quit"):
                     return 0
+            # 이전 질문의 잔고·시세가 이번 답변의 근거로 재사용되지 않게 한다.
+            log.texts.clear()
             await client.query(_with_context(prompt, owner, live))
             answer: list[str] = []
+            completed = False
+            failed = False
             async for msg in client.receive_response():
                 if isinstance(msg, AssistantMessage):
+                    failed = failed or msg.error is not None
                     for block in msg.content:
                         if isinstance(block, TextBlock):
-                            print(block.text, flush=True)
                             answer.append(block.text)
-                elif isinstance(msg, ResultMessage) and msg.is_error:
-                    print(f"[오류] {msg.result or msg.subtype}", file=sys.stderr)
+                elif isinstance(msg, ResultMessage):
+                    completed = True
+                    failed = (failed or msg.is_error or msg.subtype != "success"
+                              or msg.terminal_reason not in (None, "completed")
+                              or msg.stop_reason == "max_tokens")
             # 규칙 발췌의 숫자(종목코드·연구 수치 등)도 Agent가 받은 글이므로 대조 대상에 넣는다
-            checked = guard.check_answer("\n".join(answer), log.joined() + "\n" + rules_excerpt())
-            if not checked.ok:
-                print(f"\n[검사] {checked.warning()}")
+            text = "\n".join(answer).strip()
+            checked = guard.check_answer(text, log.joined() + "\n" + rules_excerpt())
+            status = 0
+            if failed or not completed or not text:
+                print("[오류] 답변을 완료하지 못했어요. 다시 요청해 주세요.", file=sys.stderr)
+                status = 1
+            elif not checked.ok:
+                print("답변의 숫자나 표현을 확인하지 못해 표시를 보류했어요. 잔고와 계산 결과를 다시 조회해 달라고 요청해 주세요.")
+                status = 2
+            else:
+                print(text, flush=True)
             if first is not None:
-                return 0
+                return status
             prompt = None
 
 
