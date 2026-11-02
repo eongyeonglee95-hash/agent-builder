@@ -30,3 +30,11 @@ def move_budget(*, sale_value: int, loans: int, deposit: int, sale_costs: int | 
         "surplus": max(0, own + new_loan - total) if own is not None and total is not None else None,
         "costs_complete": sale_costs is not None and purchase_costs is not None,
     }
+
+
+def price_gap(*, home_value: int, target_price: int) -> int:
+    """격차 = 목표 집 가격 − 팔 집 평가액(전체). 둘 다 집 전체 기준이며 비용·대출은 넣지 않는다.
+    갈아타기 추적의 기준 숫자 — 집값 자체가 아니라 이 차이가 벌어지는지 좁혀지는지를 본다."""
+    if type(home_value) is not int or type(target_price) is not int or home_value < 0 or target_price < 0:
+        raise ValueError("금액은 0 이상의 정수여야 합니다")
+    return target_price - home_value

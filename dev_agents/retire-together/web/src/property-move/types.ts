@@ -14,7 +14,11 @@ export type Budget = {
   id?: string; sale_value: number; loans: number; deposit: number; sale_net: number
   own_funds: number | null; total_needed: number | null; gap: number | null; coverage: number | null
   months: number | null; future_savings: number | null; future_gap: number | null; required_monthly: number | null
-  surplus: number | null; costs_complete: boolean
+  surplus: number | null; costs_complete: boolean; price_gap?: number | null
 }
-export type MoveState = { plan: MovePlan; comparisons: Budget[]; funds: Budget; cash_reference: number; missing_home_ids: string[]; valuation_needs_review: string[] }
+export type TrackEntry = {
+  day: string; price: number; price_basis: 'manual' | 'trade' | 'asking'; price_date: string | null; note: string
+  home_value: number; home_net: number; own_funds: number | null; gap: number; needed: number | null; costs_complete: boolean; saved_at: string
+}
+export type MoveState = { plan: MovePlan; comparisons: Budget[]; funds: Budget; cash_reference: number; missing_home_ids: string[]; valuation_needs_review: string[]; track: Record<string, TrackEntry[]> }
 export const dateToday = () => new Date().toLocaleDateString('sv-SE')

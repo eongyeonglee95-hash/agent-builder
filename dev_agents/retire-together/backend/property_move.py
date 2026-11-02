@@ -6,13 +6,13 @@ import json
 from typing import Annotated, Literal
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Path
 from pydantic import Field, model_validator
 
 from backend import storage
 from backend.property import Address, list_homes
 from backend.storage import InputModel, Money
-from tools.property_move import move_budget
+from tools.property_move import move_budget, price_gap
 
 router = APIRouter(prefix="/api/property-move", tags=["property-move"])
 Owner = Literal["together", "me", "partner"]
@@ -66,8 +66,73 @@ class MoveInput(InputModel):
         return self
 
 
+class TrackInput(InputModel):
+    """오늘의 추적 기록. 가격은 화면이 보여주는 기준(실거래·호가·계획 매수가) 그대로 보낸다."""
+    candidate_id: UUID
+    price: Annotated[int, Field(strict=True, gt=0, le=1_000_000_000_000_000)]
+    price_basis: Literal["manual", "trade", "asking"] = "manual"
+    price_date: dt.date | None = None
+    note: Annotated[str, Field(max_length=100)] = ""
+
+    @model_validator(mode="after")
+    def not_future(self):
+        if self.price_date and self.price_date > dt.date.today():
+            raise ValueError("기준일은 미래일 수 없습니다")
+        return self
+
+
 def _table(conn):
     conn.execute("CREATE TABLE IF NOT EXISTS property_move (owner TEXT PRIMARY KEY, payload TEXT NOT NULL, version INTEGER NOT NULL, updated_at TEXT NOT NULL)")
+    conn.execute("CREATE TABLE IF NOT EXISTS property_track (owner TEXT NOT NULL, candidate_id TEXT NOT NULL, day TEXT NOT NULL, payload TEXT NOT NULL, PRIMARY KEY (owner, candidate_id, day))")
+
+
+def _tracks(conn, owner: Owner) -> dict[str, list[dict]]:
+    out: dict[str, list[dict]] = {}
+    for row in conn.execute("SELECT candidate_id, day, payload FROM property_track WHERE owner=? ORDER BY day DESC", (owner,)):
+        out.setdefault(row["candidate_id"], []).append({**json.loads(row["payload"]), "day": row["day"]})
+    return out
+
+
+def _base(plan: dict, owner: Owner) -> tuple[dict, list[str], list[dict]]:
+    homes = list_homes(owner)["homes"]
+    chosen = [h for h in homes if h["asset"]["id"] in plan["source_home_ids"]]
+    missing = sorted(set(plan["source_home_ids"]) - {h["asset"]["id"] for h in chosen})
+    # 지워진 집은 0원으로 조용히 바꾸지 않고 계획 재확인을 요구한다.
+    base = dict(sale_value=sum(h["value"] for h in chosen),
+                loans=sum(h["metrics"]["loans_mine"] for h in chosen),
+                deposit=sum(h["metrics"]["deposit_mine"] for h in chosen),
+                sale_costs=plan["sale_costs"], cash=plan["cash"] if not missing else None,
+                new_loan=plan["new_loan"], monthly=plan["monthly_saving"], target_month=plan["target_month"])
+    return base, missing, chosen
+
+
+def _entry(base: dict, candidate: dict, *, price: int, basis: str, price_date: str | None, note: str) -> dict:
+    budget = move_budget(**base, price=price, purchase_costs=candidate["purchase_costs"])
+    return {"price": price, "price_basis": basis, "price_date": price_date, "note": note,
+            "home_value": base["sale_value"], "home_net": budget["sale_net"], "own_funds": budget["own_funds"],
+            "gap": price_gap(home_value=base["sale_value"], target_price=price), "needed": budget["gap"],
+            "costs_complete": budget["costs_complete"], "saved_at": storage.now()}
+
+
+def _write_track(conn, owner: Owner, candidate_id: str, day: str, entry: dict) -> None:
+    conn.execute("INSERT INTO property_track VALUES (?, ?, ?, ?) ON CONFLICT(owner, candidate_id, day) DO UPDATE SET payload=excluded.payload",
+                 (owner, candidate_id, day, json.dumps(entry, ensure_ascii=False)))
+
+
+def _auto_track(conn, owner: Owner, plan: dict) -> None:
+    """계획을 저장할 때 가격이 있는 후보마다 오늘 기록을 남긴다 — 단, 마지막 기록과 가격·더 필요한 돈이 같으면 건너뛴다(메모만 고친 저장이 기록을 만들지 않게)."""
+    base, missing, _ = _base(plan, owner)
+    tracks = _tracks(conn, owner)
+    today = dt.date.today().isoformat()
+    for c in plan["candidates"]:
+        if not c["price"]:
+            continue
+        entry = _entry(base, c, price=c["price"], basis=c["price_basis"], price_date=c["price_date"], note="")
+        latest = next(iter(tracks.get(c["id"], [])), None)   # 오늘 것이면 오늘 것, 아니면 가장 최근 기록
+        if latest and latest["price"] == entry["price"] and latest["needed"] == entry["needed"]:
+            continue
+        note = latest["note"] if latest and latest["day"] == today else ""
+        _write_track(conn, owner, c["id"], today, {**entry, "note": note})
 
 
 def read_plan(owner: Owner) -> dict:
@@ -78,17 +143,14 @@ def read_plan(owner: Owner) -> dict:
 
 
 def result(plan: dict, owner: Owner) -> dict:
-    homes = list_homes(owner)["homes"]
-    chosen = [h for h in homes if h["asset"]["id"] in plan["source_home_ids"]]
-    missing = sorted(set(plan["source_home_ids"]) - {h["asset"]["id"] for h in chosen})
-    # 지워진 집은 0원으로 조용히 바꾸지 않고 계획 재확인을 요구한다.
-    base = dict(sale_value=sum(h["value"] for h in chosen),
-                loans=sum(h["metrics"]["loans_mine"] for h in chosen),
-                deposit=sum(h["metrics"]["deposit_mine"] for h in chosen),
-                sale_costs=plan["sale_costs"], cash=plan["cash"] if not missing else None,
-                new_loan=plan["new_loan"], monthly=plan["monthly_saving"], target_month=plan["target_month"])
-    comparisons = [{"id": c["id"], **move_budget(**base, price=c["price"], purchase_costs=c["purchase_costs"])} for c in plan["candidates"]]
-    return {"plan": plan, "comparisons": comparisons, "missing_home_ids": missing,
+    base, missing, chosen = _base(plan, owner)
+    comparisons = [{"id": c["id"], **move_budget(**base, price=c["price"], purchase_costs=c["purchase_costs"]),
+                    "price_gap": price_gap(home_value=base["sale_value"], target_price=c["price"]) if c["price"] else None}
+                   for c in plan["candidates"]]
+    with storage.connection() as conn:
+        _table(conn)
+        tracks = _tracks(conn, owner)
+    return {"plan": plan, "comparisons": comparisons, "missing_home_ids": missing, "track": {c["id"]: tracks.get(c["id"], []) for c in plan["candidates"]},
             "funds": move_budget(**base, price=None, purchase_costs=None),
             "cash_reference": storage.dashboard(owner)["cash"],
             "valuation_needs_review": [h["asset"]["id"] for h in chosen if ((h["detail"] or {}).get("value_source") or {}).get("kind") in ("none", "purchase")]}
@@ -113,4 +175,30 @@ def save_plan(data: MoveInput, owner: Owner = "together"):
             raise HTTPException(409, "다른 화면에서 갈아타기 계획이 바뀌었어요. 새로고침 후 다시 확인해 주세요.")
         conn.execute("INSERT INTO property_move VALUES (?, ?, ?, ?) ON CONFLICT(owner) DO UPDATE SET payload=excluded.payload, version=excluded.version, updated_at=excluded.updated_at",
                      (owner, json.dumps(payload, ensure_ascii=False), data.version + 1, storage.now()))
+        kept = [c["id"] for c in payload["candidates"]]
+        conn.execute(f"DELETE FROM property_track WHERE owner=? AND candidate_id NOT IN ({','.join('?' * len(kept)) or "''"})", (owner, *kept))
+        _auto_track(conn, owner, payload)
     return result({**payload, "version": data.version + 1}, owner)
+
+
+@router.post("/track", status_code=201)
+def track(data: TrackInput, owner: Owner = "together"):
+    """오늘 기록 한 줄: 화면이 보여주는 목표 집 가격으로 격차·더 필요한 돈을 계산해 저장. 같은 날 다시 누르면 덮어쓴다."""
+    plan = read_plan(owner)
+    candidate = next((c for c in plan["candidates"] if c["id"] == str(data.candidate_id)), None)
+    if not candidate:
+        raise HTTPException(404, "추적할 후보를 찾을 수 없어요. 비교 후보를 먼저 저장해 주세요.")
+    base, _, _ = _base(plan, owner)
+    entry = _entry(base, candidate, price=data.price, basis=data.price_basis, price_date=data.price_date.isoformat() if data.price_date else None, note=data.note)
+    with storage.connection() as conn:
+        _table(conn)
+        _write_track(conn, owner, candidate["id"], dt.date.today().isoformat(), entry)
+    return result(plan, owner)
+
+
+@router.delete("/track/{candidate_id}/{day}")
+def untrack(candidate_id: UUID, day: Annotated[str, Path(pattern=r"^\d{4}-\d{2}-\d{2}$")], owner: Owner = "together"):
+    with storage.connection() as conn:
+        _table(conn)
+        conn.execute("DELETE FROM property_track WHERE owner=? AND candidate_id=? AND day=?", (owner, str(candidate_id), day))
+    return result(read_plan(owner), owner)
