@@ -3,7 +3,9 @@
 set -euo pipefail
 project_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$project_root"
-uv run --locked uvicorn backend.main:app --host 127.0.0.1 --port 8000 &
+# 포트: RETIRE_API_PORT(기본 8000)·RETIRE_WEB_PORT(기본 5173). 다른 프로젝트가 쓰고 있으면 바꿔서 띄운다
+export RETIRE_API_PORT="${RETIRE_API_PORT:-8000}" RETIRE_WEB_PORT="${RETIRE_WEB_PORT:-5173}"
+uv run --locked uvicorn backend.main:app --host 127.0.0.1 --port "$RETIRE_API_PORT" &
 api_pid=$!
 ui_pid=""
 cleanup() {
@@ -18,7 +20,7 @@ for attempt in {1..50}; do
     wait "$api_pid"
     exit 1
   fi
-  if curl --silent --fail http://127.0.0.1:8000/api/health >/dev/null; then
+  if curl --silent --fail "http://127.0.0.1:$RETIRE_API_PORT/api/health" >/dev/null; then
     break
   fi
   sleep 0.1

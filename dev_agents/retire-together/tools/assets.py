@@ -252,3 +252,26 @@ def set_pool_mode(account_id: str, mode: str, path: Path = ACCOUNTS_PATH) -> str
     pools[pid]["mode"] = mode
     save_accounts(accounts, pools, path)
     return pid
+
+
+def set_pool_strategy(pool_id: str, strategy_id: str, path: Path = ACCOUNTS_PATH) -> str:
+    """묶음이 따라갈 전략을 바꾼다. pools 아래 그 묶음의 strategy 한 줄만 고쳐 다른 줄·주석은 그대로 둔다. 이전 전략 id 반환."""
+    original = path.read_text(encoding="utf-8")
+    lines = original.splitlines(keepends=True)
+    try:
+        sec = next(i for i, l in enumerate(lines) if l.rstrip() == "pools:")
+        start = next(i for i in range(sec + 1, len(lines)) if lines[i].rstrip() == f"  {pool_id}:")
+    except StopIteration:
+        raise KeyError(f"묶음 '{pool_id}'이(가) 없어요") from None
+    end = next((i for i in range(start + 1, len(lines)) if not lines[i].startswith("    ")), len(lines))
+    idx = next((i for i in range(start + 1, end) if lines[i].startswith("    strategy:")), None)
+    previous = load_pools(path)[pool_id].get("strategy") or "all_weather"
+    if idx is None:
+        lines.insert(start + 1, f"    strategy: {strategy_id}\n")
+    else:
+        lines[idx] = f"    strategy: {strategy_id}\n"
+    path.write_text("".join(lines), encoding="utf-8")
+    if load_pools(path).get(pool_id, {}).get("strategy") != strategy_id:
+        path.write_text(original, encoding="utf-8")
+        raise ValueError("묶음 전략을 저장하지 못했어요")
+    return previous

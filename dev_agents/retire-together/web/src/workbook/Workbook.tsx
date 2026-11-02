@@ -10,6 +10,7 @@ import { api } from '../local-data'
 import { AssetSheet } from '../sheet'
 import { UploadFlow } from '../register'
 import { ReadGrid, type Cell } from './ReadGrid'
+import { usePortfolioRows } from './portfolio'
 
 // 첫 화면 — 엑셀 워크북 (2026-10-28 사용자 "처음부터 엑셀처럼", "먼저 엑셀 형태로 자산을 다 보여준 다음 다른 버전으로 보기").
 // 시트: 요약 · 보유종목 · 자산 · 리밸런싱. 맨 위 한 줄 요약(서버 템플릿), 보고서 엑셀 내려받기. 숫자는 전부 서버 계산.
@@ -68,7 +69,8 @@ export function Workbook({ onClassic }: { onClassic: () => void }) {
   useEffect(() => { if (sheet === 'rebalance') loadPools() }, [sheet, loadPools, rev])
   useEffect(() => { history.replaceState(null, '', sheet === 'summary' ? location.pathname : `#${sheet}`) }, [sheet])
   useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(''), 3500); return () => clearTimeout(t) }, [toast])
-  const changed = (msg: string) => { setToast(msg); setRev(r => r + 1) }
+  const changed = useCallback((msg: string) => { setToast(msg); setRev(r => r + 1) }, [])
+  const portfolioRows = usePortfolioRows({ rev, onChanged: changed, onError: setError })
 
   const summaryRows = useMemo<Cell[][]>(() => {
     if (!data) return []
@@ -180,7 +182,7 @@ export function Workbook({ onClassic }: { onClassic: () => void }) {
       {sheet === 'summary' && (data ? <ReadGrid label="요약 시트" widths={[220, 120, 110, 130, 130, 130, 90, 130]} rows={summaryRows}/> : <div className="p-6 text-sm text-grey-600">불러오는 중…</div>)}
       {sheet === 'holdings' && <AssetSheet key={`h-${owner}-${rev}`} owner={owner} initialTab="holdings" embedded onSaved={changed}/>}
       {sheet === 'assets' && <AssetSheet key={`a-${owner}-${rev}`} owner={owner} initialTab="assets" embedded onSaved={changed}/>}
-      {sheet === 'rebalance' && (pools ? <ReadGrid label="리밸런싱 시트" widths={[200, 120, 110, 120, 110, 200, 240]} rows={rebalanceRows}/> : <div className="p-6 text-sm text-grey-600">계산하는 중…</div>)}
+      {sheet === 'rebalance' && (pools ? <ReadGrid label="리밸런싱 시트" widths={[200, 120, 110, 120, 110, 270, 290]} rows={[...portfolioRows, ...rebalanceRows]}/> : <div className="p-6 text-sm text-grey-600">계산하는 중…</div>)}
     </main>
 
     <nav className="flex h-9 shrink-0 items-stretch border-t border-grey-300 bg-grey-100 text-sm" role="tablist" aria-label="시트">

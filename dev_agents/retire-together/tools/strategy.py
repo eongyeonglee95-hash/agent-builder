@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import math
+import os
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -13,6 +14,11 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
 STRATEGIES_PATH = ROOT / "rules" / "strategies.yaml"
+
+
+def strategies_path() -> Path:
+    """전략 파일 위치. 테스트·브라우저 검사는 RETIRE_STRATEGIES_PATH로 임시 파일을 쓴다."""
+    return Path(os.environ.get("RETIRE_STRATEGIES_PATH") or STRATEGIES_PATH)
 
 ASSET_CLASSES = ("stock", "long_bond", "mid_bond", "gold", "commodity", "cash")
 CLASS_LABELS = {
@@ -72,7 +78,8 @@ class Strategy:
     labels: dict[str, str] = field(default_factory=dict)        # 자산군 표시 이름 덮어쓰기 (예: 올웨더 gold → "금 (=원자재)"). 없으면 CLASS_LABELS
 
 
-def load_strategy(strategy_id: str, path: Path = STRATEGIES_PATH) -> Strategy:
+def load_strategy(strategy_id: str, path: Path | None = None) -> Strategy:
+    path = path or strategies_path()
     data = yaml.safe_load(path.read_text(encoding="utf-8"))
     raw = data["strategies"].get(strategy_id)
     if raw is None:
@@ -101,7 +108,8 @@ def class_label(cls: str, strategy: "Strategy | None" = None) -> str:
     return CLASS_LABELS.get(cls, cls)
 
 
-def list_strategies(path: Path = STRATEGIES_PATH) -> list[tuple[str, str]]:
+def list_strategies(path: Path | None = None) -> list[tuple[str, str]]:
+    path = path or strategies_path()
     data = yaml.safe_load(path.read_text(encoding="utf-8"))
     return [(k, v.get("name", k)) for k, v in data["strategies"].items()]
 
@@ -126,3 +134,32 @@ def save_targets(strategy_id: str, targets_pct: dict[str, float], path: Path = S
 def has_targets(strategy_id: str, path: Path = STRATEGIES_PATH) -> bool:
     data = yaml.safe_load(path.read_text(encoding="utf-8"))
     return bool((data["strategies"].get(strategy_id) or {}).get("targets"))
+
+
+def set_custom_targets(targets_pct: dict[str, float], path: Path | None = None, note: str = "") -> None:
+    """'직접 설정'(custom) 전략의 targets 한 줄만 고친다 — 파일의 다른 줄·주석(결정 사유)은 그대로 둔다.
+    save_targets는 YAML 전체를 다시 써서 주석이 사라지므로 화면 저장에는 이 함수를 쓴다. 고친 뒤 다시 읽어 검증하고, 실패하면 되돌린다."""
+    path = path or strategies_path()
+    clean = {k: float(v) for k, v in targets_pct.items() if v}
+    errors = validate_strategy_fields(clean)
+    if not clean:
+        errors.append("비율을 하나 이상 넣어 주세요")
+    if errors:
+        raise ValueError("비율 저장 거부: " + " / ".join(errors))
+    original = path.read_text(encoding="utf-8")
+    lines = original.splitlines(keepends=True)
+    start = next((i for i, l in enumerate(lines) if l.rstrip() == "  custom:"), None)
+    if start is None:
+        raise ValueError("전략 파일에 '직접 설정(custom)'이 없어요")
+    idx = next((i for i in range(start + 1, len(lines))
+                if lines[i].startswith("    targets:") or not lines[i].startswith("    ")), None)
+    if idx is None or not lines[idx].startswith("    targets:"):
+        raise ValueError("'직접 설정'의 targets 줄을 찾지 못했어요")
+    body = ", ".join(f"{k}: {v:g}" for k, v in clean.items())
+    lines[idx] = f"    targets: {{{body}}}" + (f"  # {note}" if note else "") + "\n"
+    path.write_text("".join(lines), encoding="utf-8")
+    try:
+        load_strategy("custom", path)
+    except (KeyError, ValueError):
+        path.write_text(original, encoding="utf-8")
+        raise

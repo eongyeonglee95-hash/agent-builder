@@ -23,6 +23,30 @@ export function Donut({ items, total, hidden }: { items: { key: string; label: s
   const gradient = items.map(item => { const from = offset; offset += item.amount / total * 100; return `${item.color} ${from}% ${offset}%` }).join(',')
   return <div className="donut-layout"><div className="donut" role="img" aria-label={hidden ? '자산 금액 숨김' : `총자산 ${money(total)}, ${items.map(i => `${i.label} ${Math.round(i.amount / total * 100)}%`).join(', ')}`} style={{ background: `conic-gradient(from -90deg, ${gradient})` }}><div><span>총자산</span><strong>{hidden ? '••••' : compactMoney(total)}</strong><small>대출 차감 전</small></div></div><ul className="donut-legend">{items.map(item => <li key={item.key}><span><i style={{ background: item.color }}/>{item.label}</span><b>{Math.round(item.amount / total * 100)}<small>%</small></b><span className="legend-amount">{hidden ? '•••' : compactMoney(item.amount)}</span></li>)}</ul></div>
 }
+// 지키고 싶은 투자 원칙 — 세 원칙을 탭으로 나누지 않고 한 번에 (2026-11-02 사용자 "탭으로 나누면 처음 것만 보게 된다", "원큐에 보여달라").
+// onSelect가 있으면 줄을 눌러 아래 '목표와 현재' 비교 기준을 고른다. 실제 운용 전략은 바꾸지 않는다(그건 워크북 리밸런싱 시트).
+const PRINCIPLE_NAMES: Record<string, [string, string]> = { all_weather: ['올웨더', '달리오'], k_all_weather: ['K-올웨더', '김성일'], park_gomhee: ['박곰희', '포트폴리오'] }
+export function StrategyStack({ strategies, selected, onSelect }: { strategies: Strategy[]; selected?: string; onSelect?: (id: string) => void }) {
+  const used = new Map<string, string>()
+  strategies.forEach(s => Object.keys(s.targets).forEach(k => used.set(k, classInfo[k]?.label ?? k)))
+  return <div className="strategy-stack">
+    {strategies.map(s => {
+      const [short, who] = PRINCIPLE_NAMES[s.id] ?? [s.name, '']
+      const items = Object.entries(s.targets)
+      const active = !!onSelect && selected === s.id
+      return <div key={s.id} className={`strategy-row${active ? ' active' : ''}`}>
+        <div className="strategy-row-head">
+          <strong>{short}</strong><span>{who}</span>
+          {onSelect && items.length > 0 && <button type="button" aria-pressed={active} onClick={() => onSelect(s.id)}>{active ? '아래에서 비교 중' : '이걸로 비교'}</button>}
+        </div>
+        {items.length
+          ? <div className="strategy-bar" role="img" aria-label={`${short}: ${items.map(([key, value]) => `${s.labels[key] ?? classInfo[key]?.label ?? key} ${value}%`).join(', ')}`}>{items.map(([key, value]) => <span key={key} style={{ width: `${value}%`, background: classInfo[key]?.color }} title={`${s.labels[key] ?? classInfo[key]?.label ?? key} ${value}%`}><span>{value}<small>%</small></span></span>)}</div>
+          : <p className="strategy-row-empty"><Info size={14}/>비율 확인 중 — 출처 확인과 사용자 결정 후 표시해요.</p>}
+      </div>
+    })}
+    <div className="strategy-legend">{[...used.entries()].map(([key, label]) => <span key={key}><i style={{ background: classInfo[key]?.color }}/>{label}</span>)}</div>
+  </div>
+}
 export function StrategyBar({ strategy }: { strategy: Strategy }) {
   const items = Object.entries(strategy.targets)
   if (!items.length) return <div className="empty-strategy"><Info size={18}/><div><strong>비율을 확인하고 있어요</strong><p>출처 확인과 사용자 결정 후 배분을 표시합니다.</p></div></div>

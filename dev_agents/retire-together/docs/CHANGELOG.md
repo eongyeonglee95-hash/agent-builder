@@ -1,6 +1,8 @@
 # CHANGELOG
 
 ## 2026-11-02
+- (코드) 투자 원칙 셋을 한 번에: 워크북 리밸런싱 시트의 포트폴리오를 탭 대신 한 표(올웨더·K-올웨더·박곰희·직접 설정 나란히, 묶음 줄 버튼도 같은 열)로. 예전 카드형 화면 '지키고 싶은 투자 원칙'·홈 '흔들리지 않는, 우리의 규칙'도 탭을 없애고 세 막대를 위아래로(`StrategyStack`, 줄의 '이걸로 비교'로 아래 비교 기준 선택). 사용자 "탭으로 나누면 처음 것만 설정하게 된다", "원큐에 보여달라". Playwright 19 통과
+- (코드) 리밸런싱 시트 맨 위 '포트폴리오': 올웨더·K-올웨더·박곰희·직접 설정 중 하나를 골라 목표 비율·예시 종목·확인 상태를 보고, 묶음별 '따라가기'로 전략을 바꾼다. 직접 설정은 비율을 넣어 저장(합 100 검사). 저장은 바꿀 한 줄만 고쳐 YAML 주석(결정 사유)을 보존(`tools.strategy.set_custom_targets`, `tools.assets.set_pool_strategy`), 바꾼 내용은 DECISIONS.md에. K-올웨더는 비율 미정이라 따라갈 수 없음. `backend/portfolio.py`, `web/src/workbook/portfolio.tsx`, `tests/test_portfolio.py` 5개. 개발 서버 포트를 `RETIRE_API_PORT`·`RETIRE_WEB_PORT`로 바꿀 수 있게(같은 PC의 다른 프로젝트가 8000/5173 사용). pytest 230·Playwright 18 통과
 - Codex: AGENT-01 완료. 숫자 단위·음수/± 부호·작은 비율/수량을 검사하고 답변은 검증 후 출력. 현재 질문의 도구 근거를 분리하며 SDK 오류/미완료·검증 실패는 고정 안내와 비정상 종료 코드로 처리. 새 회귀 31개 포함 Python 225 passed, 실모델 대화·화면 연결 미검증. 인계·담당·남은 설계 과제를 AGENT_DESIGN/DEV_HANDOFF에 기록.
 - (코드) 엔진 버그 수정: 전략 지정 종목의 현재가를 모르면(미보유·시세 갱신 안 함) 보유 종목으로 몰래 바꿔 사던 것 → 지정 종목으로 금액만. 실데이터에서 중기채 매수가 KODEX 미국10년국채선물(308620) 대신 ACE 종합채권으로 나오던 문제(REBALANCING §4-1 위반, Agent 첫 실행에서 발견). `tests/test_rebalance.py` 1개 추가, 전체 194 통과
 - (코드) Agent 본체: `agent/`(tools·prompt·guard·main), `uv run python -m agent`. 도구 7개(list_pools·tag_assets·compute_rebalance·explain_inputs·build_order_sheet·read_decisions·record_decision)만, 결정 기록은 사용자 확인 후. `backend/workbook.py`에서 묶음 하나 계산(`run_pool`)을 떼어 화면과 Agent가 같이 씀. `tests/test_agent.py` 13개, 전체 193 통과, 실데이터 한 번 실행 확인
