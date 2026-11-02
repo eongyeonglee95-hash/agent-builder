@@ -297,3 +297,18 @@
 .tower-bridge button{border:0;background:none;color:var(--grey-700);font-size:var(--text-xs);text-decoration:underline;text-underline-offset:3px;white-space:nowrap;min-height:32px;padding:0 4px}
 .tower-flow{margin:16px 0 0}
 @media(max-width:600px){.tower-bridge{flex-wrap:wrap;padding:10px 12px}.tower-bridge button{margin-left:26px}}
+
+/* 2026-11-02 층 상세를 아래 섹션 대신 누른 줄 밑 말풍선으로 */
+.tower-detail-pop{margin:0;display:grid;gap:12px;padding:14px 16px;width:min(460px,calc(100vw - 24px));max-height:var(--radix-popover-content-available-height);overflow:auto;box-shadow:0 10px 30px color-mix(in srgb,var(--foreground) 12%,transparent);z-index:60;font-family:var(--font-sans);font-size:var(--text-base);line-height:1.55;color:var(--foreground);word-break:keep-all;font-feature-settings:"tnum";outline:none}
+.tower-detail-pop .tower-detail-heading{align-items:center;min-width:0}
+.tower-detail-pop .tower-detail-icon{width:34px;height:34px;border-radius:9px}
+.tower-detail-close{margin-left:auto;align-self:flex-start;display:grid;place-items:center;width:30px;height:30px;border:0;border-radius:8px;background:none;color:var(--muted-foreground);cursor:pointer}
+.tower-detail-close:hover{background:var(--muted)}
+.tower-detail-pop .tower-members{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;flex:none}
+.tower-detail-pop .tower-member{padding-left:0;border-left:0;min-width:0}
+.tower-detail-pop .tower-member+.tower-member{padding-left:14px;border-left:1px solid var(--border)}
+.tower-detail-pop .tower-detail-note{padding-top:10px;margin:0}
+.tower-detail-pop[data-state=open]{animation:tower-pop .16s ease-out}
+@keyframes tower-pop{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+@media(max-width:600px){.tower-detail-pop .tower-members{grid-template-columns:1fr}.tower-detail-pop .tower-member+.tower-member{padding-left:0;border-left:0;padding-top:10px;border-top:1px solid var(--border)}}
+@media(prefers-reduced-motion:reduce){.tower-detail-pop[data-state=open]{animation:none}}
