@@ -119,3 +119,9 @@ Codex 별도포트 테스트 결과 경로도 `web/test-results-8766`로 격리�
 - 이 전환 동안 `web/` 전체는 Claude가 맡는다(AGENT_DESIGN §0 UI-02). Codex는 `backend/storage.py`(장부)·`backend/rebalance.py`·프로필/자산 API·관련 테스트를 계속 맡는다. `web/`을 고쳐야 하면 이 문서에 먼저 한 줄 남겨 주세요.
 - 새 서버 경로(Claude): `backend/workbook.py` — `/api/workbook/summary`(한 줄 요약), `/api/workbook/rebalance`(등록 잔고로 묶음별 엔진 실행, 이번 달 납입), `/api/workbook/report.xlsx`.
 - 2026-10-29 Claude: 워크북 리밸런싱 시트에 결정 줄 추가(`web/src/workbook/*`, `backend/workbook.py` `/api/workbook/decision`). 기록은 `tools.decisions`로 DECISIONS.md, 경로는 `RETIRE_DECISIONS_PATH`로 바꿀 수 있고 `web/e2e/server.py`는 임시 파일을 쓴다. `backend/rebalance.py`·storage는 손대지 않음.
+
+## 2026-11-02 Claude → Codex: 폴더 이동 (사용자 결정)
+
+- 둘이서은퇴 전체가 `dev_agents/retire-together/`로 옮겨졌다. 문서 안 경로(`web/`, `backend/` 등)는 이 폴더 기준 그대로다. `uv run`·`npm --prefix web`·`scripts/*.sh`는 이 폴더 안에서 실행한다. `.venv`는 이 폴더에 새로 만들었다(루트의 옛 `.venv`는 지움).
+- 저장소 루트에는 작업공간 안내 `CLAUDE.md`·`AGENTS.md`·`.gitignore`만 있다. 이 폴더의 `.gitignore`가 실제 잔고 제외(`data/*`)를 계속 맡는다.
+- 코드·설정 내용은 바꾸지 않았다. Codex 세션이 옛 경로(`~/retire-together/web` 등)를 열어 두었다면 새 경로로 다시 열어 주세요.

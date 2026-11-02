@@ -4,6 +4,8 @@ description: 둘이서은퇴 llm-wiki 리서치·갱신. /wiki-research <주제>
 disable-model-invocation: true
 ---
 
+> 경로 기준: 이 문서의 `docs/`·`rules/`·`tools/` 경로는 모두 `dev_agents/retire-together/` 아래다 (2026-11-02 폴더 이동).
+
 위키 = `docs/wiki/` (리서치 결과) + `docs/*_RULES.md` (제품 규칙) + `rules/*.yaml` (숫자의 원천).
 사람이 읽고 고치는 지식이고, 나중에 큐레이터 Agent가 같은 절차로 갱신한다.
 
