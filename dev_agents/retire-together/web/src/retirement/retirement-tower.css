@@ -252,3 +252,36 @@
   .tower-tower-view{grid-template-columns:1fr;padding:0 12px 12px;gap:6px}.tower-pagoda{height:210px}
   .tower-layers{grid-template-columns:1fr;gap:6px}.tower-layer-button{padding:8px 10px;min-height:48px}.tower-layer-caption{display:none}
 }
+
+/* 시간표를 맨 위로: 높이는 낮게, 막대·슬라이더·연도 버튼 느낌은 그대로 */
+.tower-flow {margin:0 0 16px}
+.tower-flow .tower-section-heading {align-items:center;margin-bottom:9px;gap:14px}
+.tower-flow .tower-section-heading h2 {font-size:var(--text-base);font-weight:650;letter-spacing:-.3px}
+.tower-flow .tower-section-heading p {font-size:var(--text-xs);margin-top:2px;line-height:1.5}
+.tower-flow .tower-milestones {margin:0;padding:0;border:0;gap:5px;flex-wrap:nowrap;flex-shrink:0}
+.tower-flow .tower-milestones button {min-height:28px;padding:4px 9px;border-radius:999px;white-space:nowrap}
+.tower-flow .tower-timeline {padding:12px 16px 11px;border-radius:12px}
+.tower-flow .tower-year-control {margin:0 0 8px 92px}
+.tower-flow .tower-year-control label {display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px}
+.tower-flow .tower-year-control label strong {font-size:var(--text-sm);font-weight:600;color:var(--foreground)}
+.tower-year-track {display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:8px;font-size:var(--text-xs);color:var(--muted-foreground)}
+.tower-flow .tower-year-control input::-webkit-slider-thumb {width:15px;height:15px;border-width:2px}
+.tower-flow .tower-time-rows {gap:6px}
+.tower-flow .tower-time-row {grid-template-columns:92px minmax(0,1fr)}
+.tower-flow .tower-time-row>button {min-height:0;padding:0;font-size:var(--text-xs)}
+.tower-flow .tower-time-lanes {gap:2px}
+.tower-flow .tower-band-track {height:18px;border-radius:3px}
+.tower-flow .tower-band {padding:0 7px;border-radius:3px;gap:4px}
+.tower-flow .tower-band small {display:inline}
+.tower-flow .tower-band-empty {min-height:18px;padding:0 7px;border-radius:3px}
+.tower-flow .tower-year-cursor {top:-2px;bottom:-2px}
+.tower-flow .tower-flow-empty {flex-direction:row;justify-content:flex-start;gap:12px;padding:12px 16px;border-radius:12px;text-align:left}
+.tower-flow .tower-flow-empty p {flex:1}
+@media(max-width:760px){
+  .tower-flow .tower-section-heading {flex-direction:column;align-items:stretch;gap:8px}
+  .tower-flow .tower-milestones {display:flex;flex-wrap:wrap;margin:0;padding:0}
+  .tower-flow .tower-year-control {margin-left:70px}
+  .tower-flow .tower-time-row {grid-template-columns:70px minmax(0,1fr)}
+  .tower-flow .tower-band small {display:none}
+  .tower-flow .tower-flow-empty {flex-direction:column;align-items:flex-start}
+}
