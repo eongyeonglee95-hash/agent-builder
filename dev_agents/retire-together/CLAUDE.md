@@ -40,5 +40,5 @@
 
 ## 기술
 현재 실행 코드: Python 3.12 + uv, Claude Agent SDK, pandas, PyYAML, pytest, Streamlit. 전환 목표: TypeScript·React·Vite + Python·FastAPI·Pydantic, 로컬 SQLite. 전환을 완료했다고 보고하지 않는다.
-실행: `uv run pytest` / 등록 `uv run python -m tools.register --account <id> --images <png...> --out <csv>` / 드라이런 `uv run python -m tools.cli --holdings <csv> --pool me_pension [--new-cash 3000000 --new-cash-account <id>] [--live]` / 화면 `scripts/dev.sh`(기존 서버 내리고 PYTHONPATH=. 로 띄움 — tools/ 변경도 자동 반영. `uv run streamlit run app/main.py`로 직접 띄우면 tools/를 고친 뒤 서버를 다시 띄워야 한다).
+실행: `uv run pytest` / 등록 `uv run python -m tools.register --account <id> --images <png...> --out <csv>` / 드라이런 `uv run python -m tools.cli --holdings <csv> --pool me_pension [--new-cash 3000000 --new-cash-account <id>] [--live]` / Agent `uv run python -m agent ["질문"] [--owner me --live]`(등록 잔고로 대화, 기록은 y/n 확인) / 화면 `scripts/dev.sh`(기존 서버 내리고 PYTHONPATH=. 로 띄움 — tools/ 변경도 자동 반영. `uv run streamlit run app/main.py`로 직접 띄우면 tools/를 고친 뒤 서버를 다시 띄워야 한다).
 tools/: strategy(load_strategy) · assets(tag_assets, 제약 검증, 계좌·풀) · market(종목코드·현재가) · rebalance(compute_rebalance 순수 함수) · explain(왜 지금 템플릿) · order_sheet · decisions · parse_balance(CSV·캡처) · cli. 자동주문(KIS API)은 후속 단계 — 지금은 드라이런만. 현재 범위와 순서는 `docs/AGENT_DESIGN.md` §0.

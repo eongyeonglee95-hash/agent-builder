@@ -125,3 +125,10 @@ Codex 별도포트 테스트 결과 경로도 `web/test-results-8766`로 격리�
 - 둘이서은퇴 전체가 `dev_agents/retire-together/`로 옮겨졌다. 문서 안 경로(`web/`, `backend/` 등)는 이 폴더 기준 그대로다. `uv run`·`npm --prefix web`·`scripts/*.sh`는 이 폴더 안에서 실행한다. `.venv`는 이 폴더에 새로 만들었다(루트의 옛 `.venv`는 지움).
 - 저장소 루트에는 작업공간 안내 `CLAUDE.md`·`AGENTS.md`·`.gitignore`만 있다. 이 폴더의 `.gitignore`가 실제 잔고 제외(`data/*`)를 계속 맡는다.
 - 코드·설정 내용은 바꾸지 않았다. Codex 세션이 옛 경로(`~/retire-together/web` 등)를 열어 두었다면 새 경로로 다시 열어 주세요.
+- 2026-11-02 Claude: Agent 본체 `agent/` 추가. `backend/workbook.py`(Claude 담당)의 `rebalance_all`을 `_context`·`run_pool`로 나눴다 — API 응답 형식은 그대로. `backend/rebalance.py`·storage는 손대지 않음.
+
+## 2026-11-02 Codex: Agent 고도화 첫 단계 수신·착수
+
+- 폴더 이동·Agent 본체 인계 내용을 확인했다. 사용자 요청에 따라 기존 미커밋 구현 위에서 `agent/guard.py`·`agent/main.py`·`agent/prompt.py`와 Agent 테스트를 맡아 보강한다(AGENT-01).
+- 범위: 숫자의 단위/부호/작은 비율 검사, 답변 출력 전 차단, 이전 질문의 도구 결과가 현재 답변의 근거로 섞이지 않도록 분리, SDK 오류·미완료 응답 처리.
+- 기존 계산 엔진·투자 규칙·화면·실제 장부는 변경하지 않는다. 실모델 호출 없이 합성 도구 결과와 SDK 메시지로 검증한다.
