@@ -66,10 +66,19 @@ export function RetirementTower({ data, error, save, reload, owner, onOwnerChang
   const scale = (value: number) => Math.max(0, Math.min(100, (value - firstYear) / span * 100))
   const milestones = [...new Set([defaultYear, ...scopedStreams.map(s => s.start_year), lastYear])].filter((y): y is number => y != null && y >= firstYear && y <= lastYear).sort((a, b) => a - b)
   const missing = !hasPerson ? owner === 'partner' ? ['배우자 나이·은퇴 나이'] : data.missing : data.missing
+  // Before a layer starts paying, show when it starts and how much (today's money) instead of a bare 0.
+  const upcoming = (scope: Scope, id: number) => {
+    const start = streams(data, scope, id).map(s => s.start_year).filter(y => y > year)
+    if (!start.length) return null
+    const startYear = Math.min(...start)
+    return { year: startYear, amount: amount(data.projection?.rows.find(r => r.year === startYear), scope, id) }
+  }
   const layerText = (id: number) => {
     if (error) return '확인 필요'
     const status = layerState(data, owner, year, id)
-    return status === '수령 중' ? `${monthly(amount(row, owner, id))}만 원 / 월` : status
+    if (status === '수령 중') return `${monthly(amount(row, owner, id))}만 원 / 월`
+    const next = status.endsWith('년부터') ? upcoming(owner, id) : null
+    return next && (next.amount ?? 0) > 0 ? `${next.year}년부터 ${monthly(next.amount)}만 원` : status
   }
   const currentYearText = (id: number) => layerState(data, owner, year, id) === '수령 중'
   const capitalLabel = (id: number) => id === 2 && layerCapital(2) == null && dbSaved > 0 ? '현재 DB 퇴직금' : '현재 계좌 적립금'
@@ -106,8 +115,8 @@ export function RetirementTower({ data, error, save, reload, owner, onOwnerChang
     </section>
     <section className="tower-detail" aria-labelledby={`${uid}-detail`}><div className="tower-detail-heading"><span className="tower-detail-icon"><Icon size={20}/></span><div><h2 id={`${uid}-detail`}>{selected}층 · {currentLayer.name}</h2><p>{currentLayer.description}</p></div></div>
       <div className="tower-members">{activePeople.length ? activePeople.map(([who, label]) => <div className="tower-member" key={who}>
-        <small>{label} · {selected === 1 ? `${year}년 월 연금 · 오늘 돈` : '현재 계좌 적립금'}</small>
-        <strong>{error ? '확인 필요' : selected === 1 ? !data.projection || !streams(data, who, 1).length ? '계산 전' : money(amount(row, who, 1)) : capital(data, who, selected) == null ? '등록 내역 없음' : money(capital(data, who, selected))}</strong>
+        <small>{label} · {selected === 1 ? `${upcoming(who, 1)?.year ?? year}년${upcoming(who, 1) ? '부터' : ''} 월 연금 · 오늘 돈` : '현재 계좌 적립금'}</small>
+        <strong>{error ? '확인 필요' : selected === 1 ? !data.projection || !streams(data, who, 1).length ? '계산 전' : money(upcoming(who, 1)?.amount ?? amount(row, who, 1)) : capital(data, who, selected) == null ? '등록 내역 없음' : money(capital(data, who, selected))}</strong>
         {selected === 2 && !error && accruedDb(data, who) > 0 && <span>현재 DB 퇴직금 {money(accruedDb(data, who))} 별도</span>}
         {selected > 1 && selected < 4 && <span className="tower-member-payout">→ {year}년 월 {error || !streams(data, who, selected).length ? '계산 전' : money(amount(row, who, selected))} · 오늘 돈</span>}
         <span>{selected === 4 ? '수령 계산 미연결' : periodText(who, selected) || '준비 정보를 입력해 주세요'}</span>
