@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 
 from backend import storage, property as prop
 from backend.main import app
-from tools.property_move import move_budget
+from tools.property_move import move_budget, price_gap
 
 
 def budget(**kw):
@@ -131,3 +131,53 @@ def test_empty_plan_does_not_invent_saved_funds(client):
     assert r["plan"]["cash"] is None and r["funds"]["own_funds"] is None
     assert r["comparisons"] == []
     assert client.get("/api/property-move?owner=all").status_code == 422
+
+
+# ── 추적 기록 ───────────────────────────────────────────────
+def test_price_gap_is_target_minus_home_value():
+    assert price_gap(home_value=800_000_000, target_price=1_000_000_000) == 200_000_000
+    assert price_gap(home_value=1_000_000_000, target_price=900_000_000) == -100_000_000
+    with pytest.raises(ValueError):
+        price_gap(home_value=-1, target_price=1)
+
+
+def test_saving_plan_records_today_once_and_only_when_numbers_change(client):
+    h = home(client)
+    c = candidate()
+    base = dict(version=0, source_home_ids=[h["asset"]["id"]], cash=100_000_000, sale_costs=0, new_loan=0, monthly_saving=0, target_month=None, target_id=c["id"])
+    r = save(client, base | dict(candidates=[c]))
+    assert r.status_code == 200, r.text
+    rows = r.json()["track"][c["id"]]
+    assert len(rows) == 1 and rows[0]["day"] == dt.date.today().isoformat()
+    # 격차 = 목표 10억 − 집 전체 8억. 더 필요한 돈 = 10.3억 − (8억 − 2억 대출 − 1억 보증금 + 1억 현금) = 4.3억
+    assert rows[0]["gap"] == 200_000_000 and rows[0]["needed"] == 430_000_000 and rows[0]["price_basis"] == "manual"
+    assert r.json()["comparisons"][0]["price_gap"] == 200_000_000
+    # 메모만 바꾼 저장은 기록을 더하지 않는다
+    r = save(client, base | dict(version=1, candidates=[c | dict(memo="메모만")]))
+    assert len(r.json()["track"][c["id"]]) == 1
+    # 가격이 바뀌면 오늘 기록을 덮어쓴다 (하루 한 줄)
+    r = save(client, base | dict(version=2, candidates=[c | dict(price=950_000_000)]))
+    rows = r.json()["track"][c["id"]]
+    assert len(rows) == 1 and rows[0]["price"] == 950_000_000 and rows[0]["gap"] == 150_000_000
+    # 후보를 지우면 기록도 사라진다
+    r = save(client, base | dict(version=3, candidates=[], target_id=None))
+    assert r.json()["track"] == {}
+    with storage.connection() as conn:
+        assert conn.execute("SELECT COUNT(*) FROM property_track").fetchone()[0] == 0
+
+
+def test_manual_track_uses_sent_price_and_can_be_deleted(client):
+    h = home(client)
+    c = candidate()
+    save(client, dict(version=0, source_home_ids=[h["asset"]["id"]], cash=100_000_000, sale_costs=0, new_loan=0, monthly_saving=0, target_month=None, target_id=c["id"], candidates=[c]))
+    r = client.post("/api/property-move/track?owner=together", json=dict(candidate_id=c["id"], price=1_020_000_000, price_basis="trade", price_date="2026-10-15", note="실거래 반영"))
+    assert r.status_code == 201, r.text
+    row = r.json()["track"][c["id"]][0]
+    assert row["price"] == 1_020_000_000 and row["price_basis"] == "trade" and row["note"] == "실거래 반영" and row["gap"] == 220_000_000 and row["needed"] == 450_000_000
+    assert len(r.json()["track"][c["id"]]) == 1   # 같은 날은 덮어쓴다
+    assert client.post("/api/property-move/track?owner=together", json=dict(candidate_id=str(uuid4()), price=1)).status_code == 404
+    assert client.post("/api/property-move/track?owner=together", json=dict(candidate_id=c["id"], price=1, price_date="2999-01-01")).status_code == 422
+    # 소유자 범위가 다르면 보이지 않는다
+    assert client.get("/api/property-move?owner=me").json()["track"] == {}
+    r = client.delete(f"/api/property-move/track/{c['id']}/{row['day']}?owner=together")
+    assert r.status_code == 200 and r.json()["track"][c["id"]] == []
