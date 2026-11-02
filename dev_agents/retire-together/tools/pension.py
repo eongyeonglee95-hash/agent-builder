@@ -149,12 +149,21 @@ class Assumptions:
     end_age: int
     start_age_min: int
     min_payout_years: int
+    # 국민연금 조기·연기·유족 (rules/pension.yaml national). 기본값은 공단 안내의 일반 규칙
+    nat_early: float = 0.06
+    nat_late: float = 0.072
+    nat_shift_max: int = 5
+    survivor_rates: dict = field(default_factory=lambda: {"under_10y": 0.4, "under_20y": 0.5, "over_20y": 0.6})
+    survivor_overlap: float = 0.3
 
     @classmethod
     def from_rules(cls, rules: dict, **override) -> "Assumptions":
-        a, p = rules["assumptions"], rules["private"]
+        a, p, n = rules["assumptions"], rules["private"], rules.get("national", {})
         base = dict(return_rate=a["return_rate"], inflation=a["inflation"], end_age=a["end_age"],
-                    start_age_min=p["start_age_min"], min_payout_years=p["min_payout_years"])
+                    start_age_min=p["start_age_min"], min_payout_years=p["min_payout_years"],
+                    nat_early=n.get("early_reduction_per_year", 0.06), nat_late=n.get("late_increase_per_year", 0.072),
+                    nat_shift_max=n.get("shift_years_max", 5), survivor_rates=dict(n.get("survivor_rates") or {"under_10y": 0.4, "under_20y": 0.5, "over_20y": 0.6}),
+                    survivor_overlap=n.get("survivor_overlap_rate", 0.3))
         base.update({k: v for k, v in override.items() if v is not None})
         return cls(**base)
 
@@ -167,6 +176,7 @@ class Person:
     retire_age: int
     national_monthly: int = 0      # 국민연금 예상 월액 (오늘 돈)
     national_start_age: int = 65
+    national_normal_age: int | None = None   # 출생연도 기준 법정 개시 나이. 있으면 조기·연기 감액·증액을 적용한다
     private_start_age: int = 55
     balances: dict[int, int] = field(default_factory=dict)   # 층(2·3·4) → 현재 적립금. 4층 = 세제비적격 연금보험·ISA 등 추가 자금
     annual: dict[int, int] = field(default_factory=dict)     # 층(2·3) → 연 납입
@@ -208,8 +218,10 @@ def person_streams(p: Person, a: Assumptions) -> list[Stream]:
     out: list[Stream] = []
     if p.national_monthly > 0:
         nat_start = max(p.national_start_age, p.age)
+        # 법정 나이보다 앞당기면 감액, 늦추면 증액 (조기·연기연금). 법정 나이를 모르면 입력 월액 그대로
+        monthly = p.national_monthly * national_factor(p.national_start_age - p.national_normal_age if p.national_normal_age else 0, a)
         out.append(Stream(p.key, 1, "국민연금", nat_start, 0,
-                          round(p.national_monthly * (1 + pi) ** (nat_start - p.age)), True))
+                          round(monthly * (1 + pi) ** (nat_start - p.age)), True))
 
     def private(layer: int, label: str, start: int, principal: float) -> None:
         if principal <= 0:
@@ -231,6 +243,51 @@ def person_streams(p: Person, a: Assumptions) -> list[Stream]:
             raise ValueError(f"{p.label}: 퇴직(DB) 뒤 {a.min_payout_years}년 이상 나눠 받을 수 없어요")
         lump = p.db_lump * (1 + pi) ** (retire - p.age)
         private(2, "퇴직연금(DB)", db_start, lump * (1 + r) ** (db_start - retire))
+    return out
+
+
+def national_factor(shift_years: int, a: Assumptions) -> float:
+    """법정 개시 나이 대비 몇 년 앞당기거나(−) 늦추는지(+) → 월액 배율. 범위 밖은 최대치로 자른다."""
+    s = max(-a.nat_shift_max, min(a.nat_shift_max, int(shift_years)))
+    return 1 - a.nat_early * (-s) if s < 0 else 1 + a.nat_late * s
+
+
+def national_options(p: Person, a: Assumptions, base_year: int) -> list[dict]:
+    """조기~연기 선택지. 월액은 오늘 돈(입력 월액 × 배율), 손익분기 나이는 정상 수령과 누적액이 같아지는 나이
+    (둘 다 물가에 연동되므로 오늘 돈 기준 단순 비교, 수익률·세금 미반영). 어느 것도 추천하지 않는다."""
+    if not p.national_normal_age or p.national_monthly <= 0:
+        return []
+    normal, out = p.national_normal_age, []
+    for shift in range(-a.nat_shift_max, a.nat_shift_max + 1):
+        f = national_factor(shift, a)
+        start = normal + shift
+        if shift > 0:
+            breakeven = start + shift / (f - 1)
+        elif shift < 0:
+            breakeven = normal + (-shift) * f / (1 - f)
+        else:
+            breakeven = None
+        out.append({"shift": shift, "start_age": start, "start_year": base_year + start - p.age, "factor": round(f, 4),
+                    "monthly_real": round(p.national_monthly * f), "gap_years": max(0, start - p.retire_age),
+                    "breakeven_age": round(breakeven, 1) if breakeven is not None else None,
+                    "selected": start == p.national_start_age})
+    return out
+
+
+def survivor_check(people: list[Person], a: Assumptions) -> dict:
+    """한 사람이 먼저 떠났을 때 남은 사람의 국민연금 — 대충 보기. 유족연금 = 사망자 월액 × 가입기간 비율.
+    남은 사람도 노령연금이 있으면 택1: 본인 + 유족연금×30% / 유족연금만. 부양가족연금액·실제 가입기간·세금은 반영하지 않는다."""
+    out = {}
+    for s in people:
+        for d in people:
+            if d.key == s.key or d.national_monthly <= 0:
+                continue
+            tiers = {}
+            for tier, rate in a.survivor_rates.items():
+                survivor_only = round(d.national_monthly * rate)
+                own_plus = round(s.national_monthly + d.national_monthly * rate * a.survivor_overlap)
+                tiers[tier] = {"survivor_only": survivor_only, "own_plus": own_plus, "larger": "own_plus" if own_plus >= survivor_only else "survivor_only"}
+            out[s.key] = {"survivor": s.key, "deceased": d.key, "own_monthly": s.national_monthly, "deceased_monthly": d.national_monthly, "tiers": tiers}
     return out
 
 

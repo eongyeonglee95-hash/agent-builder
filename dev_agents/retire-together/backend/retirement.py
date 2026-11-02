@@ -19,7 +19,7 @@ from pydantic import Field, field_validator
 from backend import registration, storage
 from backend.storage import InputModel
 from tools.assets import load_accounts
-from tools.pension import (LAYER_LABELS, Assumptions, Person, db_estimate, load_pension_rules, national_start_age, project, spending_target)
+from tools.pension import (LAYER_LABELS, Assumptions, Person, db_estimate, load_pension_rules, national_options, national_start_age, project, spending_target, survivor_check)
 
 router = APIRouter(prefix="/api/retirement", tags=["retirement"])
 
@@ -157,6 +157,7 @@ def build(plan: dict, family: dict | None, bal: dict[str, dict[int, int]], base_
         p = Person(key, label, age, retire,
                    national_monthly=pp.get("national_monthly") or 0,
                    national_start_age=pp.get("national_start_age") or national_start_age(base_year - age, rules),
+                   national_normal_age=national_start_age(base_year - age, rules),
                    private_start_age=pp.get("private_start_age") or max(a.start_age_min, min(retire, a.end_age - a.min_payout_years)),
                    balances={2: b.get(2, 0), 3: b.get(3, 0), 4: b.get(4, 0)},
                    annual={2: pp.get("irp_annual") or 0, 3: pp.get("savings_annual") or 0},
@@ -174,6 +175,8 @@ def build(plan: dict, family: dict | None, bal: dict[str, dict[int, int]], base_
         return result
     result["spending_target"] = spending_target(plan.get("monthly_need"), a.inflation, base_year,
                                                  used["me"]["age"], used["me"]["retire_age"])
+    # 국민연금 조기·연기 선택지와 유족연금 대충 보기 — 선택은 사용자가 한다 (2026-11-02)
+    result["national"] = {"options": {p.key: national_options(p, a, base_year) for p in people}, "survivor": survivor_check(people, a)}
     try:
         result["projection"] = project(people, a, base_year, plan.get("monthly_need"))
     except ValueError as e:
