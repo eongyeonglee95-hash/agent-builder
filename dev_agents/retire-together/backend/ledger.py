@@ -98,6 +98,8 @@ class SheetStore:
         out["valuation_source"] = "details" if str(out.get("valuation_source") or "").strip() == "details" else "total"
         sp = _int(out.get("share_percent"), 0)
         out["share_percent"] = sp if 1 <= sp <= 99 else None
+        pl = _int(out.get("pension_layer"), 0)
+        out["pension_layer"] = pl if pl in (2, 3, 4) else None
         return out
 
     @staticmethod
@@ -117,7 +119,7 @@ class SheetStore:
         return {"name": r["name"], "account": r["account"], "owner": r["owner"], "pocket": r["pocket"], "assetClass": r["assetClass"],
                 "amount": r["amount"], "as_of": r["as_of"], "account_id": r.get("account_id") or None, "source": r.get("source") or "manual",
                 "parent_id": r.get("parent_id") or None, "valuation_source": r.get("valuation_source") or "total",
-                "share_percent": r.get("share_percent") if r.get("share_percent") else None,
+                "share_percent": r.get("share_percent") if r.get("share_percent") else None, "pension_layer": r.get("pension_layer") or None,
                 "id": r["id"], "version": r["version"], "updated_at": r["updated_at"]}
 
     # ----- 자산 -----

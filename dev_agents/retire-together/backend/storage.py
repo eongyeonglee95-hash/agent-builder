@@ -43,9 +43,14 @@ class AssetInput(InputModel):
     parent_id: UUID | None = None
     valuation_source: Literal["total", "details"] = "total"
     share_percent: Annotated[int, Field(strict=True, ge=1, le=99)] | None = None
+    # 노후 주머니 자산의 연금 층을 사용자가 직접 고른 값 (2: 퇴직연금 DC·IRP, 3: 개인연금 연금저축, 4: 추가연금 세제비적격·ISA).
+    # 비어 있으면 backend.retirement.layer_of 가 계좌 이름으로 추측한다 (2026-11-02 사용자: 이름 추측은 기본값만).
+    pension_layer: Literal[2, 3, 4] | None = None
 
     @model_validator(mode="after")
     def consistent_class(self):
+        if self.pension_layer is not None and self.pocket != "retirement":
+            raise ValueError("연금 층은 노후 주머니 자산에만 고를 수 있습니다")
         if self.pocket in ("property", "debt"):
             if self.assetClass != self.pocket:
                 raise ValueError("부동산·대출의 분류가 일치해야 합니다")

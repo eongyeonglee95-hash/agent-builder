@@ -59,7 +59,12 @@ def save_family(data: storage.FamilyInput):
 
 @app.get("/api/assets")
 def assets():
-    return storage.list_assets()
+    from backend import registration
+    from backend.retirement import layer_of
+    from tools.assets import load_accounts
+    accts = load_accounts(registration.accounts_path())
+    # pension_layer_effective: 고른 값이 없을 때 이름으로 추측한 층. 화면이 "지금 이렇게 보고 있어요"를 보여 주기 위한 읽기 전용 값
+    return [{**a, "pension_layer_effective": layer_of(a, accts) if a.get("pocket") == "retirement" else None} for a in storage.list_assets()]
 
 @app.post("/api/assets", status_code=201)
 def create_asset(data: storage.AssetCreate):

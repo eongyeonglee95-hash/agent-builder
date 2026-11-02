@@ -410,18 +410,8 @@ class ContractsInput(InputModel):
 
 
 def _layer_account(row: ContractRow) -> str:
-    """자산 장부의 계좌 이름. 장부는 계좌 하나에 총액 자산 하나만 허용하므로 계약마다 다른 이름(회사 · 상품명)을 쓴다.
-    backend.retirement.layer_of 가 이름으로 층을 정하므로 고른 층이 이름에 드러나게 한다."""
-    base = " · ".join(x for x in (row.company.strip(), row.product_name.strip()) if x)
-    if row.layer == 2 and not _LAYER2.search(base):
-        base += " · IRP"
-    if row.layer == 4 and not _LAYER4.search(base):
-        base += " · 추가연금"
-    if row.layer == 3:
-        base = _LAYER4.sub("", _LAYER2.sub("", base)).strip(" ·") or row.company.strip()
-        if "연금저축" not in base:
-            base += " · 연금저축"
-    return base[:100]
+    """자산 장부의 계좌 이름. 장부는 계좌 하나에 총액 자산 하나만 허용하므로 계약마다 다른 이름(회사 · 상품명)을 쓴다. 층은 pension_layer에 직접 저장."""
+    return " · ".join(x for x in (row.company.strip(), row.product_name.strip()) if x)[:100]
 
 
 @router.post("/contracts")
@@ -439,7 +429,7 @@ def save_contracts(data: ContractsInput):
             raise HTTPException(422, f"{row.product_name}: 기준일은 미래일 수 없어요.")
         account = _layer_account(row)
         payload = {"name": row.product_name.strip()[:100], "account": account, "owner": data.owner, "pocket": "retirement", "assetClass": "mixed",
-                   "amount": row.amount, "as_of": row.as_of.isoformat()}
+                   "amount": row.amount, "as_of": row.as_of.isoformat(), "pension_layer": row.layer}
         match = next((a for a in existing if a.get("name") == payload["name"] and a.get("account") == account), None)
         if match is not None:
             out = storage.update_asset(UUID(match["id"]), storage.AssetUpdate(**{**payload, "version": match["version"]}))
