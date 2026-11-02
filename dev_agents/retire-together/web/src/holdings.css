@@ -50,3 +50,4 @@
 .hp-actions{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
 .hp-sheet-btn{font:inherit;font-size:13px;display:inline-flex;align-items:center;gap:6px;border:1px solid #d4d4d4;border-radius:6px;padding:6px 10px;background:#fff;color:#217346;cursor:pointer}
 .hp-sheet-btn:hover{background:#f3f9f5}
+.hp-sheet-inline{margin:12px 0 4px}

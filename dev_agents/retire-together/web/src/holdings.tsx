@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Info, RefreshCw, Sheet } from 'lucide-react'
-import { Modal } from './components'
+import { Info, RefreshCw, Sheet, X } from 'lucide-react'
 import { AssetSheet } from './sheet'
 import { api } from './local-data'
 import { classInfo, type Owner } from './model'
@@ -63,10 +62,11 @@ export function HoldingsPanel({ owner, hidden, stockOnly = false, onRegister, on
   return <section className="panel hp">
     <div className="hp-top">
       <div><h2>{stockOnly ? '보유 주식' : '종목 잔고'}</h2><p>{data.accounts.length}개 계좌 · 등록한 잔고 기준{data.live ? ' · 현재가 반영' : ''}</p></div>
-      <div className="hp-actions"><button className="hp-sheet-btn" onClick={() => setSheetOpen(true)}><Sheet size={14}/>엑셀처럼 고치기</button><label className="hp-live"><input type="checkbox" checked={live} onChange={e => setLive(e.target.checked)}/>현재가로 보기{loading && <RefreshCw size={13} className="spin"/>}</label></div>
+      <div className="hp-actions"><button className="hp-sheet-btn" aria-expanded={sheetOpen} onClick={() => setSheetOpen(o => !o)}>{sheetOpen ? <><X size={14}/>표 닫기</> : <><Sheet size={14}/>엑셀처럼 고치기</>}</button><label className="hp-live"><input type="checkbox" checked={live} onChange={e => setLive(e.target.checked)}/>현재가로 보기{loading && <RefreshCw size={13} className="spin"/>}</label></div>
     </div>
     {sheetMsg && <p className="hp-note">{sheetMsg}</p>}
-    {sheetOpen && <Modal title="엑셀처럼 고치기" onClose={() => setSheetOpen(false)}><AssetSheet owner={owner} initialTab="holdings" onSaved={msg => { setSheetOpen(false); setSheetMsg(msg); load(); onChanged?.() }}/></Modal>}
+    {sheetOpen && <div className="hp-sheet-inline" aria-label="엑셀처럼 고치기">{/* 팝업이 아니라 화면 안에 펼친다 (2026-11-02 사용자: "팝업으로 들어가지 않고 embedded 형식으로"). 저장해도 닫지 않아 이어서 고칠 수 있다 */}
+      <AssetSheet owner={owner} initialTab="holdings" onSaved={msg => { setSheetMsg(msg); load(); onChanged?.() }}/></div>}
 
     <div className="hp-sum n">
       <div className="hp-big">{m(t.value)}</div>
