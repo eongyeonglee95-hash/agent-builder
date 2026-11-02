@@ -10,7 +10,7 @@
 """
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Literal
 
 import yaml
 from fastapi import APIRouter, HTTPException
@@ -35,6 +35,14 @@ PENDING_NOTE = {"k_all_weather": "비율을 아직 정하지 않았어요. 후�
 class FollowInput(InputModel):
     pool_id: Annotated[str, Field(min_length=1, max_length=80)]
     strategy_id: Annotated[str, Field(min_length=1, max_length=40)]
+
+
+class PreviewInput(InputModel):
+    pool_id: Annotated[str, Field(min_length=1, max_length=80)]
+    strategy_id: Annotated[str, Field(min_length=1, max_length=40)]
+    owner: Literal["together", "me", "partner"] = "together"
+    live: bool = False
+    cash: Annotated[int, Field(strict=True, ge=0, le=10**12)] = 0
 
 
 class CustomInput(InputModel):
@@ -114,6 +122,70 @@ def follow(pool_id: str, strategy_id: str) -> dict:
 @router.post("/portfolio/follow")
 def follow_api(data: FollowInput):
     return follow(data.pool_id, data.strategy_id)
+
+
+def _what_if(data: PreviewInput, strategy_ids: list[str]) -> tuple[dict, object, list[dict]]:
+    """같은 잔고로 원칙만 바꿔 엔진을 다시 돌린다(저장 없음). (base, 지금 결과, [{strategy_id, result|error}])."""
+    from backend import workbook
+    inp = workbook.RebalanceInput(owner=data.owner, live=data.live,
+                                  cash={data.pool_id: workbook.PoolCash(amount=data.cash)} if data.cash else {})
+    ctx = workbook._context(inp)
+    if data.pool_id not in ctx["pools"]:
+        raise HTTPException(404, "이 묶음이 없어요.")
+    cur = workbook.run_pool(inp, ctx, data.pool_id)
+    if cur is None:
+        raise HTTPException(409, "이 묶음은 등록한 잔고가 없어서 비교할 수 없어요.")
+    base, r_cur, _ = cur
+    out = []
+    for sid in strategy_ids:
+        ctx2 = {**ctx, "pools": {**ctx["pools"], data.pool_id: {**ctx["pools"][data.pool_id], "strategy": sid}}}
+        _, r_alt, err = workbook.run_pool(inp, ctx2, data.pool_id)
+        out.append({"strategy_id": sid, "result": r_alt, "error": err})
+    return base, r_cur, out
+
+
+@router.post("/portfolio/preview")
+def preview_api(data: PreviewInput):
+    """원칙을 바꾸면 이번 달 할 일이 어떻게 달라지는지 — 저장하지 않고 같은 잔고로 엔진을 한 번 더 돌린다."""
+    from backend.plan import build, compare_notes
+    if data.strategy_id not in CHOICES:
+        raise HTTPException(422, "고를 수 없는 포트폴리오예요.")
+    base, r_cur, [alt] = _what_if(data, [data.strategy_id])
+    if alt["error"] or alt["result"] is None:
+        raise HTTPException(409, f"{_name(data.strategy_id)}로는 계산할 수 없어요: {alt['error']}")
+    mode = base["mode"]
+    return {"pool_id": data.pool_id, "strategy_id": data.strategy_id, "name": _name(data.strategy_id),
+            "current": build(r_cur, mode) if r_cur else None, "proposed": build(alt["result"], mode),
+            "notes": compare_notes(r_cur, alt["result"], _name(data.strategy_id)) if r_cur else []}
+
+
+class AlternativesInput(InputModel):
+    pool_id: Annotated[str, Field(min_length=1, max_length=80)]
+    owner: Literal["together", "me", "partner"] = "together"
+    live: bool = False
+    cash: Annotated[int, Field(strict=True, ge=0, le=10**12)] = 0
+
+
+@router.post("/portfolio/alternatives")
+def alternatives_api(data: AlternativesInput):
+    """'다른 원칙이면' 칸 — 지금 따르는 원칙을 뺀 나머지로 각각 계산한 이번 달 할 일. 순서는 고정(원칙 목록 순),
+    좋고 나쁨을 매기지 않는다(전략은 사용자가 정한다)."""
+    from backend.plan import build, compare_notes
+    from tools.assets import load_pools
+    current = (load_pools(registration.accounts_path()).get(data.pool_id) or {}).get("strategy") or "all_weather"
+    ids = [sid for sid in CHOICES if sid != current]
+    base, r_cur, alts = _what_if(PreviewInput(pool_id=data.pool_id, strategy_id=current, owner=data.owner, live=data.live, cash=data.cash), ids)
+    options = []
+    for a in alts:
+        sid, r = a["strategy_id"], a["result"]
+        item = {"strategy_id": sid, "name": _name(sid)}
+        if a["error"] or r is None:
+            no_ratio = "비율" in (a["error"] or "")
+            item.update(ready=False, reason=("비율을 아직 넣지 않았어요" if sid == "custom" else "비율을 아직 정하지 않았어요") if no_ratio else (a["error"] or "계산할 수 없어요"))
+        else:
+            item.update(ready=True, plan=build(r, base["mode"]), notes=compare_notes(r_cur, r, _name(sid)) if r_cur else [])
+        options.append(item)
+    return {"pool_id": data.pool_id, "current_id": current, "options": options}
 
 
 @router.post("/portfolio/custom")

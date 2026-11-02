@@ -61,7 +61,7 @@ accounts:
 pools:
   me_pension_old:
     label: 연금저축(구) — 리밸런싱
-    strategy: all_weather
+    strategy: park_gomhee
     mode: rebalance
   me_pension_new:
     label: 연금저축(신) — 매수만

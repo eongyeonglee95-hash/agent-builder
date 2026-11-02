@@ -10,7 +10,7 @@ import { api } from '../local-data'
 import { AssetSheet } from '../sheet'
 import { UploadFlow } from '../register'
 import { ReadGrid, type Cell } from './ReadGrid'
-import { usePortfolioRows } from './portfolio'
+import { RebalancePlan } from './RebalancePlan'
 import { useRetirementRows } from './retirement'
 
 // 첫 화면 — 엑셀 워크북 (2026-10-28 사용자 "처음부터 엑셀처럼", "먼저 엑셀 형태로 자산을 다 보여준 다음 다른 버전으로 보기").
@@ -33,19 +33,15 @@ type Pool = { pool_id: string; label: string; mode: string; strategy?: string; t
 type Summary = { line: string; dashboard: { net: number; total: number; debt: number; retirement: number; cash: number; property: number; financial: number }; holdings: { accounts: HAccount[]; holdings: HRow[]; total: Totals; live: boolean }; rebalance: { pools: Pool[] } }
 
 export function Workbook({ onClassic }: { onClassic: () => void }) {
-  const [sheet, setSheet] = useState<SheetKey>(() => { const h = location.hash.slice(1); return (SHEETS.find(s => s[0] === h)?.[0]) ?? 'summary' })
+  const [sheet, setSheet] = useState<SheetKey>(() => { const h = location.hash.replace(/^#(sheet-)?/, ''); return (SHEETS.find(s => s[0] === h)?.[0]) ?? 'summary' })
   const [owner, setOwner] = useState<Owner>('together')
   const [live, setLive] = useState(false)
   const [data, setData] = useState<Summary | null>(null)
-  const [pools, setPools] = useState<Pool[] | null>(null)
-  const [cash, setCash] = useState<Record<string, number>>({})
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [importMode, setImportMode] = useState<'capture' | 'file' | null>(null)
   const [rev, setRev] = useState(0)
   const [toast, setToast] = useState('')
-  const [reasons, setReasons] = useState<Record<string, string>>({})
-  const [deciding, setDeciding] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true); setError('')
@@ -53,25 +49,9 @@ export function Workbook({ onClassic }: { onClassic: () => void }) {
     catch (e) { setError(e instanceof Error ? e.message : '불러오지 못했어요.') } finally { setLoading(false) }
   }, [owner, live])
   useEffect(() => { load() }, [load, rev])
-  const poolInput = useMemo(() => ({ owner, live, cash: Object.fromEntries(Object.entries(cash).filter(([, v]) => v > 0).map(([k, v]) => [k, { amount: v }])) }), [owner, live, cash])
-  const loadPools = useCallback(async () => {
-    try { setPools((await api<{ pools: Pool[] }>('/workbook/rebalance', 'POST', poolInput)).pools) }
-    catch (e) { setError(e instanceof Error ? e.message : '리밸런싱을 계산하지 못했어요.') }
-  }, [poolInput])
-  const decide = useCallback(async (p: Pool, action: 'accept' | 'hold') => {
-    setDeciding(p.pool_id); setError('')
-    try {
-      await api('/workbook/decision', 'POST', { ...poolInput, pool_id: p.pool_id, action, reason: reasons[p.pool_id] ?? '' })
-      setToast(action === 'accept' ? '기록했어요. 증권사 앱에서 주문표대로 주문하세요.' : '이번엔 넘긴다고 기록했어요.')
-      setReasons(r => ({ ...r, [p.pool_id]: '' }))
-      await loadPools()
-    } catch (e) { setError(e instanceof Error ? e.message : '결정을 기록하지 못했어요.') } finally { setDeciding(null) }
-  }, [poolInput, reasons, loadPools])
-  useEffect(() => { if (sheet === 'rebalance') loadPools() }, [sheet, loadPools, rev])
-  useEffect(() => { history.replaceState(null, '', sheet === 'summary' ? location.pathname : `#${sheet}`) }, [sheet])
+  useEffect(() => { history.replaceState(null, '', sheet === 'summary' ? location.pathname : `#sheet-${sheet}`) }, [sheet])
   useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(''), 3500); return () => clearTimeout(t) }, [toast])
   const changed = useCallback((msg: string) => { setToast(msg); setRev(r => r + 1) }, [])
-  const portfolioRows = usePortfolioRows({ rev, onChanged: changed, onError: setError })
   const retire = useRetirementRows({ rev, onChanged: changed, onError: setError })
 
   const summaryRows = useMemo<Cell[][]>(() => {
@@ -113,41 +93,6 @@ export function Workbook({ onClassic }: { onClassic: () => void }) {
     return rows
   }, [data])
 
-  const rebalanceRows = useMemo<Cell[][]>(() => {
-    if (!pools) return []
-    const rows: Cell[][] = []
-    for (const p of pools) {
-      rows.push([{ v: `${p.label}${p.strategy ? ` · ${p.strategy}` : ''}`, section: true, span: 7 }])
-      if (p.error) { rows.push([{ v: p.error, span: 7, tone: 'muted' }], [{ span: 7 }]); continue }
-      rows.push([{ v: '총 평가액', bold: true }, { v: p.total_value ?? 0, fmt: 'won', bold: true }, { v: '이번 달 납입', head: true },
-        { v: '', edit: { label: `${p.label} 이번 달 납입`, value: String(cash[p.pool_id] ?? ''), placeholder: '0', onCommit: v => setCash(c => ({ ...c, [p.pool_id]: Number(v) || 0 })) } },
-        { v: `납입 계좌: ${p.accounts.find(a => a.id === p.new_cash_account)?.label ?? p.accounts[0]?.label}`, span: 2, tone: 'muted' }, { v: `임계 ±${p.threshold_pp}%p`, tone: 'muted' }])
-      rows.push([{ v: p.headline ?? '', span: 7, bold: true, tone: p.triggered ? 'up' : undefined }])
-      rows.push(['자산군', '목표', '현재', '편차', '판정', '평가금액(원)', ''].map(v => ({ v, head: true })))
-      for (const c of p.classes ?? []) rows.push([{ v: c.label }, { v: c.target * 100, fmt: 'pct' }, { v: c.current * 100, fmt: 'pct' }, { v: c.deviation_pp, fmt: 'pp', tone: c.over_threshold ? (c.deviation_pp > 0 ? 'up' : 'down') : undefined, bold: c.over_threshold },
-        { v: c.over_threshold ? '범위 밖' : '범위 안', tone: c.over_threshold ? undefined : 'muted' }, { v: c.value, fmt: 'won' }, { bar: { pct: c.current * 100, color: CLASS[c.asset_class]?.[1] ?? 'var(--grey-300)' } }])
-      rows.push([{ span: 7 }])
-      if (p.blocked_reason) rows.push([{ v: `주문표 보류: ${p.blocked_reason}`, span: 7, tone: 'muted' }])
-      else if (p.orders?.length) {
-        rows.push(['구분', '자산군', '종목', '수량', '금액(원)', '비고', ''].map(v => ({ v, head: true })))
-        for (const o of p.orders) rows.push([{ v: o.side, bold: o.side !== '생략', tone: o.side === '매도' ? 'down' : o.side === '매수' ? 'up' : 'muted' }, { v: CLASS[o.asset_class]?.[0] ?? o.asset_class }, { v: o.ticker_name ?? '' },
-          { v: o.qty ?? '금액만' }, { v: o.amount, fmt: 'won' }, { v: o.note, span: 2, tone: 'muted' }])
-      } else rows.push([{ v: p.mode === 'buy_only' ? '매수만 계좌예요. "이번 달 납입"에 금액을 넣으면 살 종목이 계산돼요.' : '지금은 사고팔 것이 없어요.', span: 7, tone: 'muted' }])
-      for (const n of p.notes ?? []) rows.push([{ v: `· ${n}`, span: 7, tone: 'muted' }])
-      const last = p.last_decision ? `지난 결정 ${p.last_decision.date}: ${p.last_decision.decision.replace(p.label.split(' — ')[0], '').trim()}${p.last_decision.reason ? ` — ${p.last_decision.reason}` : ''}` : ''
-      const canAccept = !p.blocked_reason && (p.orders ?? []).some(o => o.side !== '생략')
-      if (canAccept || p.triggered) {
-        const busy = deciding !== null
-        rows.push([{ v: '결정', head: true },
-          { btn: { label: '직접 주문할게요', primary: true, disabled: busy || !canAccept, onClick: () => decide(p, 'accept') } },
-          { btn: { label: '이번엔 넘기기', disabled: busy, onClick: () => decide(p, 'hold') } },
-          { v: '', span: 2, edit: { text: true, label: `${p.label} 결정 사유`, value: reasons[p.pool_id] ?? '', placeholder: '사유 (예: 금리 인하 기다림)', onCommit: v => setReasons(r => ({ ...r, [p.pool_id]: v })) } },
-          { v: last, span: 2, tone: 'muted' }])
-      } else if (last) rows.push([{ v: last, span: 7, tone: 'muted' }])
-      rows.push([{ span: 7 }])
-    }
-    return rows
-  }, [pools, cash, reasons, deciding, decide])
 
   return <div className="wb flex h-dvh flex-col bg-grey-100 text-grey-900">
     <header className="flex h-12 shrink-0 items-center gap-2 border-b border-grey-200 bg-white px-3 sm:gap-3 sm:px-4">
@@ -185,7 +130,7 @@ export function Workbook({ onClassic }: { onClassic: () => void }) {
       {sheet === 'summary' && (data ? <ReadGrid label="요약 시트" widths={[220, 120, 110, 130, 130, 130, 90, 130]} rows={summaryRows}/> : <div className="p-6 text-sm text-grey-600">불러오는 중…</div>)}
       {sheet === 'holdings' && <AssetSheet key={`h-${owner}-${rev}`} owner={owner} initialTab="holdings" embedded onSaved={changed}/>}
       {sheet === 'assets' && <AssetSheet key={`a-${owner}-${rev}`} owner={owner} initialTab="assets" embedded onSaved={changed}/>}
-      {sheet === 'rebalance' && (pools ? <ReadGrid label="리밸런싱 시트" widths={[200, 120, 110, 120, 110, 270, 290]} rows={[...portfolioRows, ...rebalanceRows]}/> : <div className="p-6 text-sm text-grey-600">계산하는 중…</div>)}
+      {sheet === 'rebalance' && <RebalancePlan owner={owner} live={live} rev={rev} onChanged={changed} onError={setError} onRegister={() => setImportMode('capture')}/>}
       {sheet === 'retire' && (retire.rows.length ? <ReadGrid label="은퇴 시트" widths={[200, 130, 130, 110, 110, 120, 110, 260]} rows={retire.rows}/> : <div className="p-6 text-sm text-grey-600">계산하는 중…</div>)}
     </main>
 

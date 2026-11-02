@@ -96,7 +96,7 @@ def run_pool(data: RebalanceInput, ctx: dict, pid: str):
     if part.empty:
         return None
     label = pool.get("label") or pid
-    base = {"pool_id": pid, "label": label, "mode": pool.get("mode", "rebalance"), "accounts": [{"id": a, "label": accts[a].get("label", a)} for a in ids],
+    base = {"pool_id": pid, "label": label, "mode": pool.get("mode", "rebalance"), "strategy_id": pool.get("strategy") or "all_weather", "accounts": [{"id": a, "label": accts[a].get("label", a)} for a in ids],
             "as_of": min((ctx["as_of"][a] for a in ids if ctx["as_of"].get(a)), default=None), "last_decision": _last_decision(label, ctx["decisions"])}
     try:
         strategy = load_strategy(pool.get("strategy") or "all_weather")
@@ -119,12 +119,15 @@ def run_pool(data: RebalanceInput, ctx: dict, pid: str):
 
 
 def rebalance_all(data: RebalanceInput) -> dict:
+    from backend.plan import build
     from tools.explain import headline
     ctx = _context(data)
-    out = []
+    out, empty = [], []
     for pid in ctx["pools"]:
         ran = run_pool(data, ctx, pid)
         if ran is None:
+            pool = ctx["pools"][pid]
+            empty.append({"pool_id": pid, "label": pool.get("label") or pid, "mode": pool.get("mode", "rebalance"), "strategy_id": pool.get("strategy") or "all_weather"})
             continue
         base, r, error = ran
         if error:
@@ -133,8 +136,9 @@ def rebalance_all(data: RebalanceInput) -> dict:
         out.append({**base, "strategy": r.strategy_name, "threshold_pp": round(r.threshold * 100, 2), "min_trade_krw": r.min_trade_krw,
                     "total_value": r.total_value, "new_cash": r.new_cash,
                     "classes": res["classes"], "orders": res["orders"], "triggered": r.triggered, "blocked_reason": r.blocked_reason,
-                    "constraints": res["constraints"], "notes": r.notes, "headline": headline(r)})
-    return {"pools": out, "quote_failed": ctx["failed"]}
+                    "constraints": res["constraints"], "notes": r.notes, "headline": headline(r), "plan": build(r, base["mode"])})
+    # 잔고가 없는 묶음은 계산하지 않고 이름만 (화면이 '잔고 등록'을 보여 준다). pools 목록·check·요약은 그대로
+    return {"pools": out, "empty_pools": empty, "quote_failed": ctx["failed"]}
 
 
 @router.post("/rebalance")
