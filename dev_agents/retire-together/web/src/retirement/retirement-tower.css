@@ -334,3 +334,11 @@
 .tower-nat-sv small{color:var(--muted-foreground);line-height:1.6}
 
 .tower-detail-learn{border-color:color-mix(in srgb,var(--primary) 35%,var(--border));color:var(--foreground);font-weight:600}
+
+/* 4층 두 가지 보기: 석탑 아래(밝은 카드) 버전 — 요약 카드용 어두운 색을 덮어씀 */
+.tower-sculpture .tower-extra-choice{margin:30px 0 0;padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--grey-50);color:var(--muted-foreground);gap:7px}
+.tower-sculpture .tower-extra-choice>small{color:var(--muted-foreground);font-weight:600}
+.tower-sculpture .tower-extra-choice>div{flex-direction:column;align-items:flex-start;gap:2px}
+.tower-sculpture .tower-extra-choice b{color:var(--foreground);white-space:normal;text-align:left;display:flex;flex-direction:column;align-items:flex-start;gap:1px;font-size:var(--text-sm)}
+.tower-sculpture .tower-extra-choice b em{font-style:normal;font-weight:500;font-size:var(--text-xs);color:var(--muted-foreground)}
+@media(max-width:760px){.tower-sculpture .tower-extra-choice{margin-top:22px}}
