@@ -1,0 +1,44 @@
+/* Color indicates registered capital; the separate eave gauge remains proportional
+   to living costs. Paint only the stone faces, never the foundation or gauge. */
+.tower-pagoda .tower-tier-funding {pointer-events:none}
+.tower-pagoda .tower-tier.is-funded .tower-tier-neutral .tower-stone-front {fill:var(--grey-300)}
+.tower-pagoda .tower-tier.is-funded .tower-tier-neutral .tower-roof-slope {fill:var(--grey-100)}
+.tower-pagoda .tower-tier .tower-tier-color .tower-stone-front {fill:var(--cls-long-bond)}
+.tower-pagoda .tower-tier .tower-tier-color .tower-stone-side {fill:color-mix(in srgb,var(--cls-long-bond) 72%,var(--grey-900))}
+.tower-pagoda .tower-tier .tower-tier-color .tower-stone-top {fill:var(--cls-mid-bond)}
+.tower-pagoda .tower-tier .tower-tier-color .tower-roof-top {fill:var(--cls-long-bond)}
+.tower-pagoda .tower-tier .tower-tier-color .tower-roof-slope {fill:color-mix(in srgb,var(--cls-mid-bond) 75%,var(--background))}
+.tower-pagoda .tower-color-reveal {
+  transform-box:fill-box;
+  transform-origin:center bottom;
+  animation:tower-color-rise 920ms cubic-bezier(.25,.65,.25,1) var(--tower-paint-delay) both;
+}
+.tower-pagoda .tower-color-light {
+  opacity:0;
+  animation:tower-color-sweep 920ms cubic-bezier(.25,.65,.25,1) var(--tower-paint-delay) both;
+}
+.tower-pagoda .tower-funding-coin {
+  transform-box:fill-box;
+  transform-origin:center bottom;
+  animation:tower-coin-arrive 240ms ease-out calc(var(--tower-paint-delay) + var(--tower-coin-delay)) both;
+}
+.tower-color-legend {color:var(--muted-foreground);font-size:var(--text-xs);text-align:center;margin-top:5px!important;line-height:1.5}
+
+@keyframes tower-color-rise {
+  from {transform:scaleY(0)}
+  to {transform:scaleY(1)}
+}
+@keyframes tower-color-sweep {
+  0% {transform:translateY(var(--tower-rise-distance));opacity:0}
+  15%,75% {opacity:1}
+  100% {transform:translateY(0);opacity:0}
+}
+@keyframes tower-coin-arrive {
+  0% {opacity:0;transform:translateY(-9px) scale(.85)}
+  75% {opacity:1;transform:translateY(1px) scale(1.04)}
+  100% {opacity:1;transform:translateY(0) scale(1)}
+}
+@media(prefers-reduced-motion:reduce) {
+  .tower-pagoda .tower-color-reveal,.tower-pagoda .tower-funding-coin {animation:none;transform:none;opacity:1}
+  .tower-pagoda .tower-color-light {animation:none;opacity:0}
+}

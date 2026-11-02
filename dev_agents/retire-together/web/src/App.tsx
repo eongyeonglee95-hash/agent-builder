@@ -15,6 +15,7 @@ import { GoogleSheetPanel, SheetBadge } from './google'   // SHEET-01 구글 시
 import { HoldingsPanel } from './holdings'   // 종목 잔고·손익 (Claude 담당)
 import { PensionLayers } from './workbook/retirement'
 import { RetirementPage } from './retirement/RetirementTower'
+import './retirement/retirement-layout.css'
 
 type ModalKind = 'about' | 'goal' | 'family' | 'import' | 'strategy' | 'house' | 'tax' | 'notifications' | 'help' | 'profile' | 'delete' | 'manual' | 'sheets' | null
 const pageNames: Record<Page, string> = { home: '우리의 오늘', assets: '우리 자산', pension: '은퇴 계획', stocks: '주식', property: '부동산', rebalance: '리밸런싱' }

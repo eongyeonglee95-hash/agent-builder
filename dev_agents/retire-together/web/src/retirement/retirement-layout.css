@@ -1,0 +1,40 @@
+/* Keep the compact retirement layout while giving the sculpture more room.
+   Cap the layer list so wide screens do not stretch the four rows. */
+.tower-workspace .tower-tower-view {
+  grid-template-columns:minmax(280px,1fr) minmax(0,560px);
+  gap:16px;
+}
+.tower-workspace .tower-pagoda {
+  max-width:280px;
+  height:320px;
+  margin-inline:auto;
+}
+.tower-workspace .tower-sculpture figcaption {
+  position:static;
+  justify-content:center;
+  margin-top:2px;
+}
+.tower-workspace .tower-layers {width:100%;min-width:0;justify-self:end}
+.tower-workspace .tower-layer-button {min-width:0}
+.tower-workspace .tower-layer-gauge {grid-column:-2/-1}
+
+@media(max-width:1200px) {
+  .tower-workspace .tower-tower-view {grid-template-columns:214px minmax(0,1fr);gap:12px}
+  .tower-workspace .tower-pagoda {max-width:240px;height:280px}
+}
+@media(max-width:1020px) {
+  .tower-workspace .tower-tower-view {grid-template-columns:246px minmax(0,1fr)}
+  .tower-workspace .tower-pagoda {max-width:246px}
+}
+@media(max-width:760px) {
+  .tower-workspace .tower-tower-view {grid-template-columns:minmax(180px,.8fr) minmax(0,1.2fr)}
+}
+@media(max-width:600px) {
+  .tower-workspace .tower-tower-view {grid-template-columns:minmax(0,1fr);gap:8px}
+  .tower-workspace .tower-pagoda {max-width:240px;height:240px}
+}
+@container(max-width:279px) {
+  .tower-workspace .tower-layer-button {grid-template-columns:84px minmax(0,1fr);row-gap:5px}
+  .tower-workspace .tower-layer-gauge {grid-column:1/-1}
+  .tower-workspace .tower-layer-gauge>span:last-child {white-space:normal}
+}
