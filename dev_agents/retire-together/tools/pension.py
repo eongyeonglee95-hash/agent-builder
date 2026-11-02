@@ -22,7 +22,7 @@ from pathlib import Path
 import yaml
 
 PENSION_PATH = Path(__file__).resolve().parents[1] / "rules" / "pension.yaml"
-LAYER_LABELS = {1: "국민연금", 2: "퇴직연금", 3: "개인연금"}
+LAYER_LABELS = {1: "국민연금", 2: "퇴직연금", 3: "개인연금", 4: "추가연금"}
 
 
 def load_pension_rules(path: str | Path | None = None) -> dict:
@@ -168,7 +168,7 @@ class Person:
     national_monthly: int = 0      # 국민연금 예상 월액 (오늘 돈)
     national_start_age: int = 65
     private_start_age: int = 55
-    balances: dict[int, int] = field(default_factory=dict)   # 층(2·3) → 현재 적립금
+    balances: dict[int, int] = field(default_factory=dict)   # 층(2·3·4) → 현재 적립금. 4층 = 세제비적격 연금보험·ISA 등 추가 자금
     annual: dict[int, int] = field(default_factory=dict)     # 층(2·3) → 연 납입
     db_lump: int = 0               # DB 예상 퇴직금 (오늘 돈)
 
@@ -222,6 +222,8 @@ def person_streams(p: Person, a: Assumptions) -> list[Stream]:
     for layer, label in ((2, "퇴직연금(DC·IRP)"), (3, "개인연금")):
         fv = future_value(p.balances.get(layer, 0), p.annual.get(layer, 0), r, start - p.age, contrib)
         private(layer, label, start, fv)
+    # 4층 추가연금: 3층과 같은 확정기간 방식으로 "월급으로 나눠 쓰면" 얼마인지 계산한다. 기본 합계에는 넣지 않는다 (project 참고).
+    private(4, "추가연금", start, future_value(p.balances.get(4, 0), 0, r, start - p.age, contrib))
     if p.db_lump > 0:   # 퇴직 때 받은 DB 퇴직금을 IRP로 옮겨 개시 나이(퇴직 전이면 퇴직 나이)부터 받는다
         retire = max(p.retire_age, p.age)
         db_start = max(start, retire)
@@ -251,11 +253,17 @@ def project(people: list[Person], a: Assumptions, base_year: int, monthly_need: 
                 nom = s.monthly_nominal(age - s.start_age, a.inflation)
                 items.append({"person": s.person, "layer": s.layer, "label": s.label,
                               "nominal": round(nom), "real": round(nom / deflate)})
-        total_nom = sum(i["nominal"] for i in items)
-        total_real = sum(i["real"] for i in items)
+        # 기본 합계(total_*)는 1~3층. 4층 추가연금은 '월급으로 나눠 쓰면'의 참고값(extra_*)으로 따로 둔다 —
+        # 목돈으로 둘지 월급에 보탤지는 사용자가 정한다(2026-11-02). 부족액·충당률도 기본 합계 기준.
+        core = [i for i in items if i["layer"] != 4]
+        total_nom = sum(i["nominal"] for i in core)
+        total_real = sum(i["real"] for i in core)
+        extra_nom = sum(i["nominal"] for i in items if i["layer"] == 4)
+        extra_real = sum(i["real"] for i in items if i["layer"] == 4)
         retired = first.age + t >= first.retire_age
         row = {"year": y, "ages": {p.key: p.age + t for p in people}, "retired": retired,
                "items": items, "total_nominal": total_nom, "total_real": total_real,
+               "extra_nominal": extra_nom, "extra_real": extra_real,
                "layers_real": {k: sum(i["real"] for i in items if i["layer"] == k) for k in LAYER_LABELS}}
         if monthly_need is not None:
             row["need_real"] = monthly_need if retired else None
@@ -264,7 +272,7 @@ def project(people: list[Person], a: Assumptions, base_year: int, monthly_need: 
             row["gap_nominal"] = total_nom - row["need_nominal"] if retired else None
         # The common denominator is household spending, never an invented maximum
         # balance or an allocation of targets to individual pension layers.
-        row["coverage"] = ({"total": total_real / monthly_need * 100,
+        row["coverage"] = ({"total": total_real / monthly_need * 100, "with_extra": (total_real + extra_real) / monthly_need * 100,
                             "layers": {k: v / monthly_need * 100 for k, v in row["layers_real"].items()}}
                            if retired and monthly_need is not None and monthly_need > 0 else None)
         rows.append(row)

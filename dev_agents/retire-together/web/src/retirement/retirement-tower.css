@@ -309,3 +309,8 @@
 .tower-db-separate b[data-testid]{font-weight:600}
 .tower-detail-link{justify-self:start;display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:8px;background:var(--background);padding:6px 10px;font-size:var(--text-xs);color:var(--grey-700);cursor:pointer}
 .tower-detail-link:hover{background:var(--muted)}
+
+/* 4층 추가연금 — 월급으로 나눠 쓰면 / 목돈으로 두면 */
+.tower-extra-choice{display:grid;gap:6px;border-top:1px solid color-mix(in srgb,var(--background) 15%,transparent);margin-top:12px;padding-top:12px;font-size:var(--text-xs);color:var(--grey-300)}
+.tower-extra-choice>small{font-size:var(--text-xs);color:var(--cls-gold)}
+.tower-extra-choice>div{display:flex;justify-content:space-between;gap:12px}.tower-extra-choice b{font-weight:600;color:var(--background);white-space:nowrap}

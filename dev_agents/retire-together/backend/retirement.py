@@ -158,7 +158,7 @@ def build(plan: dict, family: dict | None, bal: dict[str, dict[int, int]], base_
                    national_monthly=pp.get("national_monthly") or 0,
                    national_start_age=pp.get("national_start_age") or national_start_age(base_year - age, rules),
                    private_start_age=pp.get("private_start_age") or max(a.start_age_min, min(retire, a.end_age - a.min_payout_years)),
-                   balances={2: b.get(2, 0), 3: b.get(3, 0)},
+                   balances={2: b.get(2, 0), 3: b.get(3, 0), 4: b.get(4, 0)},
                    annual={2: pp.get("irp_annual") or 0, 3: pp.get("savings_annual") or 0},
                    db_lump=db["lump_at_retire"] if db else (pp.get("db_lump") or 0))
         people.append(p)

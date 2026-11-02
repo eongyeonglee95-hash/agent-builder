@@ -153,6 +153,6 @@ export function IncomeChart({ rows, scope, year, onYearChange, onLayerSelect, hi
         <span className="tower-income-legend-status">{start == null ? '준비 정보 없음' : selected.year < start ? `${start}년부터 수령` : value > 0 ? '수령 중' : '수령 기간 종료'}</span>
       </button>
     })}</div>
-    <div className="tower-income-footer"><p>국민연금은 종신 · 그래프 끝은 계산 범위 · 4층 추가연금 제외</p><span><MousePointer2 size={12}/>색을 짚으면 해당 연금이 강조돼요</span></div>
+    <div className="tower-income-footer"><p>국민연금은 종신 · 그래프 끝은 계산 범위 · 4층 추가연금은 기본 합계에 넣지 않음</p><span><MousePointer2 size={12}/>색을 짚으면 해당 연금이 강조돼요</span></div>
   </div>
 }

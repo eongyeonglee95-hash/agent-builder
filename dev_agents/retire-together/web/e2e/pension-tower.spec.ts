@@ -134,7 +134,7 @@ test('연금탑: 서버 합계·부부 나이·개인 범위·입력 저장·다
   const row = data.projection.rows.find((r: { year: number }) => r.year === year)
   await expect(page.getByTestId('pension-total')).toHaveAttribute('data-won', String(row.total_real))
   await expect(page.locator('.tower-summary-ages')).toHaveText('나 65세 · 배우자 68세')
-  await expect(page.getByRole('button', { name: '4층 추가연금 살펴보기', exact: true })).toContainText('수령 계산 미연결')
+  await expect(page.getByRole('button', { name: '4층 추가연금 살펴보기', exact: true })).toContainText('준비 정보 없음')
   await page.getByRole('group', { name: '연금 조회 범위' }).getByRole('button', { name: '배우자', exact: true }).click()
   const partner = row.items.filter((i: { person: string }) => i.person === 'partner').reduce((sum: number, i: { real: number }) => sum + i.real, 0)
   await expect(page.getByTestId('pension-total')).toHaveAttribute('data-won', String(partner))
