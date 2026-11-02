@@ -314,3 +314,21 @@
 .tower-extra-choice{display:grid;gap:6px;border-top:1px solid color-mix(in srgb,var(--background) 15%,transparent);margin-top:12px;padding-top:12px;font-size:var(--text-xs);color:var(--grey-300)}
 .tower-extra-choice>small{font-size:var(--text-xs);color:var(--cls-gold)}
 .tower-extra-choice>div{display:flex;justify-content:space-between;gap:12px}.tower-extra-choice b{font-weight:600;color:var(--background);white-space:nowrap}
+
+/* 층 줄 오른쪽 소계 묶음 선 (2·3층, 2·3·4층) — 줄은 1열, 선은 2열에 겹쳐 놓는다 */
+.tower-layers{grid-template-columns:minmax(0,1fr) 112px;column-gap:10px}
+.tower-layers>.tower-layer-row{grid-column:1}
+.tower-bracket{grid-column:2;position:relative;display:flex;align-items:flex-start;pointer-events:none}
+.tower-bracket:before{content:"";position:absolute;top:6px;bottom:6px;width:10px;border:1px solid var(--grey-300);border-left:0;border-radius:0 8px 8px 0}
+.tower-bracket-234{grid-row:1/4}.tower-bracket-234:before{left:0}
+.tower-bracket-23{grid-row:2/4;align-items:flex-end}.tower-bracket-23:before{left:14px;border-color:var(--grey-200)}
+.tower-bracket>span{display:grid;gap:1px;margin-left:30px;font-size:var(--text-xs);color:var(--muted-foreground);line-height:1.35}
+.tower-bracket-234>span{margin-top:8px}.tower-bracket-23>span{margin-bottom:8px;margin-left:44px}
+.tower-bracket b{font-weight:600;color:var(--grey-700);white-space:nowrap}
+@media(max-width:1200px){.tower-layers{grid-template-columns:minmax(0,1fr) 100px}.tower-bracket>span{margin-left:26px}.tower-bracket-23>span{margin-left:40px}}
+@media(max-width:760px){.tower-layers{grid-template-columns:minmax(0,1fr)}.tower-bracket{display:none}}
+
+/* 4층 줄: '월로 나눠 쓰면 월액'을 적립금보다 눈에 띄게 */
+.tower-layer-row .tower-layer-extra-emph{align-items:baseline;gap:0 6px;color:var(--muted-foreground)}
+.tower-layer-row .tower-layer-extra-emph b{font-size:var(--text-lg);font-weight:750;color:var(--foreground);letter-spacing:-.3px}
+.tower-layer-row .tower-layer-lump{font-size:var(--text-base);font-weight:600;color:var(--grey-700)}
