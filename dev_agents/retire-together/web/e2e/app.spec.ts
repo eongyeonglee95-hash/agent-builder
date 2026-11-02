@@ -446,7 +446,7 @@ test('은퇴: 첫 화면 팝업·연금 카드에서 입력하면 저장하고 �
   await page.goto('/#pension')
   await expect(page.getByRole('heading', { name: '연금', exact: true })).toBeVisible()
   await page.getByRole('button', { name: '3층 개인연금 살펴보기', exact: true }).click()
-  await page.getByRole('button', { name: '개인연금 입력하기', exact: true }).click()
+  await page.getByRole('button', { name: '개인연금 입력·수정하기', exact: true }).click()
   const again = page.getByRole('dialog', { name: '개인연금 입력', exact: true })
   await again.getByRole('spinbutton', { name: '나 연금저축 1년 납입액', exact: true }).fill('6000000')
   await again.getByRole('button', { name: '저장하고 다시 계산' }).click()
