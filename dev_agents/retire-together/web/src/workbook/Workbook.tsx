@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ChevronDown, Download, FileSpreadsheet, Camera, LayoutGrid, RefreshCw, Copy } from 'lucide-react'
+import { ChevronDown, Download, FileSpreadsheet, Camera, LayoutGrid, RefreshCw, Copy, Landmark } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -164,6 +164,7 @@ export function Workbook({ onClassic }: { onClassic: () => void }) {
           <DropdownMenuContent align="end" className="w-60">
             <DropdownMenuItem onSelect={() => setImportMode('capture')}><Camera className="size-4"/>증권사 앱 캡처로 등록</DropdownMenuItem>
             <DropdownMenuItem onSelect={() => setImportMode('file')}><FileSpreadsheet className="size-4"/>엑셀·CSV 파일 올리기</DropdownMenuItem>
+            <DropdownMenuItem onSelect={retire.openPension}><Landmark className="size-4"/>국민연금·퇴직연금 입력</DropdownMenuItem>
             <DropdownMenuSeparator/>
             <DropdownMenuItem asChild><a href={`/api/register/template.xlsx?prefill=1&owner=${owner}`} download><Download className="size-4"/>지금 잔고를 엑셀로 받기</a></DropdownMenuItem>
             <DropdownMenuItem asChild><a href="/api/register/template.xlsx" download><Download className="size-4"/>빈 엑셀 양식 받기</a></DropdownMenuItem>
@@ -200,6 +201,7 @@ export function Workbook({ onClassic }: { onClassic: () => void }) {
         {importMode && <UploadFlow mode={importMode} owner={owner} onSaved={msg => { setImportMode(null); changed(msg) }}/>}
       </DialogContent>
     </Dialog>
+    {retire.dialog}
     {toast && <div role="status" className="fixed bottom-14 left-1/2 z-50 -translate-x-1/2 rounded-md bg-grey-900 px-4 py-2 text-sm text-white">{toast}</div>}
   </div>
 }
