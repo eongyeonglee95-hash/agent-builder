@@ -123,3 +123,19 @@
 
 .reg-template{margin:4px 0 12px}
 .register-choice button{min-height:128px}
+
+/* 연금 계약 표(통합연금포털 캡처) 확인 — 종목이 아니라 계약 한 줄 = 금액 자산 하나 */
+.rv-contracts{margin-top:14px;display:grid;gap:6px}
+.rv-ct-head,.rv-ct-row{display:grid;grid-template-columns:minmax(0,1.4fr) 150px 120px 170px 28px;column-gap:12px;align-items:center}
+.rv-ct-head{padding:0 12px 8px;font-size:12px;color:#8b95a1;border-bottom:1px solid #e5e8eb}
+.rv-ct-row{padding:10px 12px;border-radius:12px;background:#f9fafb}
+.rv-ct-row .rv-ct-name{display:grid;gap:2px;min-width:0}.rv-ct-row .rv-ct-name strong{font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rv-ct-row .rv-ct-name small{font-size:12px;color:#8b95a1}
+.rv-ct-row input,.rv-ct-row select{font:inherit;font-size:13px;border:1px solid #e5e8eb;background:#fff;border-radius:8px;padding:7px 9px;min-width:0;width:100%}
+.rv-ct-row input.n{text-align:right}
+.rv-ct-row .icon-button{width:28px;height:28px}
+.rv-ct-owner{display:flex;align-items:center;gap:8px;font-size:13px;color:#4e5968}.rv-ct-owner select{font:inherit;font-size:13px;border:0;background:#f2f4f6;border-radius:10px;padding:8px 10px;color:#191f28}
+.rv-ct-note{margin:10px 0 0;font-size:12px;color:#8b95a1;line-height:1.6}
+@media(max-width:650px){.rv-ct-head{display:none}.rv-ct-row{grid-template-columns:1fr 1fr;row-gap:8px}.rv-ct-row .rv-ct-name{grid-column:1/-1}}
+.rv-ct-row.is-off{opacity:.55}.rv-ct-row.is-off input:not([type=checkbox]),.rv-ct-row.is-off select{pointer-events:none;background:#f2f4f6}
+.rv-ct-include{display:flex;align-items:center;gap:8px;min-width:0;cursor:pointer}.rv-ct-include input{width:16px;height:16px;margin:0;accent-color:#142339}
+.rv-ct-overlap{font-weight:500;color:#b4541a}

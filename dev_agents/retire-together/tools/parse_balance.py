@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import asyncio
+import datetime as dt
 import math
 import re
 from dataclasses import dataclass
@@ -15,11 +16,31 @@ import pandas as pd
 
 HOLDING_COLUMNS = ["account_id", "ticker_name", "ticker", "qty", "price"]
 
+# 캡처 한 묶음은 둘 중 하나다 — (a) 증권사 종목 잔고(holdings: 종목·수량·현재가) (b) 연금 계약 표(contracts: 금융감독원
+# 통합연금포털 '내 연금조회'처럼 가입회사·상품유형·상품명·연금개시예정일·적립금이 한 줄인 표). 연금보험처럼 종목이 없는
+# 계약은 (b)로만 옮길 수 있다 (2026-11-02 사용자 캡처).
+CONTRACT_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "company": {"type": "string", "description": "가입회사, 예: 한화생명보험"},
+        "product_type": {"type": "string", "description": "상품유형, 예: 연금저축펀드 · 일반연금보험 · DC · IRP"},
+        "product_name": {"type": "string", "description": "상품명"},
+        "start_date": {"type": "string", "description": "가입일 YYYY-MM-DD, 없으면 빈 문자열"},
+        "payout_start_date": {"type": "string", "description": "연금개시예정일 YYYY-MM-DD, 없으면 빈 문자열"},
+        "amount": {"type": "integer", "description": "적립금(원), 쉼표 없이"},
+        "as_of": {"type": "string", "description": "조회기준일 YYYY-MM-DD, 없으면 빈 문자열"},
+    },
+    "required": ["company", "product_type", "product_name", "start_date", "payout_start_date", "amount", "as_of"],
+    "additionalProperties": False,
+}
+
 CAPTURE_SCHEMA = {
     "type": "object",
     "properties": {
-        "account_label": {"type": "string", "description": "화면 상단 계좌 이름, 예: 연금저축계좌(신)"},
-        "screen_total_value": {"type": "integer", "description": "화면에 보이는 평가금액 합계(원). 없으면 0"},
+        "kind": {"type": "string", "enum": ["holdings", "contracts"], "description": "종목 잔고면 holdings, 연금 계약 표면 contracts"},
+        "account_label": {"type": "string", "description": "화면 상단 계좌 이름(예: 연금저축계좌(신)) 또는 계약 표의 제목(예: 개인연금, 퇴직연금)"},
+        "screen_total_value": {"type": "integer", "description": "화면에 보이는 평가금액 합계 또는 적립금 합계(원). 없으면 0"},
+        "contracts": {"type": "array", "items": CONTRACT_SCHEMA, "description": "kind가 contracts일 때 계약 줄. holdings면 빈 배열"},
         "rows": {
             "type": "array",
             "items": {
@@ -36,7 +57,7 @@ CAPTURE_SCHEMA = {
             },
         },
     },
-    "required": ["account_label", "screen_total_value", "rows"],
+    "required": ["kind", "account_label", "screen_total_value", "contracts", "rows"],
     "additionalProperties": False,
 }
 
@@ -125,9 +146,13 @@ async def _parse_capture_async(image_paths: list[Path], multi: bool = False) -> 
 
     files = "\n".join(f"- {p.resolve()}" for p in image_paths)
     prompt = (
-        "다음 증권사 앱 잔고 캡처 이미지를 Read 도구로 읽고, 보이는 종목 전부를 표로 옮겨라. "
-        "같은 종목이 여러 이미지에 중복으로 보이면 한 번만 넣어라. 숫자는 쉼표를 빼고 정수로. "
-        "계산하거나 추정하지 말고 화면에 보이는 값만 옮겨라. 화면 합계(평가금액)도 보이면 적어라.\n"
+        "다음 캡처 이미지를 Read 도구로 읽고 표로 옮겨라. 이미지는 둘 중 하나다.\n"
+        "(a) 증권사 앱 잔고: 종목·보유수량·현재가가 있다 → kind=holdings, 보이는 종목 전부를 rows에. contracts는 빈 배열.\n"
+        "(b) 연금 계약 표(금융감독원 통합연금포털 '내 연금조회' 등): 가입회사·상품유형·상품명·가입일·연금개시예정일·적립금·조회기준일이 "
+        "한 줄씩 있다 → kind=contracts, 줄마다 contracts에. rows는 빈 배열. account_label은 표 제목(개인연금·퇴직연금·국민연금 등). "
+        "날짜는 YYYY-MM-DD로, 적립금 합계가 보이면 screen_total_value에.\n"
+        "같은 줄이 여러 이미지에 중복으로 보이면 한 번만 넣어라. 숫자는 쉼표를 빼고 정수로. "
+        "계산하거나 추정하지 말고 화면에 보이는 값만 옮겨라.\n"
         + ("이미지에 계좌가 여러 개면 화면 상단의 계좌 이름(예: 연금저축계좌(신), IRP, ISA)으로 계좌별로 나눠라. "
            "계좌 이름이 같은 이미지는 같은 계좌다. 계좌마다 화면 합계를 따로 적어라.\n" if multi else "")
         + files
@@ -162,6 +187,35 @@ def parse_capture(image_paths: list[str | Path], account_id: str) -> tuple[pd.Da
     return df[HOLDING_COLUMNS + ["value", "buy_value"]], meta
 
 
+def _contracts_from(data: dict) -> tuple[pd.DataFrame, dict]:
+    """연금 계약 표 묶음. 종목 표(df)는 비워 두고 meta['contracts']에 계약 줄을 담는다. 금액은 적립금 그대로(계산 없음)."""
+    rows = []
+    for c in data.get("contracts") or []:
+        try:
+            amount = int(c.get("amount") or 0)
+        except (TypeError, ValueError):
+            amount = 0
+        rows.append({"company": str(c.get("company") or "").strip(), "product_type": str(c.get("product_type") or "").strip(),
+                     "product_name": str(c.get("product_name") or "").strip(), "start_date": _iso_date(c.get("start_date")),
+                     "payout_start_date": _iso_date(c.get("payout_start_date")), "amount": amount, "as_of": _iso_date(c.get("as_of"))})
+    df = pd.DataFrame([], columns=HOLDING_COLUMNS + ["value", "buy_value"])
+    meta = {"kind": "contracts", "account_label": data.get("account_label") or "", "contracts": rows,
+            "screen_total_value": data.get("screen_total_value") or 0, "reconciled": True, "verified": False, "diff": 0, "value_diff": None, "errors": []}
+    return df, meta
+
+
+def _iso_date(value) -> str | None:
+    """'2026/09/30' · '2026.09.30' · '2026-09-30' → '2026-09-30'. 못 읽으면 None (추정하지 않는다)."""
+    m = re.search(r"(\d{4})\D(\d{1,2})\D(\d{1,2})", str(value or ""))
+    if not m:
+        return None
+    y, mo, d = (int(g) for g in m.groups())
+    try:
+        return dt.date(y, mo, d).isoformat()
+    except ValueError:
+        return None
+
+
 def _frame_from(data: dict, account_id: str) -> tuple[pd.DataFrame, dict]:
     df = pd.DataFrame(data["rows"], columns=["ticker_name", "qty", "price", "value", "buy_value"])
     df.insert(0, "account_id", account_id)
@@ -182,6 +236,10 @@ def parse_captures(image_paths: list[str | Path]) -> list[tuple[pd.DataFrame, di
     data = asyncio.run(_parse_capture_async(paths, multi=True))
     groups = []
     for acct in data.get("accounts", []):
+        if acct.get("kind") == "contracts" or (not acct.get("rows") and acct.get("contracts")):
+            if acct.get("contracts"):
+                groups.append(_contracts_from(acct))
+            continue
         if not acct.get("rows"):
             continue
         groups.append(_frame_from(acct, ""))
