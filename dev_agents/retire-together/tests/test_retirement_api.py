@@ -101,3 +101,29 @@ def test_db_from_wage_and_hire_year(client):
     assert {(s["person"], s["label"]) for s in streams} >= {("me", "퇴직연금(DB)"), ("partner", "퇴직연금(DB)")}
     assert next(s for s in streams if s["person"] == "me")["principal"] == round(150_000_000 * 1.02**20)
     assert client.put("/api/retirement/plan", json={"me": {"db_accrued": -1}, "version": 1}).status_code == 422
+
+
+def test_spending_target_recomputes_with_saved_goal_inflation_and_retirement(client):
+    _family(client)
+    d = client.put("/api/retirement/plan", json={"monthly_need": 5_000_000, "inflation": .02, "version": 0}).json()
+    assert d["spending_target"]["monthly_nominal"] == 7_429_737
+    assert d["spending_target"]["target_year"] == date.today().year + 20
+    # Goal card does not require any pension streams to exist.
+    assert not d["projection"]["summary"]["streams"]
+    d = client.put("/api/retirement/plan", json={"me": {"retire_age": 50}, "monthly_need": 5_000_000, "inflation": .03, "version": 1}).json()
+    assert d["spending_target"]["years"] == 10 and d["spending_target"]["monthly_nominal"] == 6_719_582
+    assert client.get("/api/retirement").json()["spending_target"] == d["spending_target"]
+    # Invalid payout conditions must not silently change the independently valid lifestyle goal.
+    d = client.put("/api/retirement/plan", json={"me": {"private_start_age": 50}, "monthly_need": 5_000_000, "version": 2}).json()
+    assert d["projection"] is None and d["error"]
+    assert d["spending_target"]["monthly_nominal"] == 7_429_737
+
+
+def test_capital_survives_missing_ages_and_excludes_future_money(client):
+    _asset(client, "개인연금", "연금저축", "me", 60_000_000)
+    _asset(client, "추가", "중개형 ISA", "partner", 10_000_000)
+    d = client.put("/api/retirement/plan", json={"me": {"savings_annual": 12_000_000, "db_accrued": 20_000_000, "db_monthly_wage": 5_000_000}, "version": 0}).json()
+    assert d["projection"] is None
+    assert d["capital"] == {"me": {"balances": {"3": 60_000_000}, "db_accrued": 20_000_000},
+                            "partner": {"balances": {"4": 10_000_000}, "db_accrued": 0}}
+    assert d["spending_target"] is None

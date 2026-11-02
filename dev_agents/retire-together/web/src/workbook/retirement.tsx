@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -13,10 +13,12 @@ export type PersonPlan = { retire_age: number | null; national_monthly: number; 
 export type Plan = { me: PersonPlan; partner: PersonPlan; monthly_need: number | null; return_rate: number | null; inflation: number | null; version: number }
 type Db = { years_left: number; lump_at_retire: number }
 export type Used = { age: number; retire_age: number; national_start_age: number; private_start_age: number; balances: Record<string, number>; db: Db | null }
-export type Row = { year: number; ages: Record<string, number>; retired: boolean; items: { person: 'me' | 'partner'; layer: number; real: number; label: string }[]; total_real: number; layers_real: Record<string, number>; need_real?: number | null; gap_real?: number | null }
+export type Row = { year: number; ages: Record<string, number>; retired: boolean; items: { person: 'me' | 'partner'; layer: number; real: number; nominal: number; label: string }[]; total_real: number; total_nominal: number; layers_real: Record<string, number>; need_real?: number | null; gap_real?: number | null; need_nominal?: number | null; gap_nominal?: number | null; coverage: { total: number; layers: Record<string, number> } | null }
 export type Result = { plan: Plan; used: Partial<Record<'me' | 'partner', Used>>; missing: string[]; error: string | null; line: string; base_year: number
+  capital: Record<'me' | 'partner', { balances: Record<string, number>; db_accrued: number }>
+  spending_target: { base_year: number; target_year: number; years: number; monthly_today: number; monthly_nominal: number; monthly_increase: number; inflation: number } | null
   assumptions: { return_rate: number; inflation: number; end_age: number; start_age_min: number; min_payout_years: number }
-  projection: { rows: Row[]; summary: { retire_year: number | null; streams: { person: 'me' | 'partner'; layer: number; label: string; start_year: number; start_age: number; principal: number }[] } } | null }
+  projection: { rows: Row[]; summary: { retire_year: number | null; streams: { person: 'me' | 'partner'; layer: number; label: string; start_year: number; start_age: number; principal: number; payout_years: number | null; end_age_exclusive: number | null }[] } } | null }
 
 const WHO = [['me', '나'], ['partner', '배우자']] as const
 const num = (v: string) => { const n = Number(v.replace(/[^\d]/g, '')); return v.trim() === '' ? null : n }
@@ -27,14 +29,17 @@ type Opts = { rev: number; onChanged: (msg: string) => void; onError: (msg: stri
 export function useRetirementData({ rev, onChanged, onError }: Opts) {
   const [data, setData] = useState<Result | null>(null)
   const [error, setError] = useState('')
+  const requestId = useRef(0)
   const load = useCallback(async () => {
-    try { setData(await api<Result>('/retirement')); setError('') } catch (e) { const message = e instanceof Error ? e.message : '은퇴 계획을 불러오지 못했어요.'; setError(message); onError(message) }
+    const id = ++requestId.current
+    try { const result = await api<Result>('/retirement'); if (id === requestId.current) { setData(result); setError('') } } catch (e) { if (id !== requestId.current) return; const message = e instanceof Error ? e.message : '은퇴 계획을 불러오지 못했어요.'; setError(message); onError(message) }
   }, [onError])
   useEffect(() => { load() }, [load, rev])
   const save = useCallback(async (next: Plan) => {
-    try { setData(await api<Result>('/retirement/plan', 'PUT', next)); setError(''); onChanged('은퇴 계획을 저장하고 다시 계산했어요.'); return true }
+    ++requestId.current // An earlier read must not replace a newly saved plan.
+    try { const result = await api<Result>('/retirement/plan', 'PUT', next); setData(result); setError(''); onChanged(result.error ? '계획을 저장했어요. 계산하려면 수령 조건을 확인해 주세요.' : '은퇴 계획을 저장하고 다시 계산했어요.'); return true }
     catch (e) { const message = e instanceof Error ? e.message : '저장하지 못했어요.'; setError(message); onError(message); return false }
-  }, [onChanged, onError, load])
+  }, [onChanged, onError])
   return { data, save, error, reload: load }
 }
 
@@ -157,13 +162,13 @@ export function PensionDialog({ open, data, onLater, onSave, focus }: { open: bo
     try { await onSave(next) } finally { setBusy(false) }
   }
   return <Dialog open={open} onOpenChange={o => { if (!o) onLater() }}>
-    <DialogContent className="sm:max-w-lg">
+    <DialogContent className="max-h-[88dvh] overflow-y-auto sm:max-w-lg">
       <DialogHeader>
         <DialogTitle>국민연금·퇴직연금·개인연금을 입력해 주세요</DialogTitle>
         <DialogDescription>은퇴 후 매달 받을 돈을 계산하는 데 써요. 모르는 칸은 비워 두세요.</DialogDescription>
       </DialogHeader>
       <form className="grid gap-3" onSubmit={e => { e.preventDefault(); submit() }}>
-        <div className="grid items-center gap-x-2 gap-y-3 text-sm" style={{ gridTemplateColumns: `minmax(0,1fr) ${who.map(() => '8.5rem').join(' ')}` }}>
+        <div className="grid items-center gap-x-2 gap-y-3 text-sm" style={{ gridTemplateColumns: `minmax(0,1.2fr) ${who.map(() => 'minmax(0,1fr)').join(' ')}` }}>
           <span/>{who.map(([, l]) => <span key={l} className="text-center text-grey-600">{l}</span>)}
           {FIELDS.map(([k, layer, label, help], i) => [
             ...(i === 0 || FIELDS[i - 1][1] !== layer ? [<div key={`h-${layer}`} className="col-span-full -mb-1 pt-1 text-xs font-semibold text-grey-600">{layer}</div>] : []),

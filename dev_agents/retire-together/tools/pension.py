@@ -61,6 +61,25 @@ def db_at_retire(accrued_now: int, monthly_wage: int, years_left: int) -> int:
     return accrued_now + monthly_wage * max(0, years_left)
 
 
+def monthly_cost_at(monthly_today: int, inflation: float, years: int) -> int:
+    """같은 생활 수준에 필요한 명목 월 생활비. 연 단위 복리, 마지막에 원 단위 반올림."""
+    if monthly_today < 0 or inflation < 0:
+        raise ValueError("생활비·물가상승률은 0 이상이어야 해요")
+    return round(monthly_today * (1 + inflation) ** max(0, years))
+
+
+def spending_target(monthly_today: int | None, inflation: float, base_year: int,
+                    age: int, retire_age: int) -> dict | None:
+    """가구 생활비의 은퇴 첫해 환산. 이미 은퇴했으면 올해, 미입력은 0원과 구분."""
+    if monthly_today is None:
+        return None
+    years = max(0, retire_age - age)
+    nominal = monthly_cost_at(monthly_today, inflation, years)
+    return {"base_year": base_year, "target_year": base_year + years, "years": years,
+            "monthly_today": monthly_today, "monthly_nominal": nominal,
+            "monthly_increase": nominal - monthly_today, "inflation": inflation}
+
+
 @dataclass(frozen=True)
 class Assumptions:
     return_rate: float
@@ -179,12 +198,21 @@ def project(people: list[Person], a: Assumptions, base_year: int, monthly_need: 
         if monthly_need is not None:
             row["need_real"] = monthly_need if retired else None
             row["gap_real"] = total_real - monthly_need if retired else None
+            row["need_nominal"] = monthly_cost_at(monthly_need, a.inflation, t) if retired else None
+            row["gap_nominal"] = total_nom - row["need_nominal"] if retired else None
+        # The common denominator is household spending, never an invented maximum
+        # balance or an allocation of targets to individual pension layers.
+        row["coverage"] = ({"total": total_real / monthly_need * 100,
+                            "layers": {k: v / monthly_need * 100 for k, v in row["layers_real"].items()}}
+                           if retired and monthly_need is not None and monthly_need > 0 else None)
         rows.append(row)
 
     retired_rows = [r for r in rows if r["retired"]]
     summary: dict = {"retire_year": retired_rows[0]["year"] if retired_rows else None,
                      "at_retire_real": retired_rows[0]["total_real"] if retired_rows else None,
-                     "streams": [s.__dict__ | {"start_year": base_year + s.start_age - by_key[s.person].age} for s in streams]}
+                     "streams": [s.__dict__ | {"start_year": base_year + s.start_age - by_key[s.person].age,
+                                              "payout_years": None if s.layer == 1 else a.end_age - s.start_age,
+                                              "end_age_exclusive": None if s.layer == 1 else a.end_age} for s in streams]}
     if streams:
         all_on = max(base_year + s.start_age - by_key[s.person].age for s in streams)
         row = next((r for r in rows if r["year"] == all_on), None)

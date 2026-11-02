@@ -19,7 +19,7 @@ from pydantic import Field
 from backend import registration, storage
 from backend.storage import InputModel
 from tools.assets import load_accounts
-from tools.pension import (LAYER_LABELS, Assumptions, Person, db_at_retire, load_pension_rules, national_start_age, project)
+from tools.pension import (LAYER_LABELS, Assumptions, Person, db_at_retire, load_pension_rules, national_start_age, project, spending_target)
 
 router = APIRouter(prefix="/api/retirement", tags=["retirement"])
 
@@ -138,9 +138,14 @@ def build(plan: dict, family: dict | None, bal: dict[str, dict[int, int]], base_
         used[key] = {"age": age, "retire_age": retire, "national_start_age": p.national_start_age,
                      "private_start_age": p.private_start_age, "balances": {str(k): v for k, v in b.items()}, "db": db}
     result = {"plan": plan, "used": used, "missing": missing, "assumptions": a.__dict__, "base_year": base_year,
-              "layer_labels": LAYER_LABELS, "projection": None, "error": None}
+              "layer_labels": LAYER_LABELS, "projection": None, "error": None, "spending_target": None,
+              "capital": {key: {"balances": {str(k): v for k, v in bal.get(key, {}).items() if k in (2, 3, 4)},
+                                "db_accrued": (plan.get(key) or {}).get("db_accrued") or 0}
+                          for key in ("me", "partner")}}
     if not people or "me" not in used:   # 가구 은퇴 기준은 나 — 내 값이 빠지면 계산하지 않는다
         return result
+    result["spending_target"] = spending_target(plan.get("monthly_need"), a.inflation, base_year,
+                                                 used["me"]["age"], used["me"]["retire_age"])
     try:
         result["projection"] = project(people, a, base_year, plan.get("monthly_need"))
     except ValueError as e:

@@ -2,7 +2,7 @@
 import pytest
 
 from tools.pension import (Assumptions, Person, annuity_monthly, db_at_retire, future_value, load_pension_rules,
-                           national_start_age, person_streams, project)
+                           monthly_cost_at, national_start_age, person_streams, project, spending_target)
 
 A = Assumptions(return_rate=0.05, inflation=0.02, end_age=90, start_age_min=55, min_payout_years=10)
 
@@ -110,3 +110,45 @@ def test_db_at_retire_is_accrued_plus_wage_per_year_left():
     assert db_at_retire(55_000_000, 5_000_000, -3) == 55_000_000    # 이미 은퇴 나이를 지났으면 더 쌓이지 않음
     with pytest.raises(ValueError, match="0 이상"):
         db_at_retire(-1, 5_000_000, 1)
+
+
+def test_spending_target_is_same_lifestyle_in_retirement_year_money():
+    target = spending_target(5_000_000, .02, 2026, age=40, retire_age=60)
+    assert target == {"base_year": 2026, "target_year": 2046, "years": 20, "monthly_today": 5_000_000,
+                      "monthly_nominal": 7_429_737, "monthly_increase": 2_429_737, "inflation": .02}
+    assert monthly_cost_at(5_000_000, 0, 20) == 5_000_000
+    assert spending_target(None, .02, 2026, 40, 60) is None
+    assert spending_target(0, .02, 2026, 40, 60)["monthly_nominal"] == 0
+    assert spending_target(5_000_000, .02, 2026, 65, 60)["target_year"] == 2026
+    assert spending_target(5_000_000, .02, 2026, 65, 60)["monthly_nominal"] == 5_000_000
+
+
+def test_nominal_gap_and_layer_contribution_share_one_spending_target():
+    me = Person("me", "나", 40, 60, national_monthly=6_000_000, national_start_age=65,
+                private_start_age=60, balances={3: 60_000_000})
+    out = project([me], A, 2026, monthly_need=5_000_000)
+    r = out["rows"][25]
+    assert r["need_nominal"] == 8_203_030
+    assert r["gap_nominal"] == r["total_nominal"] - 8_203_030
+    assert r["coverage"]["total"] > 120  # don't cap a surplus at 100% in the API
+    assert r["coverage"]["layers"][1] == pytest.approx(120, abs=.001)
+    assert sum(r["coverage"]["layers"].values()) == pytest.approx(r["coverage"]["total"])
+    assert out["rows"][19]["coverage"] is None  # no spending comparison before retirement
+    assert out["rows"][19]["need_nominal"] is None
+    private = next(s for s in out["summary"]["streams"] if s["layer"] == 3)
+    assert (private["start_age"], private["end_age_exclusive"], private["payout_years"]) == (60, 90, 30)
+    assert next(s for s in out["summary"]["streams"] if s["layer"] == 1)["payout_years"] is None
+
+
+@pytest.mark.parametrize("need", [None, 0])
+def test_missing_or_zero_spending_never_produces_percentage(need):
+    me = Person("me", "나", 60, 60, national_monthly=1_000_000, national_start_age=60)
+    out = project([me], A, 2026, monthly_need=need)
+    assert all(r["coverage"] is None for r in out["rows"])
+
+
+def test_actual_private_payout_period_uses_later_db_retirement_and_person_age():
+    me = Person("me", "나", 40, 60, private_start_age=55, balances={3: 60_000_000}, db_lump=30_000_000)
+    partner = Person("partner", "배우자", 63, 60, private_start_age=60, balances={3: 60_000_000})
+    periods = {(s["person"], s["label"]): s["payout_years"] for s in project([me, partner], A, 2026)["summary"]["streams"]}
+    assert periods == {("me", "개인연금"): 35, ("me", "퇴직연금(DB)"): 30, ("partner", "개인연금"): 27}
