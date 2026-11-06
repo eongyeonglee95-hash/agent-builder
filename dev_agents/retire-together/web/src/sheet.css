@@ -62,3 +62,7 @@
 .wb .xl-bar,.wb .xl-scroll,.wb .xl-tabs{border-left:0;border-right:0}
 .wb .xl-scroll{max-height:none}
 .wb-back{position:fixed;left:16px;bottom:16px;z-index:60;font:600 13px var(--font-sans,sans-serif);padding:8px 14px;border-radius:8px;border:1px solid #d1d6db;background:#fff;color:#191f28;box-shadow:0 4px 12px #0000001a;cursor:pointer}
+
+/* 맨 아래 고정 합계 줄 — 스크롤해도 금액 합계가 보이게 (2026-11-07 사용자) */
+.xl-cell.xl-total{position:sticky;bottom:0;z-index:1;background:var(--grey-50);border-top:1px solid #c8c8c8;font-weight:600;cursor:default}
+.xl-rowh.xl-total{position:sticky;bottom:0;left:0;z-index:2;border-top:1px solid #c8c8c8;cursor:default}

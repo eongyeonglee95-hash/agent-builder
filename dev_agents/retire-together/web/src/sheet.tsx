@@ -283,6 +283,24 @@ export function AssetSheet({ owner, initialTab = 'holdings', onSaved, embedded =
   const cur = rows[sel.r], curCol = cols[sel.c]
   const curErr = cur ? rowErrors(cur)[curCol?.key] : undefined
   const creatingRow = rows.find(r => r._key === creatingFor)
+  // 맨 아래 고정 합계 줄 — 표에 보이는 줄을 더해 보여 주기만 한다(저장 안 함). 자산 탭의 대출은 더하지 않고 따로 적는다
+  const totals = useMemo(() => {
+    const t = { value: 0, buy: 0, pl: 0, asset: 0, debt: 0 }
+    for (const r of rows) {
+      if (tab === 'holdings') {
+        const q = toInt(r.qty), p = toInt(r.price), b = toInt(r.buy_value)
+        if (q && p) t.value += q * p
+        if (b) t.buy += b
+        if (q && p && b) t.pl += q * p - b
+      } else { const a = toInt(r.amount) ?? 0; if (r.pocket === 'debt') t.debt += a; else t.asset += a }
+    }
+    return t
+  }, [rows, tab])
+  const totalText = (key: string) => {
+    const w = (n: number) => n.toLocaleString('ko-KR')
+    if (tab === 'holdings') return key === 'account_id' ? '합계' : key === 'buy_value' ? w(totals.buy) : key === '_value' ? w(totals.value) : key === '_pl' ? `${totals.pl > 0 ? '+' : ''}${w(totals.pl)}` : ''
+    return key === 'name' ? '합계 (대출 제외)' : key === 'account' ? (totals.debt ? `대출 ${w(totals.debt)}` : '') : key === 'amount' ? w(totals.asset) : ''
+  }
 
   return <div className={`xl-wrap ${embedded ? 'xl-embedded' : ''}`}>
     <div className="xl-bar" onMouseDown={e => { if ((e.target as HTMLElement).tagName !== 'INPUT') e.preventDefault() }}>
@@ -323,6 +341,10 @@ export function AssetSheet({ owner, initialTab = 'holdings', onSaved, embedded =
                     onBlur={() => { if (editing) commit() }} inputMode={c.kind === 'int' ? 'numeric' : undefined} placeholder={editing && c.kind === 'date' ? 'YYYY-MM-DD' : undefined}/>}</>}
             </div> }),
         ] })}
+        <div className="xl-rowh xl-total" aria-hidden="true">Σ</div>
+        {cols.map(c => { const v = totalText(c.key)
+          return <div key={`total-${c.key}`} role="gridcell" aria-label={v ? `${c.label} 합계 ${v}` : undefined}
+            className={`xl-cell xl-total ${c.align === 'right' ? 'r' : ''} ${c.key === '_pl' && v.startsWith('-') ? 'down' : c.key === '_pl' && v.startsWith('+') ? 'up' : ''}`}>{v}</div> })}
       </div>
     </div>}
 
