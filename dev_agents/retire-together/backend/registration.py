@@ -231,7 +231,7 @@ async def capture(images: Annotated[list[UploadFile], File()], account_id: Annot
     except Exception as e:
         raise HTTPException(502, f"캡처를 읽지 못했어요: {str(e)[:200]}") from None
     if not groups:
-        raise HTTPException(422, "캡처에서 종목을 찾지 못했어요. 잔고 화면이 보이는 캡처인지 확인해 주세요.")
+        raise HTTPException(422, "캡처에서 종목이나 보험·연금 계약을 찾지 못했어요. 상품명과 금액이 보이는 화면인지 확인해 주세요.")
     out = []
     for df, meta in groups:
         if meta.get("kind") == "contracts":
@@ -354,7 +354,7 @@ def sheet_rows(owner: Literal["together", "me", "partner"] = "together"):
 
 # ---------- 연금 계약 표 (통합연금포털 캡처) ----------
 
-LAYER_LABELS = {1: "국민연금", 2: "퇴직연금 · DC·IRP", 3: "개인연금 · 연금저축(세제적격)", 4: "추가연금 · 연금보험(세제비적격)·ISA"}
+LAYER_LABELS = {1: "국민연금", 2: "퇴직연금 · DC·IRP", 3: "개인연금 · 연금저축보험·펀드", 4: "추가연금 · 연금보험(세제비적격)·ISA"}
 _LAYER2 = re.compile(r"IRP|퇴직|DC|DB", re.IGNORECASE)
 _LAYER4 = re.compile(r"ISA|연금보험|추가연금", re.IGNORECASE)   # backend.retirement._EXTRA 와 같은 뜻
 
@@ -385,11 +385,11 @@ def _contracts_preview(meta: dict, owner: str) -> dict:
     label = meta.get("account_label") or "연금"
     owner = owner if owner in ("me", "partner") else "me"
     brokered = [a.get("account") or "" for a in storage.list_assets() if a.get("owner") == owner and a.get("pocket") == "retirement" and a.get("source") in ("capture", "file")]
-    rows = [{**c, "layer": guess_layer(label, c.get("product_type") or ""), "overlap": _overlaps_existing(c, brokered)} for c in meta.get("contracts") or []]
-    total = sum(r["amount"] for r in rows)
+    rows = [{**c, "layer": 0 if c.get("insurance_detail") and not c.get("product_type") else guess_layer(label, c.get("product_type") or ""), "overlap": False if c.get("insurance_detail") else _overlaps_existing(c, brokered)} for c in meta.get("contracts") or []]
+    total = sum(r["amount"] for r in rows if r.get("amount") is not None)
     screen = meta.get("screen_total_value") or None
     return {"kind": "contracts", "account_id": None, "account_label": label, "source": "capture", "rows": [], "contracts": rows,
-            "computed_total": total, "screen_total": screen, "verified": bool(screen), "reconciled": screen is None or abs(total - screen) <= 5000,
+            "computed_total": total, "screen_total": screen, "verified": bool(screen), "reconciled": all(r.get("amount") is not None for r in rows) and (screen is None or abs(total - screen) <= 5000),
             "diff": (total - screen) if screen else 0, "value_diff": None, "errors": [], "class_labels": CLASS_LABELS, "layer_labels": LAYER_LABELS,
             "owner": owner}
 

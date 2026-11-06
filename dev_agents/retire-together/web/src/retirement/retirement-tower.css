@@ -346,3 +346,9 @@
 .tower-sculpture .tower-extra-choice b{color:var(--foreground);white-space:normal;text-align:left;display:flex;flex-direction:column;align-items:flex-start;gap:1px;font-size:var(--text-sm)}
 .tower-sculpture .tower-extra-choice b em{font-style:normal;font-weight:500;font-size:var(--text-xs);color:var(--muted-foreground)}
 @media(max-width:760px){.tower-sculpture .tower-extra-choice{margin-top:22px}}
+
+/* Saved spending remains visible even before pension income is entered. */
+.tower-applied-budget { display: grid; gap: 6px; margin: 16px 0; padding: 14px; border: 1px solid var(--grey-200); border-radius: var(--radius); background: var(--grey-50); }
+.tower-applied-budget > span { font-size: var(--text-xs); color: var(--grey-700); }
+.tower-applied-budget > strong { font-size: var(--text-xl); color: var(--grey-900); font-variant-numeric: tabular-nums; }
+.tower-applied-budget > p { margin: 0; font-size: var(--text-sm); line-height: 1.5; color: var(--grey-700); }

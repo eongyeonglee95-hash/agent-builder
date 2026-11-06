@@ -1,0 +1,36 @@
+/* Shared UX refinements, scoped to the overview and read-only workbook. */
+.ux-read-grid .xl-section {
+  background: var(--grey-100);
+  color: var(--grey-900);
+  font-weight: 600;
+}
+.ux-read-grid .xl-input {
+  background: var(--sheet-head);
+  box-shadow: inset 0 0 0 1px var(--grey-400);
+  min-height: 36px;
+}
+.ux-read-grid .xl-input:focus-within {
+  box-shadow: inset 0 0 0 2px var(--sheet-select);
+}
+.ux-read-grid .ux-input-label {
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1;
+  pointer-events: none;
+  font-size: var(--text-xs);
+  color: var(--grey-700);
+}
+.ux-read-grid .xl-input .xl-edit { padding-left: 40px; }
+@media (max-width: 640px) {
+  .ux-home { display: flex; flex-direction: column; }
+  .ux-home > * { order: 0; }
+  .ux-home > .hero { order: 1; height: 160px; min-height: 0; margin-top: 20px; }
+  .ux-home > .footer { order: 2; }
+  .ux-home .hero-content { padding: 20px; }
+  .ux-home .hero-content h1 { font-size: var(--text-xl); line-height: 1.4; }
+  .ux-home .hero-content .eyebrow,
+  .ux-home .hero-content p,
+  .ux-home .hero-caption { display: none; }
+}

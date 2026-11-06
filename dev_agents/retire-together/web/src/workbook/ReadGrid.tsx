@@ -56,7 +56,11 @@ export function ReadGrid({ label, widths, rows }: { label: string; widths: numbe
   // 열 위치: span을 따라 칸의 시작 열을 계산
   const colStart = (row: Cell[], ci: number) => row.slice(0, ci).reduce((n, c) => n + (c.span ?? 1), 0)
 
-  return <div className="xl-wrap xl-embedded flex min-h-0 flex-1 flex-col">
+  return <div className="ux-read-grid xl-wrap xl-embedded flex min-h-0 flex-1 flex-col">
+    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-grey-200 bg-grey-50 px-3 py-2 text-xs text-grey-700">
+      <strong>{label} · 상세 내역</strong>
+      <span>{rows.some(row => row.some(c => c.edit)) ? '입력 표시가 있는 칸만 수정할 수 있어요 · 나머지는 계산 결과와 설명이에요' : '조회용 표 · 숫자를 선택해 복사할 수 있어요'}</span>
+    </div>
     <div className="xl-bar">
       <span className="xl-addr">{letters(cur ? colStart(rows[sel.r], sel.c) : 0)}{sel.r + 1}</span>
       <span className="xl-fx">fx</span>
@@ -77,7 +81,7 @@ export function ReadGrid({ label, widths, rows }: { label: string; widths: numbe
               const text = show(c)
               const tone = c.tone === 'auto' && typeof c.v === 'number' ? (c.v > 0 ? 'up' : c.v < 0 ? 'down' : '') : c.tone
               const numeric = typeof c.v === 'number' || (!!c.edit && !c.edit.text)
-              return <div key={`${ri}-${ci}`} role="gridcell" aria-selected={on}
+              return <div key={`${ri}-${ci}`} role="gridcell" aria-selected={on} aria-readonly={!c.edit}
                 style={c.span ? { gridColumn: `span ${c.span}` } : undefined}
                 className={cn('xl-cell', numeric && 'r', on && 'on', c.head && 'xl-hcell', c.section && 'xl-section', c.bold && 'font-semibold',
                   tone === 'up' && 'up', tone === 'down' && 'down', tone === 'muted' && 'text-grey-600', c.edit && 'xl-input')}
@@ -86,12 +90,12 @@ export function ReadGrid({ label, widths, rows }: { label: string; widths: numbe
                 {c.btn
                   ? <Button size="xs" variant={c.btn.primary ? 'default' : 'outline'} disabled={c.btn.disabled} onClick={c.btn.onClick} className="relative">{c.btn.label}</Button>
                   : c.edit
-                  ? <input aria-label={c.edit.label} className={cn('xl-edit', !c.edit.text && 'text-right')} inputMode={c.edit.text ? 'text' : 'numeric'} placeholder={c.edit.placeholder}
+                  ? <><span className="ux-input-label" aria-hidden="true">입력</span><input aria-label={c.edit.label} className={cn('xl-edit', !c.edit.text && 'text-right')} inputMode={c.edit.text ? 'text' : 'numeric'} placeholder={c.edit.placeholder}
                       value={on && draft !== null ? draft : !c.edit.text && c.edit.value ? Number(c.edit.value).toLocaleString('ko-KR') : c.edit.value}
                       onFocus={() => { setSel({ r: ri, c: ci }); setDraft(c.edit!.value) }}
                       onChange={e => setDraft(c.edit!.text ? e.target.value : e.target.value.replace(/[^\d]/g, ''))}
                       onBlur={() => { if (draft !== null) c.edit!.onCommit(draft); setDraft(null) }}
-                      onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) { (e.target as HTMLInputElement).blur(); move(1, 0); gridRef.current?.focus() } if (e.key === 'Escape') { setDraft(null); gridRef.current?.focus() } }}/>
+                      onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) { (e.target as HTMLInputElement).blur(); move(1, 0); gridRef.current?.focus() } if (e.key === 'Escape') { setDraft(null); gridRef.current?.focus() } }}/></>
                   : <span className="relative">{text}</span>}
               </div>
             }),

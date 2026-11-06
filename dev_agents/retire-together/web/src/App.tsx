@@ -101,7 +101,7 @@ export default function App() {
     </aside>
     <div className={`workspace${page === 'pension' && !isDemo ? ' tower-shell' : page === 'home' && photoPreview ? ' home-shell' : ''}`}>
       <header className="topbar"><div className="topbar-left"><button className="icon-button menu-toggle" aria-label="메뉴 열기" aria-expanded={menuOpen} onClick={() => setMenuOpen(true)}><Menu size={22}/></button><span className="desktop-breadcrumb">{(page !== 'pension' || isDemo) && <>우리의 공간 <ChevronRight size={13}/></>} <b>{pageNames[page]}</b></span><div className="mobile-brand"><Brand compact/></div></div><div className="topbar-right"><div className="data-mode-switch" role="group" aria-label="데이터 보기"><button className={!isDemo ? 'active' : ''} aria-pressed={!isDemo} onClick={() => setIsDemo(false)}>내 자산</button><button className={isDemo ? 'active' : ''} aria-pressed={isDemo} onClick={() => setIsDemo(true)}>예시 보기</button></div>{(page !== 'pension' || isDemo) && <><SheetBadge onClick={() => setModal('sheets')}/><span className="header-date">{asOf} 기준</span><button className="icon-button notification-button" aria-label="알림 2개 보기" onClick={() => setModal('notifications')}><Bell size={18}/><i/></button><button className="header-avatar" aria-label="가족 계정 보기" onClick={() => setModal('family')}>우리</button></>}</div></header>
-      <main id="main-content" tabIndex={-1}>
+      <main id="main-content" className={page === 'home' ? 'ux-home' : undefined} tabIndex={-1}>
         {!isDemo && local.loading && <div className="loading-strip" role="status">저장된 정보를 불러오고 있어요…</div>}
         {!isDemo && local.error && <div className="form-error" role="alert"><Info size={17}/><span>{local.error}</span><button onClick={local.refresh}>다시 시도</button></div>}
 

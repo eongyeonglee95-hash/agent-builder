@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ClipboardEvent, type KeyboardEvent } from 'react'
-import { Download, Info } from 'lucide-react'
+import { Download, Info, Trash2 } from 'lucide-react'
 import { api } from './local-data'
 import { NewAccount, type RegisterAccount } from './register'
 import './sheet.css'
@@ -11,8 +11,11 @@ import './sheet.css'
 type Kind = 'text' | 'int' | 'select' | 'date' | 'calc'
 type Col = { key: string; label: string; width: number; kind: Kind; options?: [string, string][]; align?: 'right'; disabled?: (r: Row) => boolean; calc?: (r: Row) => string }
 type Row = Record<string, string> & { _key: string }
-type Meta = { id?: string; version?: number; raw?: Record<string, unknown>; readonly?: boolean; deleted?: boolean; orig: string }
+type Meta = { id?: string; version?: number; raw?: Record<string, unknown>; readonly?: boolean; orig: string }
 type Tab = 'holdings' | 'assets'
+type HoldingRow = { account_id: string; ticker_name: string; ticker: string | null; qty: number; price: number; buy_value: number | null; asset_class: string | null; stock_group: string | null }
+type HoldingSheet = { accounts: RegisterAccount[]; rows: HoldingRow[]; as_of: Record<string, string | null> }
+const holdingValues = (r: HoldingRow) => ({ account_id: r.account_id, ticker_name: r.ticker_name, ticker: r.ticker ?? '', qty: String(r.qty), price: String(r.price), buy_value: r.buy_value ? String(r.buy_value) : '', asset_class: r.asset_class ?? '', stock_group: r.stock_group ?? '' })
 
 const CLASS_OPTS: [string, string][] = [['stock', '주식'], ['long_bond', '장기채'], ['mid_bond', '중기채'], ['gold', '금'], ['commodity', '원자재'], ['cash', '현금'], ['mixed', '혼합·미분류']]
 const GROUP_OPTS: [string, string][] = [['us', '미국'], ['kr', '국내'], ['em', '신흥국·테마'], ['income', '배당·리츠']]
@@ -40,10 +43,12 @@ export function AssetSheet({ owner, initialTab = 'holdings', onSaved, embedded =
   const [meta, setMeta] = useState<Record<string, Meta>>({})
   const [sel, setSel] = useState({ r: 0, c: 0 })
   const [rowSel, setRowSel] = useState<number | null>(null)
+  const [deleteKey, setDeleteKey] = useState<string | null>(null)
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState('')
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
+  const mutationBusy = useRef(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [creatingFor, setCreatingFor] = useState<string | null>(null)
@@ -81,12 +86,12 @@ export function AssetSheet({ owner, initialTab = 'holdings', onSaved, embedded =
   const loadSeq = useRef(0)
   const load = useCallback(async () => {
     const my = ++loadSeq.current   // 늦게 온 이전 응답은 버린다
-    setLoading(true); setError(''); setEditing(false); setRowSel(null)
+    setLoading(true); setError(''); setEditing(false); setRowSel(null); setDeleteKey(null)
     try {
       if (tab === 'holdings') {
-        const d = await api<{ accounts: RegisterAccount[]; rows: { account_id: string; ticker_name: string; ticker: string | null; qty: number; price: number; buy_value: number | null; asset_class: string | null; stock_group: string | null }[] }>(`/register/sheet?owner=${owner}`)
+        const d = await api<HoldingSheet>(`/register/sheet?owner=${owner}`)
         setAccounts(d.accounts)
-        const rs: Row[] = d.rows.map(r => ({ _key: `h${++seq}`, account_id: r.account_id, ticker_name: r.ticker_name, ticker: r.ticker ?? '', qty: String(r.qty), price: String(r.price), buy_value: r.buy_value ? String(r.buy_value) : '', asset_class: r.asset_class ?? '', stock_group: r.stock_group ?? '' }))
+        const rs: Row[] = d.rows.map(r => ({ _key: `h${++seq}`, ...holdingValues(r) }))
         const m: Record<string, Meta> = {}
         rs.forEach(r => { m[r._key] = { id: 'holding', raw: { account_id: r.account_id }, orig: sigOf(r, KEYS.holdings) } })
         if (my !== loadSeq.current) return
@@ -107,7 +112,7 @@ export function AssetSheet({ owner, initialTab = 'holdings', onSaved, embedded =
   useEffect(() => { if (!loading) setRows(rs => withSpare(rs, cols)) }, [loading])   // eslint-disable-line react-hooks/exhaustive-deps
 
   const rowErrors = useCallback((r: Row): Record<string, string> => {
-    if (isEmpty(r, cols) || meta[r._key]?.readonly || meta[r._key]?.deleted) return {}
+    if (isEmpty(r, cols) || meta[r._key]?.readonly) return {}
     const e: Record<string, string> = {}
     if (tab === 'holdings') {
       if (!r.account_id) e.account_id = '계좌를 골라 주세요'
@@ -131,7 +136,7 @@ export function AssetSheet({ owner, initialTab = 'holdings', onSaved, embedded =
     return e
   }, [cols, meta, tab])
 
-  const dirtyKeys = rows.filter(r => { const m = meta[r._key]; if (m?.readonly) return false; if (m?.deleted) return true; if (!m) return !isEmpty(r, cols); return m.orig !== sigOf(r, KEYS[tab]) }).map(r => r._key)
+  const dirtyKeys = rows.filter(r => { const m = meta[r._key]; if (m?.readonly) return false; if (!m) return !isEmpty(r, cols); return m.orig !== sigOf(r, KEYS[tab]) }).map(r => r._key)
   const errorCount = rows.reduce((n, r) => n + Object.keys(rowErrors(r)).length, 0)
 
   function setCell(ri: number, key: string, value: string) {
@@ -151,7 +156,7 @@ export function AssetSheet({ owner, initialTab = 'holdings', onSaved, embedded =
   }
   const optionValue = (c: Col, text: string) => { const t = text.trim(); const hit = c.options?.find(([k, l]) => k === t || l === t || l.replace(/\s/g, '') === t.replace(/\s/g, '')); return hit ? hit[0] : '' }
   const display = (c: Col, r: Row) => c.kind === 'calc' ? c.calc!(r) : c.kind === 'select' ? (c.options?.find(o => o[0] === r[c.key])?.[1] ?? '') : c.kind === 'int' ? fmt(r[c.key] ?? '') : (r[c.key] ?? '')
-  const locked = (r: Row, c: Col) => c.kind === 'calc' || !!meta[r._key]?.readonly || !!meta[r._key]?.deleted || !!c.disabled?.(r)
+  const locked = (r: Row, c: Col) => busy || c.kind === 'calc' || !!meta[r._key]?.readonly || !!c.disabled?.(r)
 
   function move(dr: number, dc: number) {
     setRowSel(null)
@@ -171,7 +176,7 @@ export function AssetSheet({ owner, initialTab = 'holdings', onSaved, embedded =
     setEditing(false); setTyped(false)
   }
   function onKey(e: KeyboardEvent<HTMLDivElement>) {
-    if (creatingFor) return
+    if (creatingFor || busy) return
     if (editing) {
       if (e.key === 'Enter') { e.preventDefault(); commit(); move(1, 0) }
       else if (e.key === 'Tab') { e.preventDefault(); commit(); move(0, e.shiftKey ? -1 : 1) }
@@ -191,21 +196,57 @@ export function AssetSheet({ owner, initialTab = 'holdings', onSaved, embedded =
     else if (e.key === 'Enter' || e.key === 'F2') { e.preventDefault(); startEdit() }
     else if (e.key === 'Delete' || e.key === 'Backspace') {
       e.preventDefault()
-      if (rowSel !== null) deleteRow(rowSel)
+      if (rowSel !== null) requestDelete(rowSel)
       else { const r = rows[sel.r], c = cols[sel.c]; if (r && !locked(r, c)) setCell(sel.r, c.key, '') }
     }
     else if (mod && e.key.toLowerCase() === 'c') { const r = rows[sel.r]; if (r) navigator.clipboard?.writeText(display(cols[sel.c], r)).catch(() => {}) }
     else if (!mod && e.key.length === 1 && cols[sel.c]?.kind === 'select') { e.preventDefault(); startEdit() }
     // 글자·숫자·한글은 막지 않는다 — 보이지 않는 입력칸이 받아서 onChange로 편집이 시작된다
   }
-  function deleteRow(ri: number) {
-    const r = rows[ri]; const m = meta[r?._key]
-    if (!r || m?.readonly) return
-    if (m?.id) setMeta(x => ({ ...x, [r._key]: { ...m, deleted: !m.deleted } }))
-    else setRows(rs => withSpare(rs.filter((_, i) => i !== ri), cols))
+  async function deleteRow(key: string) {
+    const r = rows.find(row => row._key === key), m = meta[key]
+    if (mutationBusy.current || loading || !r || m?.readonly) return
+    mutationBusy.current = true
+    setBusy(true); setError(''); setNotice('')
+    try {
+      if (m?.id && tab === 'assets') {
+        await api(`/assets/${m.id}?version=${m.version}`, 'DELETE')
+      } else if (m?.id && tab === 'holdings') {
+        // Delete from the saved account snapshot, never from other unsaved cells.
+        const accountId = String(m.raw?.account_id)
+        const latest = await api<HoldingSheet>(`/register/sheet?owner=${owner}`)
+        const current = latest.rows.filter(row => row.account_id === accountId)
+        const signatures = current.map(row => sigOf({ _key: '', ...holdingValues(row) }, KEYS.holdings))
+        const original = Object.values(meta).filter(item => item.raw?.account_id === accountId).map(item => item.orig)
+        if (JSON.stringify([...signatures].sort()) !== JSON.stringify(original.sort())) {
+          throw new Error('다른 화면에서 이 계좌의 종목이 바뀌었어요. 수정 중인 내용을 확인한 뒤 표를 다시 열어 주세요.')
+        }
+        const index = signatures.indexOf(m.orig)
+        if (index < 0) throw new Error('삭제할 종목을 찾을 수 없어요. 표를 다시 열어 주세요.')
+        const remaining = current.filter((_, i) => i !== index)
+        if (!remaining.length) throw new Error('계좌의 마지막 종목은 이 표에서 삭제할 수 없어요. 한 종목 이상 남겨 주세요.')
+        const asOf = latest.as_of[accountId]
+        if (!asOf) throw new Error('계좌의 기준일을 확인할 수 없어요. 표를 다시 열어 주세요.')
+        await api('/register/commit', 'POST', { account_id: accountId, source: 'file', as_of: asOf, accept_diff: true,
+          rows: remaining.map(row => ({ ticker_name: row.ticker_name, ticker: row.ticker, qty: row.qty, price: row.price,
+            buy_value: row.buy_value, asset_class: row.asset_class ?? 'mixed', stock_group: row.stock_group })) })
+      }
+      setRows(rs => withSpare(rs.filter(row => row._key !== key), cols))
+      setMeta(previous => { const next = { ...previous }; delete next[key]; return next })
+      setRowSel(null); setSel({ r: 0, c: 0 }); setEditing(false); setDeleteKey(null)
+      setNotice(m?.id ? '선택한 행을 삭제했어요. 다른 칸의 수정 내용은 저장을 눌러 반영해 주세요.' : '저장하지 않은 행을 제거했어요.')
+      // onSaved may close the dialog or remount the sheet, discarding other drafts.
+      if (m?.id) window.dispatchEvent(new Event('retire:holdings-changed'))
+    } catch (e) { setError(e instanceof Error ? e.message : '삭제하지 못했어요. 다시 시도해 주세요.') }
+    finally { mutationBusy.current = false; setBusy(false) }
+  }
+  function requestDelete(ri: number) {
+    const r = rows[ri], m = meta[r?._key]
+    if (busy || loading || !r || m?.readonly || (!m?.id && isEmpty(r, cols))) return
+    setError(''); setDeleteKey(r._key)
   }
   function onPaste(e: ClipboardEvent<HTMLDivElement>) {
-    if (editing || creatingFor) return
+    if (editing || creatingFor || busy) return
     const text = e.clipboardData.getData('text/plain')
     if (!text) return
     e.preventDefault()
@@ -239,6 +280,7 @@ export function AssetSheet({ owner, initialTab = 'holdings', onSaved, embedded =
   }
 
   async function save() {
+    if (mutationBusy.current) return
     setBusy(true); setError(''); setNotice('')
     try {
       if (tab === 'holdings') {
@@ -249,7 +291,7 @@ export function AssetSheet({ owner, initialTab = 'holdings', onSaved, embedded =
           const was = meta[r._key]?.raw?.account_id as string | undefined   // 지웠거나 다른 계좌로 옮긴 행의 원래 계좌도 다시 저장
           if (was) changedAccounts.add(was)
         })
-        const now = rows.filter(r => !isEmpty(r, cols) && !meta[r._key]?.deleted)
+        const now = rows.filter(r => !isEmpty(r, cols))
         let saved = 0, total = 0
         for (const acct of changedAccounts) {
           const list = now.filter(r => r.account_id === acct)
@@ -266,7 +308,6 @@ export function AssetSheet({ owner, initialTab = 'holdings', onSaved, embedded =
         for (const r of rows) {
           if (!dirtyKeys.includes(r._key)) continue
           const m = meta[r._key]
-          if (m?.deleted && m.id) { await api(`/assets/${m.id}?version=${m.version}`, 'DELETE'); n++; continue }
           if (isEmpty(r, cols)) continue
           const body = { name: r.name.trim(), account: r.account.trim(), owner: r.owner, pocket: r.pocket, assetClass: r.pocket === 'property' || r.pocket === 'debt' ? r.pocket : r.assetClass, amount: toInt(r.amount), as_of: r.as_of, share_percent: r.owner === 'joint' ? toInt(r.share_percent) : null, pension_layer: r.pocket === 'retirement' && r.pension_layer ? Number(r.pension_layer) : null }
           if (m?.id) await api(`/assets/${m.id}`, 'PUT', { ...body, parent_id: (m.raw?.parent_id as string | null) ?? null, valuation_source: (m.raw?.valuation_source as string) ?? 'total', version: m.version })
@@ -277,12 +318,18 @@ export function AssetSheet({ owner, initialTab = 'holdings', onSaved, embedded =
         window.dispatchEvent(new Event('retire:holdings-changed'))
         await load()
       }
-    } catch (e) { setError(e instanceof Error ? e.message : '저장하지 못했어요.'); await load() } finally { setBusy(false) }
+    } catch (e) { const message = e instanceof Error ? e.message : '저장하지 못했어요.'; await load(); setError(message) } finally { setBusy(false) }
   }
 
   const cur = rows[sel.r], curCol = cols[sel.c]
   const curErr = cur ? rowErrors(cur)[curCol?.key] : undefined
   const creatingRow = rows.find(r => r._key === creatingFor)
+  const selectedIndex = rowSel ?? sel.r
+  const selectedRow = rows[selectedIndex]
+  const selectedMeta = selectedRow ? meta[selectedRow._key] : undefined
+  const rowName = (r: Row) => (tab === 'assets' ? r.name : r.ticker_name) || '이름 없는 행'
+  const canDelete = !busy && !loading && !!selectedRow && !selectedMeta?.readonly && (!!selectedMeta?.id || !isEmpty(selectedRow, cols))
+  const pendingRow = rows.find(r => r._key === deleteKey)
   // 맨 아래 고정 합계 줄 — 표에 보이는 줄을 더해 보여 주기만 한다(저장 안 함). 자산 탭의 대출은 더하지 않고 따로 적는다
   const totals = useMemo(() => {
     const t = { value: 0, buy: 0, pl: 0, asset: 0, debt: 0 }
@@ -303,6 +350,17 @@ export function AssetSheet({ owner, initialTab = 'holdings', onSaved, embedded =
   }
 
   return <div className={`xl-wrap ${embedded ? 'xl-embedded' : ''}`}>
+    <div className="xl-row-actions" aria-label="선택 행 관리">
+      <div><strong>{selectedRow && !isEmpty(selectedRow, cols) ? `${selectedIndex + 2}행 · ${rowName(selectedRow)}` : '삭제할 자산이나 종목의 칸을 선택해 주세요'}</strong>
+        <span>{selectedMeta?.readonly ? '사진·파일로 가져온 자산은 보유종목 탭에서 수정·삭제해요.' : '수정은 저장, 삭제는 확인하면 바로 반영돼요.'}</span></div>
+      <button type="button" className="xl-row-delete" disabled={!canDelete || !!pendingRow} onClick={() => requestDelete(selectedIndex)}>
+        <Trash2 size={15}/>선택 행 삭제
+      </button>
+    </div>
+    {pendingRow && <div className="xl-delete-confirm" role="group" aria-label="행 삭제 확인">
+      <div><strong>‘{rowName(pendingRow)}’ 행을 삭제할까요?</strong><p>{meta[pendingRow._key]?.id ? '확인하면 바로 삭제됩니다. 다른 행의 수정 내용은 저장되지 않아요.' : '아직 저장하지 않은 행이므로 표에서 바로 제거됩니다.'}</p></div>
+      <div className="xl-delete-buttons"><button type="button" disabled={busy} onClick={() => setDeleteKey(null)}>취소</button><button type="button" className="xl-row-delete" disabled={busy} onClick={() => deleteRow(pendingRow._key)}>{busy ? '삭제하는 중…' : '삭제하기'}</button></div>
+    </div>}
     <div className="xl-bar" onMouseDown={e => { if ((e.target as HTMLElement).tagName !== 'INPUT') e.preventDefault() }}>
       <span className="xl-addr">{letters(sel.c)}{sel.r + 2}</span>
       <span className="xl-fx">fx</span>
@@ -324,13 +382,13 @@ export function AssetSheet({ owner, initialTab = 'holdings', onSaved, embedded =
         <div className="xl-rowh">1</div>
         {cols.map(c => <div key={c.key} className={`xl-head ${c.align === 'right' ? 'r' : ''} ${c.kind === 'calc' ? 'calc' : ''}`}>{c.label}</div>)}
         {rows.map((r, ri) => { const errs = rowErrors(r); const m = meta[r._key]; const dirty = dirtyKeys.includes(r._key); return [
-          <div key={`${r._key}-h`} role="rowheader" className={`xl-rowh ${sel.r === ri ? 'on' : ''} ${rowSel === ri ? 'picked' : ''} ${dirty ? 'dirty' : ''}`} title={m?.readonly ? '사진·파일로 등록한 줄은 보유종목 탭에서 고쳐요' : '눌러서 줄 선택 → Delete로 지우기'}
-            onMouseDown={e => { e.preventDefault(); if (editing) commit(); setRowSel(ri); setSel({ r: ri, c: 0 }); setEditing(false); gridRef.current?.focus() }}>{ri + 2}</div>,
+          <div key={`${r._key}-h`} role="rowheader" className={`xl-rowh ${sel.r === ri ? 'on' : ''} ${rowSel === ri ? 'picked' : ''} ${dirty ? 'dirty' : ''}`} title={m?.readonly ? '사진·파일로 등록한 줄은 보유종목 탭에서 고쳐요' : '눌러서 행 선택 → 선택 행 삭제 버튼 또는 Delete 키'}
+            onMouseDown={e => { e.preventDefault(); if (busy) return; if (editing) commit(); setRowSel(ri); setSel({ r: ri, c: 0 }); setEditing(false); gridRef.current?.focus() }}>{ri + 2}</div>,
           ...cols.map((c, ci) => { const on = sel.r === ri && sel.c === ci && rowSel === null; const lk = locked(r, c)
             return <div key={`${r._key}-${c.key}`} role="gridcell" aria-selected={on}
-              className={`xl-cell ${c.align === 'right' ? 'r' : ''} ${on ? 'on' : ''} ${rowSel === ri ? 'picked' : ''} ${lk ? 'lock' : ''} ${c.kind === 'calc' ? 'calc' : ''} ${errs[c.key] ? 'bad' : ''} ${m?.deleted ? 'del' : ''} ${m?.readonly ? 'ro' : ''} ${c.key === '_pl' && display(c, r).startsWith('-') ? 'down' : c.key === '_pl' && display(c, r).startsWith('+') ? 'up' : ''}`}
+              className={`xl-cell ${c.align === 'right' ? 'r' : ''} ${on ? 'on' : ''} ${rowSel === ri ? 'picked' : ''} ${lk ? 'lock' : ''} ${c.kind === 'calc' ? 'calc' : ''} ${errs[c.key] ? 'bad' : ''} ${m?.readonly ? 'ro' : ''} ${c.key === '_pl' && display(c, r).startsWith('-') ? 'down' : c.key === '_pl' && display(c, r).startsWith('+') ? 'up' : ''}`}
               title={errs[c.key]}
-              onMouseDown={e => { if (on && editing) return; e.preventDefault(); if (editing) commit(); setRowSel(null); setEditing(false); setSel({ r: ri, c: ci }) }}   // 기본 동작(표 전체로 포커스)을 막아야 그 칸 입력칸이 포커스를 받는다
+              onMouseDown={e => { if (busy || (on && editing)) return; e.preventDefault(); if (editing) commit(); setRowSel(null); setEditing(false); setSel({ r: ri, c: ci }) }}   // 기본 동작(표 전체로 포커스)을 막아야 그 칸 입력칸이 포커스를 받는다
               onDoubleClick={() => startEdit()}
               onClick={() => { if (c.kind === 'select' && !lk && !(on && editing)) { setSel({ r: ri, c: ci }); setDraft(r[c.key] ?? ''); setEditing(true) } }}>
               {on && editing && c.kind === 'select'
@@ -354,12 +412,12 @@ export function AssetSheet({ owner, initialTab = 'holdings', onSaved, embedded =
       <span className="xl-hint">{tab === 'holdings' ? '엑셀·구글 시트·증권사 화면에서 복사해 붙여 넣어도 돼요' : '집·대출·예금처럼 금액만 아는 자산. 사진·파일로 등록한 줄은 회색'}</span>
     </div>}
 
-    {notice && <p className="xl-notice">{notice}</p>}
+    {notice && <p className="xl-notice" role="status">{notice}</p>}
     {error && <div className="form-error" role="alert"><Info size={16}/>{error}</div>}
     <div className="xl-foot">
       <span className="xl-links">{tab === 'holdings' && <><a href={`/api/register/template.xlsx?prefill=1&owner=${owner}`} download><Download size={14}/>지금 잔고를 엑셀로 받기</a><a href="/api/register/template.xlsx" download><Download size={14}/>빈 엑셀 양식</a></>}</span>
       <span className="xl-status">{dirtyKeys.length ? `바뀐 줄 ${dirtyKeys.length}개` : '바뀐 내용 없음'}{errorCount ? ` · 빨간 칸 ${errorCount}개` : ''}</span>
-      <button type="button" className="xl-save" disabled={busy || !dirtyKeys.length || errorCount > 0} onClick={save}>{busy ? '저장하는 중…' : '저장'}</button>
+      <button type="button" className="xl-save" disabled={busy || !!pendingRow || !dirtyKeys.length || errorCount > 0} onClick={save}>{busy ? '저장하는 중…' : '저장'}</button>
     </div>
   </div>
 }

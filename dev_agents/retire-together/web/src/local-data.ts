@@ -22,6 +22,7 @@ export function useLocalData(owner: Owner) {
   const loadedOwner = useRef(owner)
   const [revision, setRevision] = useState(0)
   const refresh = useCallback(() => setRevision(v => v + 1), [])
+  useEffect(() => { window.addEventListener('retire:holdings-changed', refresh); return () => window.removeEventListener('retire:holdings-changed', refresh) }, [refresh])
   useEffect(() => {
     const controller = new AbortController()
     setLoading(true); setError('')

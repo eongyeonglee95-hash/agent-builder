@@ -220,3 +220,47 @@ def test_capital_survives_missing_ages_and_excludes_future_money(client):
     assert d["capital"] == {"me": {"balances": {"3": 60_000_000}, "db_accrued": 20_000_000},
                             "partner": {"balances": {"4": 10_000_000}, "db_accrued": 0}}
     assert d["spending_target"] is None
+
+
+def test_private_payout_default_is_independent_of_retirement_and_preserves_overrides(client):
+    _family(client)
+    _asset(client, "연금저축", "나 연금저축", "me", 60_000_000)
+    _asset(client, "추가연금", "추가연금", "me", 30_000_000)
+    initial = client.get("/api/retirement").json()
+    saved = client.put("/api/retirement/plan", json={**initial["plan"],
+        "me": {**initial["plan"]["me"], "retire_age": 57},
+        "partner": {**initial["plan"]["partner"], "private_start_age": 65}}).json()
+    assert saved["payout_defaults"]["private_start_age"] == 60
+    assert saved["plan"]["me"]["private_start_age"] is None
+    assert saved["used"]["me"]["private_start_age"] == 60
+    assert saved["used"]["partner"]["private_start_age"] == 65
+    streams = [s for s in saved["projection"]["summary"]["streams"] if s["layer"] in (3, 4)]
+    assert len(streams) == 2 and all(s["start_age"] == 60 and s["payout_years"] == 30 for s in streams)
+    original_assets = client.get("/api/assets").json()
+    changed = client.put("/api/retirement/plan", json={**saved["plan"],
+        "me": {**saved["plan"]["me"], "private_start_age": 63}}).json()
+    assert changed["used"]["me"]["private_start_age"] == 63
+    assert changed["plan"]["partner"] == saved["plan"]["partner"]
+    assert all(s["payout_years"] == 27 for s in changed["projection"]["summary"]["streams"] if s["layer"] in (3, 4))
+    assert client.get("/api/retirement").json()["used"]["me"]["private_start_age"] == 63
+    reset = client.put("/api/retirement/plan", json={**changed["plan"],
+        "me": {**changed["plan"]["me"], "private_start_age": None}}).json()
+    assert reset["used"]["me"]["private_start_age"] == 60
+    assert reset["plan"]["me"]["private_start_age"] is None
+    assert client.get("/api/assets").json() == original_assets
+
+
+def test_private_payout_default_reads_rules_and_does_not_backdate(client, monkeypatch):
+    rules = retirement.load_pension_rules()
+    rules["private"]["start_age_default"] = 61
+    monkeypatch.setattr(retirement, "load_pension_rules", lambda: rules)
+    _family(client, partner=False)
+    family = client.get("/api/family").json()
+    assert client.put("/api/family", json={"me": {**family["me"], "age": 67}, "partner": None,
+        "retirement_age": 70, "target_amount": None, "version": family["version"]}).status_code == 200
+    _asset(client, "추가연금", "추가연금", "me", 30_000_000)
+    data = client.get("/api/retirement").json()
+    assert data["payout_defaults"]["private_start_age"] == 61
+    assert data["used"]["me"]["private_start_age"] == 61
+    stream = next(s for s in data["projection"]["summary"]["streams"] if s["layer"] == 4)
+    assert stream["start_age"] == 67 and stream["start_year"] == date.today().year

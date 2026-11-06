@@ -413,3 +413,61 @@ def test_contract_preview_flags_overlap_with_brokered_pension_accounts(client, e
     r = client.post("/api/register/capture", data={"owner": "me"}, files=[("images", ("portal.png", b"\x89PNG" + b"0" * 50, "image/png"))])
     assert r.status_code == 200, r.text
     assert [c["overlap"] for c in r.json()["groups"][0]["contracts"]] == [True, False]
+
+@pytest.mark.parametrize('accumulated,premiums,expected,source', [
+    (None, 37_696_320, 37_696_320, 'total_premiums'),
+    ('', 14_450_256, 14_450_256, 'total_premiums'),
+    (42_000_000, 37_696_320, 42_000_000, 'accumulation'),
+    (0, 37_696_320, 0, 'accumulation'),
+    (None, None, None, None),
+    ('not read', None, None, None),
+])
+def test_insurance_detail_amount_precedence(accumulated, premiums, expected, source):
+    from tools.parse_balance import _contracts_from
+    _, meta = _contracts_from({'contracts': [{'product_name': '검수 보험', 'insurance_detail': True,
+        'amount': accumulated, 'total_premiums': premiums, 'surrender_value': 6_500_049,
+        'monthly_premium': 300_000, 'paid_installments': 120, 'total_installments': 120,
+        'as_of': '2026. 11. 7 기준'}]})
+    row = meta['contracts'][0]
+    assert row['amount'] == expected and row['amount_source'] == source
+    assert row['surrender_value'] == 6_500_049 and row['monthly_premium'] == 300_000
+    assert row['as_of'] == '2026-11-07'
+    assert row['payout_start_date'] is None
+
+
+def test_insurance_detail_capture_and_explicit_pension_savings(client, monkeypatch):
+    from tools.parse_balance import _contracts_from
+    def fake(paths):
+        return [_contracts_from({'kind': 'contracts', 'account_label': name, 'contracts': [{
+            'company': '검수생명', 'product_type': '', 'product_name': name,
+            'amount': None, 'total_premiums': premiums, 'surrender_value': surrender,
+            'monthly_premium': 300_000, 'paid_installments': paid, 'total_installments': 120,
+            'insurance_detail': True, 'as_of': date.today().isoformat(),
+        }]}) for name, premiums, surrender, paid in [
+            ('첫 보험', 37_696_320, 6_500_049, 120), ('둘째 보험', 14_450_256, 5_367_322, 46)]]
+    monkeypatch.setattr(registration, 'parse_images_multi', fake)
+    response = client.post('/api/register/capture', data={'owner': 'me'}, files=[('images', ('insurance.png', b'fake', 'image/png'))])
+    assert response.status_code == 200, response.text
+    groups = response.json()['groups']
+    assert len(groups) == 2
+    assert [g['computed_total'] for g in groups] == [37_696_320, 14_450_256]
+    for group in groups:
+        row = group['contracts'][0]
+        assert row['layer'] == 0  # The image does not establish tax-qualified status.
+        assert row['overlap'] is False and row['amount_source'] == 'total_premiums'
+        fields = {k: row[k] for k in ('company', 'product_type', 'product_name', 'amount', 'as_of', 'payout_start_date')}
+        saved = client.post('/api/register/contracts', json={'owner': 'me', 'rows': [{**fields, 'layer': 3}]})
+        assert saved.status_code == 200, saved.text
+    assets = client.get('/api/assets').json()
+    assert len(assets) == 2
+    assert all(a['pension_layer'] == 3 for a in assets)
+    assert sorted(a['amount'] for a in assets) == [14_450_256, 37_696_320]
+
+
+def test_single_account_capture_accepts_insurance_details(monkeypatch):
+    from tools import parse_balance
+    async def fake(paths, multi=False):
+        return {'kind': 'contracts', 'contracts': [{'product_name': '검수 보험', 'amount': None, 'total_premiums': 1000}]}
+    monkeypatch.setattr(parse_balance, '_parse_capture_async', fake)
+    df, meta = parse_balance.parse_capture(['unused.png'], 'me_test_pension')
+    assert df.empty and meta['contracts'][0]['amount'] == 1000

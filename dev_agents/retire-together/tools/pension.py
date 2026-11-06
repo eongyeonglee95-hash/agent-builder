@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import os
 import calendar
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date
 from pathlib import Path
 
@@ -199,6 +199,27 @@ class Person:
     balances: dict[int, int] = field(default_factory=dict)   # 층(2·3·4) → 현재 적립금. 4층 = 세제비적격 연금보험·ISA 등 추가 자금
     annual: dict[int, int] = field(default_factory=dict)     # 층(2·3) → 연 납입
     db_lump: int = 0               # DB 예상 퇴직금 (오늘 돈)
+    savings_first_age: int | None = None  # 첫 연말 납입 시점의 나이. None은 기존 은퇴까지 납입
+    savings_end_age: int | None = None    # 마지막 납입 해의 나이(포함)
+
+
+def savings_schedule(p: Person) -> dict:
+    """미래에 남은 연말 납입만 센다. 지난 납입은 현재 장부 잔액에 포함되어 있다."""
+    start = max(p.private_start_age, p.age)
+    explicit = p.savings_first_age is not None or p.savings_end_age is not None
+    if explicit:
+        if p.savings_first_age is None or p.savings_end_age is None:
+            raise ValueError(f"{p.label}: 납입 시작 연도와 종료 나이를 함께 입력해 주세요")
+        if p.savings_end_age < p.savings_first_age:
+            raise ValueError(f"{p.label}: 납입 종료 시점이 시작보다 빨라요")
+        if p.savings_end_age > p.private_start_age:
+            raise ValueError(f"{p.label}: 납입 종료 나이는 연금 수령 시작 나이 이하여야 해요")
+        first, last = max(p.age + 1, p.savings_first_age), p.savings_end_age
+    else:
+        first, last = p.age + 1, min(p.retire_age, start)
+    count = max(0, last - first + 1)
+    return {"first_age": first if count else None, "last_age": last if count else None,
+            "payments": count, "total_contributions": p.annual.get(3, 0) * count}
 
 
 @dataclass(frozen=True)
@@ -250,7 +271,13 @@ def person_streams(p: Person, a: Assumptions) -> list[Stream]:
     start = max(p.private_start_age, p.age)
     contrib = min(p.retire_age, start) - p.age
     for layer, label in ((2, "퇴직연금(DC·IRP)"), (3, "개인연금")):
-        fv = future_value(p.balances.get(layer, 0), p.annual.get(layer, 0), r, start - p.age, contrib)
+        if layer == 3:
+            schedule = savings_schedule(p)
+            fv = future_value(p.balances.get(3, 0), 0, r, start - p.age)
+            if schedule["payments"]:
+                fv += future_value(0, p.annual.get(3, 0), r, schedule["payments"]) * (1 + r) ** (start - schedule["last_age"])
+        else:
+            fv = future_value(p.balances.get(layer, 0), p.annual.get(layer, 0), r, start - p.age, contrib)
         private(layer, label, start, fv)
     # 4층 추가연금: 3층과 같은 확정기간 방식으로 "월급으로 나눠 쓰면" 얼마인지 계산한다. 기본 합계에는 넣지 않는다 (project 참고).
     private(4, "추가연금", start, future_value(p.balances.get(4, 0), 0, r, start - p.age, contrib))
@@ -262,6 +289,26 @@ def person_streams(p: Person, a: Assumptions) -> list[Stream]:
         lump = p.db_lump * (1 + pi) ** (retire - p.age)
         private(2, "퇴직연금(DB)", db_start, lump * (1 + r) ** (db_start - retire))
     return out
+
+
+def savings_breakdown(p: Person, a: Assumptions) -> dict[str, int]:
+    """같은 수령·운용 조건에서 기존 적립금만 운용한 결과와 이번 납입 증가분을 분리한다.
+
+    기존 시뮬레이션의 원 단위 반올림을 그대로 쓰고 증가분은 합계와 기존분의 차이로
+    계산한다. 각 표시값을 더하면 합계와 일치하며 현재 장부·계획은 변경하지 않는다.
+    """
+    def amounts(person: Person) -> tuple[int, int]:
+        stream = next((s for s in person_streams(person, a) if s.layer == 3), None)
+        if stream is None:
+            return 0, 0
+        return stream.principal, round(stream.monthly_first / (1 + a.inflation) ** (stream.start_age - p.age))
+
+    total_principal, total_monthly = amounts(p)
+    existing_principal, existing_monthly = amounts(replace(p, annual={**p.annual, 3: 0}))
+    return {"principal": total_principal, "monthly_real": total_monthly,
+            "existing_principal": existing_principal, "existing_monthly_real": existing_monthly,
+            "contribution_principal": total_principal - existing_principal,
+            "contribution_monthly_real": total_monthly - existing_monthly}
 
 
 def national_factor(shift_years: int, a: Assumptions) -> float:

@@ -6,8 +6,15 @@ assumptions:
   end_age: 90              # 사적연금 확정기간형 종료 나이 = 시뮬레이션 끝 (국민연금은 종신이지만 여기까지만 본다)
 
 private:                   # 퇴직연금(DC·IRP)·연금저축
+  start_age_default: 60    # 수령정보 미입력 시 계산용 가정 (2026-11-07 사용자 결정, 상품 약정 아님)
   start_age_min: 55        # 제도상 최소 개시 나이
   min_payout_years: 10     # 제도상 최소 수령 기간
+
+# 2026-11-07 사용자 요청: 신규 개인연금 납입 계획의 검토 초안. 저장 전에는 적용하지 않는다.
+savings_plan_template:
+  annual: 6000000
+  end_age: 55              # 법정 납입 종료 나이가 아닌 이번 계획의 기본값
+  start_year_offset: 1
 
 db:                        # 고용노동부 퇴직금 계산 안내, CALCULATION_RULES §4
   service_days_per_year: 365

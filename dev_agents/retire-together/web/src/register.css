@@ -139,3 +139,11 @@
 .rv-ct-row.is-off{opacity:.55}.rv-ct-row.is-off input:not([type=checkbox]),.rv-ct-row.is-off select{pointer-events:none;background:#f2f4f6}
 .rv-ct-include{display:flex;align-items:center;gap:8px;min-width:0;cursor:pointer}.rv-ct-include input{width:16px;height:16px;margin:0;accent-color:#142339}
 .rv-ct-overlap{font-weight:500;color:#b4541a}
+
+/* Insurance detail captures keep premium and cash-out amounts separate. */
+.rv-insurance-detail{grid-column:1/-1;padding-top:12px;border-top:1px solid var(--grey-200)}
+.rv-insurance-detail dl{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:0}
+.rv-insurance-detail dt,.rv-insurance-detail p{font-size:var(--text-xs);color:var(--grey-700);line-height:1.6}
+.rv-insurance-detail dd{font-size:var(--text-sm);color:var(--grey-900);margin:4px 0 0;font-variant-numeric:tabular-nums}
+.rv-insurance-detail p{margin:10px 0}
+@media(max-width:650px){.rv-insurance-detail dl{grid-template-columns:repeat(2,minmax(0,1fr))}}

@@ -12,6 +12,7 @@ import { UploadFlow } from '../register'
 import { ReadGrid, type Cell } from './ReadGrid'
 import { RebalancePlan } from './RebalancePlan'
 import { useRetirementRows } from './retirement'
+import { Overview } from './Overview'
 import { RetirementTower } from '../retirement/RetirementTower'
 
 // 첫 화면 — 엑셀 워크북 (2026-10-28 사용자 "처음부터 엑셀처럼", "먼저 엑셀 형태로 자산을 다 보여준 다음 다른 버전으로 보기").
@@ -50,6 +51,7 @@ export function Workbook({ onClassic }: { onClassic: () => void }) {
     catch (e) { setError(e instanceof Error ? e.message : '불러오지 못했어요.') } finally { setLoading(false) }
   }, [owner, live])
   useEffect(() => { load() }, [load, rev])
+  useEffect(() => { const refresh = () => { load() }; window.addEventListener('retire:holdings-changed', refresh); return () => window.removeEventListener('retire:holdings-changed', refresh) }, [load])
   useEffect(() => { history.replaceState(null, '', sheet === 'summary' ? location.pathname : `#sheet-${sheet}`) }, [sheet])
   useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(''), 3500); return () => clearTimeout(t) }, [toast])
   const changed = useCallback((msg: string) => { setToast(msg); setRev(r => r + 1) }, [])
@@ -117,7 +119,7 @@ export function Workbook({ onClassic }: { onClassic: () => void }) {
           </DropdownMenuContent>
         </DropdownMenu>
         <Button asChild size="sm" className="h-8 px-2.5 sm:px-3"><a href={`/api/workbook/report.xlsx?owner=${owner}${live ? '&live=true' : ''}`} download aria-label="보고서 내려받기"><Download className="size-3.5"/><span className="hidden sm:inline">보고서 내려받기</span></a></Button>
-        <Button variant="ghost" size="sm" className="h-8 px-2 text-grey-700" onClick={onClassic} aria-label="다른 버전으로 보기"><LayoutGrid className="size-3.5"/><span className="hidden lg:inline">다른 버전으로 보기</span></Button>
+        <Button variant="ghost" size="sm" className="h-8 px-2 text-grey-700" onClick={onClassic} aria-label="요약 화면으로 보기"><LayoutGrid className="size-3.5"/><span className="hidden lg:inline">요약 화면으로 보기</span></Button>
       </div>
     </header>
 
@@ -128,16 +130,16 @@ export function Workbook({ onClassic }: { onClassic: () => void }) {
     </div>
 
     <main className="flex min-h-0 flex-1 flex-col bg-white">
-      {sheet === 'summary' && (data ? <ReadGrid label="요약 시트" widths={[220, 120, 110, 130, 130, 130, 90, 130]} rows={summaryRows}/> : <div className="p-6 text-sm text-grey-600">불러오는 중…</div>)}
+      {sheet === 'summary' && <div className="min-h-0 flex-1 overflow-y-auto">{data && !loading && !error ? <div className="flex min-h-full flex-col"><Overview dashboard={data.dashboard} accounts={data.holdings.accounts} pools={data.rebalance.pools} owner={owner} onRegister={() => setImportMode('capture')} onHoldings={() => setSheet('holdings')} onRebalance={() => setSheet('rebalance')} onAssets={() => setSheet('assets')}/><div className="flex min-h-[360px] flex-1 flex-col"><ReadGrid label="요약 시트" widths={[220, 120, 110, 130, 130, 130, 90, 130]} rows={summaryRows}/></div></div> : <div className="p-6 text-sm text-grey-600" role="status">{error ? <><p>자산 현황을 불러오지 못했어요.</p><Button variant="outline" className="mt-3" onClick={load}>다시 불러오기</Button></> : '불러오는 중…'}</div>}</div>}
       {sheet === 'holdings' && <AssetSheet key={`h-${owner}-${rev}`} owner={owner} initialTab="holdings" embedded onSaved={changed}/>}
       {sheet === 'assets' && <AssetSheet key={`a-${owner}-${rev}`} owner={owner} initialTab="assets" embedded onSaved={changed}/>}
       {sheet === 'rebalance' && <RebalancePlan owner={owner} live={live} rev={rev} onChanged={changed} onError={setError} onRegister={() => setImportMode('capture')}/>}
       {sheet === 'retire' && <div className="min-h-0 flex-1 overflow-y-auto bg-grey-50"><RetirementTower data={retire.data} error={retire.error} save={retire.save} reload={retire.reload} owner={owner} onOwnerChange={setOwner} onAssets={() => setSheet('assets')} onRegister={() => setImportMode('capture')} onProfileChanged={() => changed('가족 정보를 저장했어요.')} details={<ReadGrid label="은퇴 시트" widths={[200, 130, 130, 110, 110, 120, 110, 260]} rows={retire.rows}/>}/></div>}
     </main>
 
-    <nav className="flex h-9 shrink-0 items-stretch border-t border-grey-300 bg-grey-100 text-sm" role="tablist" aria-label="시트">
+    <nav className="flex min-h-11 shrink-0 items-stretch overflow-x-auto border-t border-grey-300 bg-grey-100 text-sm" role="tablist" aria-label="시트">
       {SHEETS.map(([k, l]) => <button key={k} role="tab" aria-selected={sheet === k} onClick={() => setSheet(k)}
-        className={cn('border-r border-grey-300 px-5 text-grey-700 transition-colors hover:bg-white', sheet === k && 'bg-white font-semibold text-sheet-select shadow-[inset_0_-2px_0_var(--sheet-select)]')}>{l}</button>)}
+        className={cn('shrink-0 border-r border-grey-300 px-4 text-grey-700 transition-colors hover:bg-white', sheet === k && 'bg-white font-semibold text-sheet-select shadow-[inset_0_-2px_0_var(--sheet-select)]')}>{l}</button>)}
       <span className="ml-auto hidden items-center px-4 text-xs text-grey-600 md:flex">{sheet === 'retire' ? '층을 눌러 준비 상태를 확인해요 · 세전·오늘 돈 · 상세 표는 부부 전체 기준' : sheet === 'rebalance' ? '이번 달 납입 칸에 금액을 넣으면 다시 계산해요 · 결정은 기록만 하고 주문은 증권사 앱에서' : sheet === 'summary' ? '숫자는 등록한 잔고와 장부로 계산했어요' : '칸을 눌러 바로 고치고, 엑셀에서 복사해 붙여 넣어도 돼요'}</span>
     </nav>
 

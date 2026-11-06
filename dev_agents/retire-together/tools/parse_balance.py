@@ -27,10 +27,16 @@ CONTRACT_SCHEMA = {
         "product_name": {"type": "string", "description": "상품명"},
         "start_date": {"type": "string", "description": "가입일 YYYY-MM-DD, 없으면 빈 문자열"},
         "payout_start_date": {"type": "string", "description": "연금개시예정일 YYYY-MM-DD, 없으면 빈 문자열"},
-        "amount": {"type": "integer", "description": "적립금(원), 쉼표 없이"},
+        "amount": {"type": ["integer", "null"], "description": "화면에 적립금/계약자적립액으로 표시된 금액(원). 없으면 null. 총납입보험료·해지환급금·월납입액을 대신 넣지 않는다"},
+        "insurance_detail": {"type": "boolean", "description": "보험사 앱의 개별 보험 계약 상세 화면이면 true"},
+        "monthly_premium": {"type": ["integer", "null"], "description": "월납 보험료(원), 없으면 null. 연금 수령액이 아니다"},
+        "total_premiums": {"type": ["integer", "null"], "description": "총납입보험료(원), 없으면 null"},
+        "surrender_value": {"type": ["integer", "null"], "description": "해지환급금(원), 없으면 null. 적립금과 별개"},
+        "paid_installments": {"type": ["integer", "null"], "description": "납입횟수 중 납입한 횟수, 없으면 null"},
+        "total_installments": {"type": ["integer", "null"], "description": "총 납입예정 횟수, 없으면 null"},
         "as_of": {"type": "string", "description": "조회기준일 YYYY-MM-DD, 없으면 빈 문자열"},
     },
-    "required": ["company", "product_type", "product_name", "start_date", "payout_start_date", "amount", "as_of"],
+    "required": ["company", "product_type", "product_name", "start_date", "payout_start_date", "amount", "as_of", "insurance_detail", "monthly_premium", "total_premiums", "surrender_value", "paid_installments", "total_installments"],
     "additionalProperties": False,
 }
 
@@ -146,15 +152,23 @@ async def _parse_capture_async(image_paths: list[Path], multi: bool = False) -> 
 
     files = "\n".join(f"- {p.resolve()}" for p in image_paths)
     prompt = (
-        "다음 캡처 이미지를 Read 도구로 읽고 표로 옮겨라. 이미지는 둘 중 하나다.\n"
+        "다음 캡처 이미지를 Read 도구로 읽고 표로 옮겨라. 증권 잔고, 연금 계약 표, 보험사 계약 상세 화면을 지원한다.\n"
         "(a) 증권사 앱 잔고: 종목·보유수량·현재가가 있다 → kind=holdings, 보이는 종목 전부를 rows에. contracts는 빈 배열.\n"
         "(b) 연금 계약 표(금융감독원 통합연금포털 '내 연금조회' 등): 가입회사·상품유형·상품명·가입일·연금개시예정일·적립금·조회기준일이 "
         "한 줄씩 있다 → kind=contracts, 줄마다 contracts에. rows는 빈 배열. account_label은 표 제목(개인연금·퇴직연금·국민연금 등). "
         "날짜는 YYYY-MM-DD로, 적립금 합계가 보이면 screen_total_value에.\n"
+        "(c) 보험사 앱 계약 상세(표가 아니어도 된다): 회사·상품명·월납·납입횟수·총납입보험료·해지환급금이 세로로 나오는 화면도 kind=contracts. "
+        "계약 하나마다 contracts 한 줄, insurance_detail=true, rows=[]로 반환한다. 보험 상세를 종목으로 만들지 마라. "
+        "amount는 명시된 적립금/계약자적립액만, 표시가 없으면 null. 월납·총납입보험료·해지환급금은 각각 monthly_premium·total_premiums·surrender_value에 옮겨라. "
+        "120/120회처럼 납입횟수는 paid_installments/total_installments로 분리한다. 상품명은 그대로 보존한다. "
+        "상품명에 연금보험이 있다는 이유만으로 일반연금보험/연금저축보험을 판단하지 마라. 명시된 상품유형이 없으면 product_type은 빈 문자열. "
+        "보험기간의 시작은 start_date에 옮기되, 끝 날짜를 연금개시일로 추정하지 마라. 연금개시일이 별도로 명시된 경우에만 payout_start_date에 넣는다. "
+        "같은 보험사라도 상품명이나 가입일이 다르면 별개 계약이다. account_label은 회사와 상품명으로 구분한다. "
+        "보험 상세가 아닌 계약 표는 insurance_detail=false이며 나머지 보험 전용 항목은 보이지 않으면 null.\n"
         "같은 줄이 여러 이미지에 중복으로 보이면 한 번만 넣어라. 숫자는 쉼표를 빼고 정수로. "
         "계산하거나 추정하지 말고 화면에 보이는 값만 옮겨라.\n"
         + ("이미지에 계좌가 여러 개면 화면 상단의 계좌 이름(예: 연금저축계좌(신), IRP, ISA)으로 계좌별로 나눠라. "
-           "계좌 이름이 같은 이미지는 같은 계좌다. 계좌마다 화면 합계를 따로 적어라.\n" if multi else "")
+           "증권 계좌 이름이 같은 잔고 이미지는 같은 계좌다. 보험은 회사 이름만 같다고 합치지 마라. 계좌마다 화면 합계를 따로 적어라.\n" if multi else "")
         + files
     )
     options = ClaudeAgentOptions(
@@ -177,6 +191,8 @@ def parse_capture(image_paths: list[str | Path], account_id: str) -> tuple[pd.Da
     """캡처 이미지들 → holdings DataFrame. 두 번째 반환값은 {account_label, screen_total_value, reconciled, diff}."""
     paths = [Path(p) for p in image_paths]
     data = asyncio.run(_parse_capture_async(paths))
+    if data.get("kind") == "contracts":
+        return _contracts_from(data)
     df = pd.DataFrame(data["rows"])
     df.insert(0, "account_id", account_id)
     df["ticker"] = None
@@ -188,25 +204,34 @@ def parse_capture(image_paths: list[str | Path], account_id: str) -> tuple[pd.Da
 
 
 def _contracts_from(data: dict) -> tuple[pd.DataFrame, dict]:
-    """연금 계약 표 묶음. 종목 표(df)는 비워 두고 meta['contracts']에 계약 줄을 담는다. 금액은 적립금 그대로(계산 없음)."""
+    """연금 계약 표 묶음. 종목 표(df)는 비워 두고 meta['contracts']에 계약 줄을 담는다. 적립금 우선, 없으면 총납입보험료를 사용한다(사용자 결정). 출처를 함께 반환하며 해지환급금은 대입하지 않는다."""
     rows = []
     for c in data.get("contracts") or []:
-        try:
-            amount = int(c.get("amount") or 0)
-        except (TypeError, ValueError):
-            amount = 0
+        accumulated = _optional_int(c.get("amount"))
+        premiums = _optional_int(c.get("total_premiums"))
+        amount = accumulated if accumulated is not None else premiums
+        amount_source = "accumulation" if accumulated is not None else "total_premiums" if premiums is not None else None
         rows.append({"company": str(c.get("company") or "").strip(), "product_type": str(c.get("product_type") or "").strip(),
                      "product_name": str(c.get("product_name") or "").strip(), "start_date": _iso_date(c.get("start_date")),
-                     "payout_start_date": _iso_date(c.get("payout_start_date")), "amount": amount, "as_of": _iso_date(c.get("as_of"))})
+                     "payout_start_date": _iso_date(c.get("payout_start_date")), "amount": amount, "amount_source": amount_source, "as_of": _iso_date(c.get("as_of")),
+                     "insurance_detail": c.get("insurance_detail") is True,
+                     **{key: _optional_int(c.get(key)) for key in ("monthly_premium", "total_premiums", "surrender_value", "paid_installments", "total_installments")}})
     df = pd.DataFrame([], columns=HOLDING_COLUMNS + ["value", "buy_value"])
     meta = {"kind": "contracts", "account_label": data.get("account_label") or "", "contracts": rows,
             "screen_total_value": data.get("screen_total_value") or 0, "reconciled": True, "verified": False, "diff": 0, "value_diff": None, "errors": []}
     return df, meta
 
 
+def _optional_int(value) -> int | None:
+    if value is None or isinstance(value, bool):
+        return None
+    text = str(value).strip().replace(",", "")
+    return int(text) if re.fullmatch(r"\d+", text) else None
+
+
 def _iso_date(value) -> str | None:
     """'2026/09/30' · '2026.09.30' · '2026-09-30' → '2026-09-30'. 못 읽으면 None (추정하지 않는다)."""
-    m = re.search(r"(\d{4})\D(\d{1,2})\D(\d{1,2})", str(value or ""))
+    m = re.search(r"(\d{4})\D+(\d{1,2})\D+(\d{1,2})(?!\d)", str(value or ""))
     if not m:
         return None
     y, mo, d = (int(g) for g in m.groups())

@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import type { PersonPlan, Plan, Result } from '../workbook/retirement'
 import { PEOPLE, type Scope } from './presentation'
 import { DbRetirementFields, useDbPreview } from './DbRetirementFields'
+import { PrivatePayoutFields } from './PrivatePayoutFields'
 // 원 ↔ 만 원 (입력은 만 원, 저장은 원). 소수 넷째 자리까지 = 1원 단위
 export const toMan = (won: number | null | undefined) => won == null ? '' : String(Math.round(won) / 10000)
 export const fromMan = (man: string) => man === '' ? 0 : Math.round(Number(man) * 10000)
@@ -49,7 +50,7 @@ export function PlanDialog({ data, scope, section, save, close }: {
   }
   return <Dialog open onOpenChange={open => { if (!open && !busy) close() }}>
     <DialogContent className="tower-plan-dialog max-h-[88dvh] overflow-y-auto sm:max-w-xl" onEscapeKeyDown={e => { if (busy) e.preventDefault() }} onPointerDownOutside={e => { if (busy) e.preventDefault() }}>
-      <DialogHeader><DialogTitle>{TITLES[section]}</DialogTitle><DialogDescription>{section === 1 ? <>월액 한 칸이면 돼요. 납부 월수·납부 총액은 넣지 않아도 됩니다. <a href="https://www.fss.or.kr/fss/lifeplan/myAnntyCtrt/list.do?menuNo=200945" target="_blank" rel="noreferrer">통합연금포털에서 확인</a></> : '저장하면 등록한 적립금과 함께 다시 계산합니다. 금액은 만 원 단위로 입력해 주세요.'}</DialogDescription></DialogHeader>
+      <DialogHeader><DialogTitle>{TITLES[section]}</DialogTitle><DialogDescription>{section === 1 ? <>월액 한 칸이면 돼요. 납부 월수·납부 총액은 넣지 않아도 됩니다. <a href="https://www.fss.or.kr/fss/lifeplan/myAnntyCtrt/list.do?menuNo=200945" target="_blank" rel="noreferrer">통합연금포털에서 확인</a></> : section === 'timing' ? '수령 나이는 계산에 사용할 가정이에요. 저장하면 등록한 금액으로 다시 계산합니다.' : '저장하면 등록한 적립금과 함께 다시 계산합니다. 금액은 만 원 단위로 입력해 주세요.'}</DialogDescription></DialogHeader>
       <form onSubmit={e => { e.preventDefault(); submit() }} className="tower-plan-form">
         {typeof section === 'number' || section === 'timing' ? people.map(([who, name]) => <fieldset key={who} disabled={busy}><legend>{name}</legend><div className="tower-form-grid">
           {section === 1 && <>
@@ -68,8 +69,8 @@ export function PlanDialog({ data, scope, section, save, close }: {
           </>}
           {section === 'timing' && <>
             {personField(who, '은퇴 나이', 'retire_age', '세', '비우면 내 정보의 은퇴 목표', data.used[who]?.retire_age)}
-            {personField(who, '사적연금 개시 나이', 'private_start_age', '세', `퇴직·개인연금 · ${data.assumptions.start_age_min}세 이상, ${data.assumptions.end_age}세까지 ${data.assumptions.min_payout_years}년 이상 수령`, data.used[who]?.private_start_age)}
           </>}
+          {(section === 'timing' || section === 3) && <PrivatePayoutFields who={who} data={data} value={draft[who]} onChange={age => setDraft(p => ({ ...p, [who]: { ...p[who], private_start_age: age } }))}/>}
         </div></fieldset>) : section === 'goal' ? <label className="tower-field"><span>은퇴 후 부부 월 생활비 · 오늘의 돈</span><span className="tower-input-unit"><Input autoFocus type="number" inputMode="numeric" aria-label="은퇴 후 부부 월 생활비" min={0} max={1e8} step="any" value={toMan(draft.monthly_need)} placeholder="비우면 비교하지 않아요" onChange={e => setDraft(p => ({ ...p, monthly_need: e.target.value === '' ? null : fromMan(e.target.value) }))}/><span>만 원</span></span><small>지금 물가로 생각한 한 달 생활비를 입력하세요. 예: 월 500만 원이면 500. 저장하면 은퇴 시점에 필요한 금액을 물가에 맞춰 계산해요. 개인 보기에서도 부부 공동 목표입니다.</small></label> : <div className="tower-form-grid">
           {([['return_rate', '연 수익률', 15], ['inflation', '물가상승률', 10]] as const).map(([field, label, max]) => <label className="tower-field" key={field}><span>{label}</span><span className="tower-input-unit"><Input type="number" inputMode="decimal" aria-label={label} min={0} max={max} step={.01} value={draft[field] == null ? '' : +(draft[field]! * 100).toFixed(2)} placeholder={String(data.assumptions[field] * 100)} onChange={e => setDraft(p => ({ ...p, [field]: e.target.value === '' ? null : Number(e.target.value) / 100 }))}/><span>%</span></span><small>빈 칸은 기본 가정을 사용해요.</small></label>)}
         </div>}

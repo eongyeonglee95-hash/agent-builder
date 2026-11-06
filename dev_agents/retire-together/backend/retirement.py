@@ -19,7 +19,7 @@ from pydantic import Field, field_validator, model_validator
 from backend import registration, storage
 from backend.storage import InputModel
 from tools.assets import load_accounts
-from tools.pension import (LAYER_LABELS, Assumptions, Person, db_estimate, load_pension_rules, national_options, national_start_age, project, spending_budget_totals, spending_target, survivor_check)
+from tools.pension import (LAYER_LABELS, Assumptions, Person, db_estimate, load_pension_rules, national_options, national_start_age, project, savings_breakdown, savings_schedule, spending_budget_totals, spending_target, survivor_check)
 
 router = APIRouter(prefix="/api/retirement", tags=["retirement"])
 
@@ -31,9 +31,11 @@ class PersonPlan(InputModel):
     retire_age: Age | None = None           # 비우면 가족 정보의 은퇴 목표(나 기준, 배우자는 같은 해)
     national_monthly: Won = 0               # 국민연금 예상 월액 (오늘 돈) — 국민연금공단 '내 연금 알아보기'
     national_start_age: Age | None = None   # 비우면 출생연도 표
-    private_start_age: Age | None = None    # 비우면 max(55, 은퇴 나이)
+    private_start_age: Age | None = None    # 비우면 rules/pension.yaml의 계산용 기본 나이
     irp_annual: Won = 0                     # 퇴직연금(DC 회사 적립 + IRP 본인 납입) 연 납입
     savings_annual: Won = 0                 # 연금저축 연 납입
+    savings_start_year: Annotated[int, Field(strict=True, ge=1900, le=2200)] | None = None
+    savings_end_age: Age | None = None
     db_monthly_wage: Won = 0                # DB형 세전 월 평균급여 (최근 3개월 급여 총액 ÷ 3)
     db_accrued: Won = 0                     # DB형 지금 쌓인 퇴직금 (회사 '예상 퇴직금 조회')
     db_lump: Won = 0                        # 예전 입력: 회사가 알려 준 은퇴 시 예상 퇴직금
@@ -152,6 +154,7 @@ def build(plan: dict, family: dict | None, bal: dict[str, dict[int, int]], base_
     goal = family.get("retirement_age")
     as_of = as_of or dt.date(base_year, 1, 1)
     missing, people, used, db_estimates = [], [], {}, {}
+    savings_plans, savings_errors = {}, {}
     for key, label, f in (("me", "나", me_f), ("partner", "배우자", pa_f)):
         age, pp = f.get("age"), plan.get(key) or {}
         retire = pp.get("retire_age")
@@ -181,15 +184,30 @@ def build(plan: dict, family: dict | None, bal: dict[str, dict[int, int]], base_
                    national_monthly=pp.get("national_monthly") or 0,
                    national_start_age=pp.get("national_start_age") or national_start_age(base_year - age, rules),
                    national_normal_age=national_start_age(base_year - age, rules),
-                   private_start_age=pp.get("private_start_age") or max(a.start_age_min, min(retire, a.end_age - a.min_payout_years)),
+                   private_start_age=pp.get("private_start_age") or rules["private"]["start_age_default"],
                    balances={2: b.get(2, 0), 3: b.get(3, 0), 4: b.get(4, 0)},
                    annual={2: pp.get("irp_annual") or 0, 3: pp.get("savings_annual") or 0},
-                   db_lump=db["lump_at_retire"] if db else (pp.get("db_lump") or 0))
+                   db_lump=db["lump_at_retire"] if db else (pp.get("db_lump") or 0),
+                   savings_first_age=age + pp["savings_start_year"] - base_year if pp.get("savings_start_year") is not None else None,
+                   savings_end_age=pp.get("savings_end_age"))
+        try:
+            schedule = savings_schedule(p)
+            savings_plans[key] = {**schedule, "annual": p.annual.get(3, 0),
+                                  "start_year": base_year + schedule["first_age"] - age if schedule["payments"] else None,
+                                  "end_year": base_year + schedule["last_age"] - age if schedule["payments"] else None,
+                                  "balance_now": b.get(3, 0), "payout_age": max(p.private_start_age, age),
+                                  "principal": None, "monthly_real": None,
+                                  "existing_principal": None, "existing_monthly_real": None,
+                                  "contribution_principal": None, "contribution_monthly_real": None}
+        except ValueError as e:
+            savings_errors[key] = str(e)
         people.append(p)
         used[key] = {"age": age, "retire_age": retire, "national_start_age": p.national_start_age,
                      "private_start_age": p.private_start_age, "balances": {str(k): v for k, v in b.items()}, "db": db}
     result = {"plan": plan, "used": used, "missing": missing, "assumptions": a.__dict__, "base_year": base_year,
+              "payout_defaults": {"private_start_age": rules["private"]["start_age_default"]},
               "spending_budget_template": SpendingBudget(**rules.get("spending_budget_template", {})).model_dump(),
+              "savings_plan_template": rules["savings_plan_template"], "savings_plans": savings_plans, "savings_errors": savings_errors,
               "as_of": as_of.isoformat(), "db_estimates": db_estimates,
               "layer_labels": LAYER_LABELS, "projection": None, "error": None, "spending_target": None,
               "capital": {key: {"balances": {str(k): v for k, v in bal.get(key, {}).items() if k in (2, 3, 4)},
@@ -203,6 +221,9 @@ def build(plan: dict, family: dict | None, bal: dict[str, dict[int, int]], base_
     result["national"] = {"options": {p.key: national_options(p, a, base_year) for p in people}, "survivor": survivor_check(people, a)}
     try:
         result["projection"] = project(people, a, base_year, plan.get("monthly_need"))
+        for person in people:
+            if person.key in savings_plans:
+                savings_plans[person.key].update(savings_breakdown(person, a))
     except ValueError as e:
         result["error"] = str(e)
     return result
@@ -251,6 +272,14 @@ def save_plan_api(data: PlanInput):
     for label, person in (("나", data.me), ("배우자", data.partner)):
         if person.db_method == "tenure" and (not person.db_start_date or not person.db_monthly_wage):
             raise HTTPException(422, f"{label}: 입사일로 계산하려면 입사일과 세전 월 평균급여를 입력해 주세요.")
+    if any(p.savings_start_year is not None or p.savings_end_age is not None for p in (data.me, data.partner)):
+        today = dt.date.today()
+        checked = build(data.model_dump(), storage.get_family(), balances(), today.year, load_pension_rules(), as_of=today)
+        if checked["savings_errors"]:
+            raise HTTPException(422, " / ".join(checked["savings_errors"].values()))
+        for key, person in (("me", data.me), ("partner", data.partner)):
+            if (person.savings_start_year is not None or person.savings_end_age is not None) and key not in checked["used"]:
+                raise HTTPException(422, "납입 계획을 저장하려면 해당 사람의 나이와 은퇴 나이를 먼저 입력해 주세요.")
     save_plan(data)
     return current()
 

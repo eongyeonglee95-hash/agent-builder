@@ -407,10 +407,10 @@ test('첫 화면은 엑셀 워크북: 한 줄 요약·시트 탭·보고서·다
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   }
   await page.setViewportSize({ width: 1440, height: 900 })
-  await page.getByRole('button', { name: '다른 버전으로 보기' }).click()
+  await page.getByRole('button', { name: '요약 화면으로 보기' }).click()
   await expect(page).toHaveURL(/#home$/)
   await expect(page.locator('.sidebar')).toBeVisible()
-  await page.getByRole('button', { name: '엑셀 보기로' }).click()
+  await page.getByRole('button', { name: '표로 보기' }).click()
   await expect(page.getByRole('grid', { name: '요약 시트' })).toBeVisible()
   expect(errors).toEqual([])
 })

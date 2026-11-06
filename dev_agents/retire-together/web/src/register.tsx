@@ -12,9 +12,10 @@ import { AssetSheet } from './sheet'
 type Method = 'choose' | 'capture' | 'manual' | 'file' | 'sheet'
 export type RegisterAccount = { id: string; label: string; owner: 'me' | 'partner'; broker: string | null; broker_label: string; account_type: string | null; type_label: string; pocket: 'retirement' | 'cash'; active: boolean; has_holdings: boolean }
 type PreviewRow = { ticker_name: string; ticker: string | null; qty: number | null; price: number | null; value: number | null; buy_value: number | null; asset_class: string | null; stock_group: string | null; role: string | null; confirmed: boolean; candidates: [string, string][] }
-type ContractRow = { company: string; product_type: string; product_name: string; start_date: string | null; payout_start_date: string | null; amount: number; as_of: string | null; layer: number; overlap?: boolean }
-// 연금 계약 표(통합연금포털 캡처): 종목이 아니라 계약 한 줄 = 금액 자산 하나. 적립금은 보이는 값 그대로, 계산 없음
-type ContractEdit = { key: number; company: string; product_type: string; product_name: string; amount: string; as_of: string; payout_start_date: string; layer: number; include: boolean; overlap: boolean }
+type InsuranceFields = { amount_source?: 'accumulation' | 'total_premiums' | null; insurance_detail?: boolean; monthly_premium?: number | null; total_premiums?: number | null; surrender_value?: number | null; paid_installments?: number | null; total_installments?: number | null }
+type ContractRow = InsuranceFields & { company: string; product_type: string; product_name: string; start_date: string | null; payout_start_date: string | null; amount: number | null; as_of: string | null; layer: number; overlap?: boolean }
+// 연금 표·보험 상세: 계약 한 줄 = 금액 자산 하나. 적립금 우선, 없으면 총납입보험료(출처 표시).
+type ContractEdit = InsuranceFields & { key: number; company: string; product_type: string; product_name: string; amount: string; as_of: string; payout_start_date: string; layer: number; include: boolean; overlap: boolean }
 type ContractGroup = { key: number; label: string; owner: 'me' | 'partner'; rows: ContractEdit[]; screenTotal: number | null; layerLabels: Record<string, string>; saved: string; error: string }
 type Preview = { kind?: 'holdings' | 'contracts'; contracts?: ContractRow[]; layer_labels?: Record<string, string>; owner?: 'me' | 'partner'; account_id: string | null; account_label: string; source: 'capture' | 'file'; rows: PreviewRow[]; computed_total: number; screen_total: number | null; verified: boolean; reconciled: boolean; diff: number; value_diff: number | null; errors: string[]; class_labels: Record<string, string>; stock_groups?: Record<string, string>; matched_label?: string | null; suggested?: { label: string; owner: 'me' | 'partner'; broker: string; account_type: string } }
 type EditRow = { key: number; ticker_name: string; ticker: string; qty: string; price: string; buy: string; asset_class: string; stock_group: string; confirmed: boolean; candidates: [string, string][] }
@@ -119,7 +120,7 @@ export function UploadFlow({ mode, owner, onSaved }: { mode: 'capture' | 'file';
       const holdings = out.groups.filter(p => p.kind !== 'contracts'), contractGroups = out.groups.filter(p => p.kind === 'contracts')
       setGroups(holdings.length ? holdings.map((p, i) => ({ key: i, preview: p, rows: toEdit(p), accountId: p.account_id ?? '', acceptDiff: false, creating: !p.account_id, picking: false, error: '', saved: '' })) : null)
       setContracts(contractGroups.length ? contractGroups.map((p, i) => ({ key: i, label: p.account_label, owner: p.owner ?? ownerHint, layerLabels: p.layer_labels ?? {}, screenTotal: p.screen_total, saved: '', error: '',
-        rows: (p.contracts ?? []).map((c, k) => ({ key: k, company: c.company, product_type: c.product_type, product_name: c.product_name, amount: String(c.amount), as_of: c.as_of ?? today, payout_start_date: c.payout_start_date ?? '', layer: c.layer === 1 ? 3 : c.layer, include: !c.overlap, overlap: !!c.overlap })) })) : null)
+        rows: (p.contracts ?? []).map((c, k) => ({ ...c, key: k, company: c.company, product_type: c.product_type, product_name: c.product_name, amount: c.amount == null ? '' : String(c.amount), as_of: c.as_of ?? '', payout_start_date: c.payout_start_date ?? '', layer: c.layer === 1 ? 3 : c.layer, include: !c.overlap, overlap: !!c.overlap })) })) : null)
       setEditing(null)
     } catch (e) { setError(e instanceof Error ? e.message : '변환하지 못했어요.') } finally { setBusy(false) }
   }
@@ -245,7 +246,7 @@ export function UploadFlow({ mode, owner, onSaved }: { mode: 'capture' | 'file';
   const editContract = (g: ContractGroup, rowKey: number, patch: Partial<ContractEdit>) => patchContracts(g.key, gg => ({ rows: gg.rows.map(r => r.key === rowKey ? { ...r, ...patch } : r) }))
   const included = (g: ContractGroup) => g.rows.filter(r => r.include)
   const contractTotal = (g: ContractGroup) => included(g).reduce((n, r) => n + (toMoney(r.amount) ?? 0), 0)
-  const contractProblems = (g: ContractGroup) => included(g).flatMap(r => [!r.product_name.trim() ? '상품명이 빈 줄이 있어요.' : '', toMoney(r.amount) === null ? `${r.product_name || '빈 줄'}: 적립금은 0 이상의 정수예요.` : '', !r.as_of ? `${r.product_name}: 기준일을 넣어 주세요.` : ''].filter(Boolean))
+  const contractProblems = (g: ContractGroup) => included(g).flatMap(r => [!r.product_name.trim() ? '상품명이 빈 줄이 있어요.' : '', toMoney(r.amount) === null ? `${r.product_name || '빈 줄'}: 등록할 금액을 확인해 주세요.` : '', !r.as_of ? `${r.product_name}: 기준일을 넣어 주세요.` : '', ![2, 3, 4].includes(r.layer) ? `${r.product_name}: 연금 종류를 선택해 주세요.` : ''].filter(Boolean))
   async function saveContracts(g: ContractGroup) {
     const rows = included(g)
     if (!rows.length || contractProblems(g).length) return
@@ -255,22 +256,27 @@ export function UploadFlow({ mode, owner, onSaved }: { mode: 'capture' | 'file';
       const msg = `${g.label} ${rows.length}건 · ${money(out.total)}${out.updated ? ` (갱신 ${out.updated})` : ''}`
       patchContracts(g.key, { saved: msg })
       window.dispatchEvent(new Event('retire:holdings-changed'))
-      if (!groups) onSaved(`등록했어요: ${msg}`)
+      if (!groups && contracts?.every(other => other.key === g.key || other.saved)) onSaved(`선택한 연금 계약을 모두 등록했어요.`)
     } catch (e) { patchContracts(g.key, { error: e instanceof Error ? e.message : '저장하지 못했어요.' }) } finally { setBusy(false) }
   }
   const contractsPanel = contracts && <div className="rv register-wide">
     {!groups && <div className="rv-top"><h3>이렇게 등록할게요</h3></div>}
     {contracts.map(g => { const total = contractTotal(g), problems = contractProblems(g), allTotal = g.rows.reduce((n, r) => n + (toMoney(r.amount) ?? 0), 0), diff = g.screenTotal ? allTotal - g.screenTotal : 0, skipped = g.rows.length - included(g).length; return <section className={`rv-acct ${g.saved ? 'is-saved' : ''}`} key={g.key} aria-label={`${g.label} 계약 표`}>
-      <div className="rv-acct-line"><h4>{g.label} <small>· 연금 계약 {g.rows.length}건</small></h4><label className="rv-ct-owner">누구의 연금<select aria-label="누구의 연금" value={g.owner} onChange={e => patchContracts(g.key, { owner: e.target.value as 'me' | 'partner' })}><option value="me">나</option><option value="partner">배우자</option></select></label></div>
-      <div className="rv-total n"><div className="rv-big">{won(total)}</div><div className={`rv-check ${g.screenTotal && Math.abs(diff) > 5000 ? 'warn' : ''}`}>{g.screenTotal ? Math.abs(diff) <= 5000 ? <>캡처 합계 <b>{won(g.screenTotal)}</b>와 같아요{skipped ? ` · ${skipped}건은 겹쳐서 제외` : ''}</> : <>캡처 합계 <b>{won(g.screenTotal)}</b>와 {signed(diff)}원 달라요. 줄이 빠졌거나 숫자를 확인해 주세요.</> : '적립금을 보이는 그대로 옮겼어요. 숫자를 한 번 봐 주세요.'}</div></div>
-      <div className="rv-contracts" role="table" aria-label="연금 계약">
-        <div className="rv-ct-head" role="row"><span>상품 · 가입회사</span><span>적립금</span><span>기준일</span><span>연금 층</span><span/></div>
+      <div className="rv-acct-line"><h4>{g.label} <small>· 연금 계약 {g.rows.length}건</small></h4><label className="rv-ct-owner">누구의 연금<select aria-label="누구의 연금" value={g.owner} disabled={busy || !!g.saved} onChange={e => patchContracts(g.key, { owner: e.target.value as 'me' | 'partner' })}><option value="me">나</option><option value="partner">배우자</option></select></label></div>
+      <div className="rv-total n"><div className="rv-big">{included(g).some(r => toMoney(r.amount) === null) ? '등록 금액 확인 필요' : won(total)}</div><div className={`rv-check ${g.screenTotal && Math.abs(diff) > 5000 ? 'warn' : ''}`}>{g.screenTotal ? Math.abs(diff) <= 5000 ? <>캡처 합계 <b>{won(g.screenTotal)}</b>와 같아요{skipped ? ` · ${skipped}건은 겹쳐서 제외` : ''}</> : <>캡처 합계 <b>{won(g.screenTotal)}</b>와 {signed(diff)}원 달라요. 줄이 빠졌거나 숫자를 확인해 주세요.</> : '적립금 우선 · 적립금이 없으면 총납입보험료를 사용해요. 등록 금액과 종류를 확인해 주세요.'}</div></div>
+      <div className="rv-contracts" role="table" aria-label="연금 계약" inert={busy || !!g.saved}>
+        <div className="rv-ct-head" role="row"><span>상품 · 가입회사</span><span>등록 금액(원)</span><span>기준일</span><span>연금 층</span><span/></div>
         {g.rows.map(r => <div className={`rv-ct-row ${r.include ? '' : 'is-off'}`} role="row" key={r.key}>
           <span className="rv-ct-name"><label className="rv-ct-include"><input type="checkbox" aria-label={`${r.product_name} 포함`} checked={r.include} onChange={e => editContract(g, r.key, { include: e.target.checked })}/><strong title={r.product_name}>{r.product_name || '상품명 없음'}</strong></label><small>{[r.company, r.product_type].filter(Boolean).join(' · ')}{r.payout_start_date ? ` · 개시 ${r.payout_start_date.replaceAll('-', '.')}` : ''}{r.overlap && <b className="rv-ct-overlap"> · 증권사 잔고로 이미 등록한 계좌 같아요 — 두 번 잡히지 않게 뺐어요</b>}</small></span>
-          <input className="n" aria-label={`${r.product_name} 적립금`} inputMode="numeric" value={r.amount} onChange={e => editContract(g, r.key, { amount: e.target.value })}/>
+          <input className="n" aria-label={`${r.product_name} 등록 금액`} placeholder="금액 확인 필요" inputMode="numeric" value={r.amount} onChange={e => editContract(g, r.key, { amount: e.target.value, amount_source: null })}/>
           <input type="date" aria-label={`${r.product_name} 기준일`} value={r.as_of} max={today} onChange={e => editContract(g, r.key, { as_of: e.target.value })}/>
-          <select aria-label={`${r.product_name} 연금 층`} value={r.layer} onChange={e => editContract(g, r.key, { layer: Number(e.target.value) })}>{[2, 3, 4].map(l => <option key={l} value={l}>{g.layerLabels[String(l)] ?? `${l}층`}</option>)}</select>
+          <select aria-label={`${r.product_name} 연금 층`} value={r.layer} onChange={e => editContract(g, r.key, { layer: Number(e.target.value) })}><option value={0}>연금 종류 확인</option>{[2, 3, 4].map(l => <option key={l} value={l}>{g.layerLabels[String(l)] ?? `${l}층`}</option>)}</select>
           <button type="button" className="icon-button" aria-label={`${r.product_name} 빼기`} onClick={() => patchContracts(g.key, gg => ({ rows: gg.rows.filter(x => x.key !== r.key) }))}><X size={14}/></button>
+          {r.insurance_detail && <div className="rv-insurance-detail">
+            <dl>{[['월 납입보험료', r.monthly_premium], ['총납입보험료', r.total_premiums], ['해지환급금', r.surrender_value]].map(([label, value]) => <div key={String(label)}><dt>{label}</dt><dd>{typeof value === 'number' ? won(value) : '화면에 없음'}</dd></div>)}
+              <div><dt>납입횟수</dt><dd>{r.paid_installments != null && r.total_installments != null ? `${r.paid_installments}/${r.total_installments}회` : '화면에 없음'}</dd></div></dl>
+            <p>{r.amount_source === 'total_premiums' ? '적립금이 표시되지 않아 총납입보험료를 등록 금액으로 사용했어요. ' : ''}총납입보험료·해지환급금은 적립금과 다른 항목이에요. 연금저축보험이면 ‘개인연금 · 연금저축보험·펀드’를 선택하고, 등록할 금액을 확인해 주세요.</p>
+          </div>}
         </div>)}
       </div>
       <p className="rv-ct-note">계약 한 줄이 노후 주머니의 자산 하나로 저장돼요(종목 없이 금액만). 같은 상품이 이미 있으면 금액·기준일만 갱신해요. 연금개시예정일은 참고용이며, 받는 나이는 연금 화면의 수령 설정에서 정해요.</p>

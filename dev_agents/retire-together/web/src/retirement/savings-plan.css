@@ -1,0 +1,44 @@
+.tower-savings-actions {display:grid;gap:5px;padding-block:6px}
+body:has(.tower-savings-dialog[data-state="open"]) .brand-mode,
+body:has(.tower-savings-dialog[data-state="open"]) .wb-back {visibility:hidden}
+.tower-workspace .tower-savings-actions .tower-savings-open {color:var(--primary);border-color:color-mix(in srgb,var(--primary) 35%,var(--border))}
+.tower-savings-dialog {max-width:520px!important;max-height:90dvh;overflow-y:auto;color:var(--foreground)}
+.tower-savings-dialog form {display:grid;gap:18px}
+.tower-savings-dialog fieldset {border:0;padding:0;margin:0;min-width:0;display:grid;gap:16px}
+.tower-savings-person {display:flex;gap:5px}
+.tower-savings-person button {min-height:36px;padding:6px 18px;border-radius:var(--radius);border:1px solid var(--border);font-size:var(--text-sm)}
+.tower-savings-person button[aria-pressed=true] {color:var(--primary-foreground);background:var(--primary);border-color:var(--primary)}
+.tower-savings-context,.tower-savings-note,.tower-savings-basis {font-size:var(--text-xs);line-height:1.6;color:var(--muted-foreground);margin:0}
+.tower-savings-current{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px 12px;padding:12px;border:1px solid var(--border);border-radius:var(--radius);font-size:var(--text-sm)}
+.tower-savings-current strong{font-variant-numeric:tabular-nums}
+.tower-savings-current small{flex-basis:100%;font-size:var(--text-xs);line-height:1.6;color:var(--muted-foreground)}
+.tower-savings-period {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.tower-savings-dialog .tower-input-unit input {width:100%;min-width:0;font-size:var(--text-base)}
+.tower-savings-dialog .tower-input-unit>span {white-space:nowrap}
+.tower-savings-preview {padding:16px;border:1px solid var(--border);border-radius:var(--radius);background:var(--muted);font-size:var(--text-sm)}
+.tower-savings-preview p {margin:0 0 12px;line-height:1.6}
+.tower-savings-preview p:last-child {margin-bottom:0}
+.tower-savings-preview button {display:block;text-decoration:underline;margin-top:8px}
+.tower-savings-preview dl {margin:0;display:grid;gap:14px}
+.tower-savings-preview dl>div {display:flex;justify-content:space-between;gap:12px;align-items:center}
+.tower-savings-preview dt small {display:block;font-size:var(--text-xs);color:var(--muted-foreground);margin-top:2px}
+.tower-savings-preview dd {margin:0;text-align:right;font-weight:650;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.tower-savings-comparison{width:100%;border-collapse:collapse;table-layout:fixed;margin-top:18px;font-size:var(--text-sm)}
+.tower-savings-comparison caption{text-align:left;font-weight:650;padding-bottom:10px}
+.tower-savings-comparison small{display:block;font-size:var(--text-xs);font-weight:400;color:var(--muted-foreground);line-height:1.5;margin-top:3px}
+.tower-savings-dialog .tower-savings-comparison th,.tower-savings-dialog .tower-savings-comparison td{display:table-cell;font-size:var(--text-sm);color:var(--foreground);background:transparent;padding:10px 6px;vertical-align:middle;border-bottom:1px solid var(--border);overflow-wrap:anywhere}
+.tower-savings-comparison th{text-align:left;font-weight:500}
+.tower-savings-comparison th:first-child{width:38%}
+.tower-savings-comparison thead th:not(:first-child),.tower-savings-comparison td{text-align:right;font-variant-numeric:tabular-nums}
+.tower-savings-comparison .is-added{background:var(--brand-tint)}
+.tower-savings-comparison .is-added td{font-weight:650;color:var(--brand-dark)}
+.tower-savings-comparison .is-total th,.tower-savings-comparison .is-total td{font-weight:700;border-bottom:0;padding-top:14px}
+.tower-savings-basis summary {cursor:pointer}
+.tower-savings-basis p {margin:8px 0 0}
+.tower-savings-dialog .tower-error {font-size:var(--text-sm);line-height:1.6}
+@media(max-width:600px) {
+  .tower-savings-dialog {padding:20px 16px}
+  .tower-savings-period {gap:10px}
+  .tower-savings-preview {padding:12px}
+  .tower-savings-dialog .tower-savings-comparison th,.tower-savings-dialog .tower-savings-comparison td{font-size:var(--text-xs);padding-inline:4px}
+}

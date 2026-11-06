@@ -1,0 +1,11 @@
+.tower-payout-fields{grid-column:1/-1;display:grid;gap:12px;padding:16px;border:1px solid var(--grey-200);border-radius:var(--radius-lg);background:var(--grey-50);min-width:0}
+.tower-payout-heading{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}
+.tower-payout-heading strong{font-size:var(--text-sm);color:var(--grey-900)}
+.tower-payout-heading span,.tower-payout-fields p{font-size:var(--text-xs);color:var(--grey-700);line-height:1.6}
+.tower-payout-fields p{margin:0}
+.tower-payout-choices{display:flex;gap:8px}
+.tower-payout-choices button{flex:1;min-height:44px;border:1px solid var(--grey-300);border-radius:var(--radius-md);background:var(--background);color:var(--grey-900);font-size:var(--text-sm);font-weight:600;cursor:pointer}
+.tower-payout-choices button[aria-pressed=true]{background:var(--brand);border-color:var(--brand);color:var(--brand-ink)}
+.tower-payout-reset{justify-self:start;min-height:40px;font-size:var(--text-xs);color:var(--grey-800);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.tower-payout-reset:disabled{color:var(--grey-500);cursor:default}
+.tower-payout-choices button:focus-visible,.tower-payout-reset:focus-visible{outline:2px solid var(--brand);outline-offset:3px}

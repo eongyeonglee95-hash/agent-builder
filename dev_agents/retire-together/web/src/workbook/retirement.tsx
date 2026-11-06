@@ -9,7 +9,8 @@ import type { Cell } from './ReadGrid'
 // '은퇴' 시트 (RETIRE-01). 위: 입력 칸(나·배우자), 아래: 연도별 월 수령액(세전·오늘 돈). 계산은 전부 서버(tools/pension.py).
 // 적립금은 '자산' 시트의 노후 주머니를 그대로 쓴다 — 여기서 다시 받지 않는다.
 
-export type PersonPlan = { retire_age: number | null; national_monthly: number; national_start_age: number | null; private_start_age: number | null; irp_annual: number; savings_annual: number; db_lump: number; db_monthly_wage: number; db_accrued: number; db_method: 'reported' | 'tenure'; db_start_date: string | null }
+export type PersonPlan = { retire_age: number | null; national_monthly: number; national_start_age: number | null; private_start_age: number | null; irp_annual: number; savings_annual: number; savings_start_year?: number | null; savings_end_age?: number | null; db_lump: number; db_monthly_wage: number; db_accrued: number; db_method: 'reported' | 'tenure'; db_start_date: string | null }
+export type SavingsProjection = { annual: number; payments: number; total_contributions: number; start_year: number | null; end_year: number | null; balance_now: number; payout_age: number; principal: number | null; monthly_real: number | null; existing_principal: number | null; existing_monthly_real: number | null; contribution_principal: number | null; contribution_monthly_real: number | null }
 export type SpendingBudget = { meal_cost: number; people: number; meals_per_day: number; days_per_month: number; allowance_monthly: number; living_monthly: number; insurance_monthly: number; housing_tax_annual: number; medical_monthly: number; health_insurance_monthly: number; irregular_monthly: number; other_monthly: number }
 export type Plan = { me: PersonPlan; partner: PersonPlan; monthly_need: number | null; spending_budget?: SpendingBudget | null; apply_spending_budget?: boolean; return_rate: number | null; inflation: number | null; version: number }
 export type ServicePeriod = { years: number; months: number; days: number }
@@ -20,7 +21,11 @@ export type Row = { year: number; ages: Record<string, number>; retired: boolean
 export type NationalOption = { shift: number; start_age: number; start_year: number; factor: number; monthly_real: number; gap_years: number; breakeven_age: number | null; selected: boolean }
 export type SurvivorCheck = { survivor: string; deceased: string; own_monthly: number; deceased_monthly: number; tiers: Record<string, { survivor_only: number; own_plus: number; larger: 'own_plus' | 'survivor_only' }> }
 export type Result = { plan: Plan; used: Partial<Record<'me' | 'partner', Used>>; missing: string[]; error: string | null; line: string; base_year: number
+  payout_defaults: { private_start_age: number }
   spending_budget_template: SpendingBudget
+  savings_plan_template: { annual: number; end_age: number; start_year_offset: number }
+  savings_plans: Partial<Record<'me' | 'partner', SavingsProjection>>
+  savings_errors: Partial<Record<'me' | 'partner', string>>
   as_of: string; db_estimates: Record<'me' | 'partner', DbEstimate>
   capital: Record<'me' | 'partner', { balances: Record<string, number>; db_accrued: number }>
   // 국민연금 조기·연기 선택지와 유족연금 대충 보기 (서버 계산, 추천 없음)
@@ -81,7 +86,7 @@ export function useRetirementRows({ rev, onChanged, onError }: Opts) {
       out.push([{ v: label }, ...WHO.map(([w, wl]) => ({ v: '', edit: { text, label: `${wl} ${label}`, value: p[w][k] == null || (zero && !p[w][k]) ? '' : String(p[w][k]), placeholder: ph(data.used[w]), onCommit: (v: string) => setP(w, k, v, zero) } })), { v: note, span: W - 3, tone: 'muted' }])
     const dbRow = (label: string, note: string) =>
       out.push([{ v: label, bold: true }, ...WHO.map(([k]) => { const d = data.used[k]?.db; return d ? { v: d.lump_at_retire, fmt: 'won' as const, bold: true } : { v: '—', tone: 'muted' as const } }), { v: note, span: W - 3, tone: 'muted' }])
-    out.push([{ v: '만 나이' }, ...WHO.map(([k]) => ({ v: data.used[k]?.age ?? '—', tone: 'muted' as const })), { v: '‘다른 버전으로 보기 → 내 정보’에서 바꿔요', span: W - 3, tone: 'muted' }])
+    out.push([{ v: '만 나이' }, ...WHO.map(([k]) => ({ v: data.used[k]?.age ?? '—', tone: 'muted' as const })), { v: '‘요약 화면으로 보기 → 내 정보’에서 바꿔요', span: W - 3, tone: 'muted' }])
     edit('은퇴 나이', 'retire_age', false, u => u ? String(u.retire_age) : '', '비우면 내 정보의 은퇴 목표(나 기준). 배우자는 같은 해')
     edit('국민연금 월액(오늘 돈)', 'national_monthly', true, () => '0', '국민연금공단 ‘내 연금 알아보기’의 예상 월액')
     edit('국민연금 개시 나이', 'national_start_age', false, u => u ? String(u.national_start_age) : '', '비우면 출생연도 기준')
@@ -96,9 +101,9 @@ export function useRetirementRows({ rev, onChanged, onError }: Opts) {
     }
     out.push([{ v: '개인연금', section: true, span: W }])
     read('연금저축 적립금', u => u.balances['3'] ?? 0, '‘자산’ 시트의 연금저축 계좌 합계')
-    edit('연금저축 연 납입', 'savings_annual', true, () => '0', '은퇴 나이까지')
+    edit('연금저축 연 납입', 'savings_annual', true, () => '0', '개인연금의 미래 납입 계획 기간 적용 · 기간 미설정은 은퇴/수령 중 이른 시점까지')
     out.push([{ v: '받는 방법 · 생활비', section: true, span: W }])
-    edit('연금 받기 시작 나이', 'private_start_age', false, u => u ? String(u.private_start_age) : '', `퇴직연금·연금저축. ${a.start_age_min}세 이상, ${a.end_age}세까지 나눠 받기`)
+    edit('연금 받기 시작 나이', 'private_start_age', false, u => u ? String(u.private_start_age) : '', `퇴직·개인·추가연금 공통. 미입력은 ${data.payout_defaults.private_start_age}세 기본 가정, ${a.end_age}세 직전까지 나눠 받기. 상품 약정과 별개`)
     out.push([{ v: '은퇴 후 월 생활비(오늘 돈)' }, { v: '', span: 2, edit: { label: '은퇴 후 부부 월 생활비', value: p.monthly_need == null ? '' : String(p.monthly_need), placeholder: '비우면 비교 안 함', onCommit: v => setH('monthly_need', v) } }, { v: '부부 합계', span: W - 3, tone: 'muted' }])
     out.push([{ v: '연 수익률 · 물가' }, { v: '', edit: { text: true, label: '연 수익률(%)', value: p.return_rate == null ? '' : String(+(p.return_rate * 100).toFixed(2)), placeholder: `${a.return_rate * 100}%`, onCommit: v => setH('return_rate', v) } },
       { v: '', edit: { text: true, label: '물가상승률(%)', value: p.inflation == null ? '' : String(+(p.inflation * 100).toFixed(2)), placeholder: `${a.inflation * 100}%`, onCommit: v => setH('inflation', v) } }, { v: '수익률 · 물가 (%). 비우면 기본값', span: W - 3, tone: 'muted' }])

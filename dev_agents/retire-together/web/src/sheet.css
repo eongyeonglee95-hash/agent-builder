@@ -63,6 +63,19 @@
 .wb .xl-scroll{max-height:none}
 .wb-back{position:fixed;left:16px;bottom:16px;z-index:60;font:600 13px var(--font-sans,sans-serif);padding:8px 14px;border-radius:8px;border:1px solid #d1d6db;background:#fff;color:#191f28;box-shadow:0 4px 12px #0000001a;cursor:pointer}
 
+/* Visible row deletion; edits save separately from confirmed deletion. */
+.xl-row-actions,.xl-delete-confirm{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border:1px solid var(--grey-200);background:var(--grey-50);flex-shrink:0}
+.xl-row-actions>div,.xl-delete-confirm>div:first-child{min-width:0}
+.xl-row-actions strong,.xl-delete-confirm strong{display:block;font-size:var(--text-sm);color:var(--grey-900);overflow-wrap:anywhere}
+.xl-row-actions span,.xl-delete-confirm p{display:block;margin:4px 0 0;font-size:var(--text-xs);color:var(--grey-700);line-height:1.5}
+.xl-row-actions button,.xl-delete-confirm button{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:40px;padding:8px 12px;flex-shrink:0;border:1px solid var(--grey-300);border-radius:var(--radius);background:var(--background);color:var(--grey-900);font:inherit;font-size:var(--text-sm);cursor:pointer}
+.xl-row-actions .xl-row-delete,.xl-delete-confirm .xl-row-delete{color:var(--destructive);border-color:var(--destructive)}
+.xl-row-actions button:disabled,.xl-delete-confirm button:disabled{color:var(--grey-500);border-color:var(--grey-200);cursor:not-allowed}
+.xl-row-actions button:focus-visible,.xl-delete-confirm button:focus-visible{outline:2px solid var(--sheet-select);outline-offset:2px}
+.xl-delete-confirm{background:var(--background);border-top:0}
+.xl-delete-buttons{display:flex;gap:8px;flex-shrink:0}
+@media(max-width:650px){.xl-row-actions,.xl-delete-confirm{align-items:stretch;flex-direction:column}.xl-delete-buttons{justify-content:flex-end}.xl-row-actions button,.xl-delete-confirm button{min-height:44px}}
+
 /* 맨 아래 고정 합계 줄 — 스크롤해도 금액 합계가 보이게 (2026-11-07 사용자) */
 .xl-cell.xl-total{position:sticky;bottom:0;z-index:1;background:var(--grey-50);border-top:1px solid #c8c8c8;font-weight:600;cursor:default}
 .xl-rowh.xl-total{position:sticky;bottom:0;left:0;z-index:2;border-top:1px solid #c8c8c8;cursor:default}
