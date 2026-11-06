@@ -319,14 +319,20 @@ tfoot td{font-weight:600;background:#fbfcfd;border:0;padding-top:18px;padding-bo
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
 .form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
 .form-label{min-width:0;line-height:1.6}
-.form-label>input,.form-label>select{width:100%;min-width:0;min-height:44px;border:1px solid #dce3ec;border-radius:7px;padding:10px 12px;font:inherit;font-size:13px;color:#34465c;background:#fff}
+.form-label>input,.form-label>select{width:100%;min-width:0;min-height:52px;border:1.5px solid #dce3ec;border-radius:12px;padding:10px 14px;font:inherit;font-size:15px;font-weight:600;font-variant-numeric:tabular-nums;color:#34465c;background:#fff}
+/* 알약 칩 선택 (2026-11-06 시안 이식 4): 라디오를 숨기고 라벨을 칩으로 */
+.chip-group{display:flex;flex-wrap:wrap;gap:8px}
+.chip{display:inline-flex;align-items:center;min-height:40px;padding:8px 16px;border:1.5px solid #dce3ec;border-radius:999px;background:#fff;font-size:14px;font-weight:600;color:#34465c;cursor:pointer;transition:background .15s,color .15s,border-color .15s}
+.chip input{position:absolute;opacity:0;width:0;height:0}
+.chip:has(input:checked){background:#191f28;color:#fff;border-color:#191f28}
+.chip:has(input:focus-visible){outline:2px solid #5985ec;outline-offset:2px}
 .form-label>input:focus,.form-label>select:focus{outline:2px solid #5985ec;outline-offset:2px}
 .form-label input[type=file]{font-size:11px;padding:8px}
 .form-label input[type=file]::file-selector-button{border:0;background:#eef3f9;color:#405b7c;border-radius:4px;padding:7px 10px;margin-right:10px;cursor:pointer}
 .form-label small,.form-help{font-size:11px;color:#7f8fa2;line-height:1.8}
 .form-help{margin:14px 0}
 .form-intro{font-size:12px;line-height:1.9;color:#65768b;margin:16px 0}
-.profile-fields{border:1px solid #e5eaf0;border-radius:9px;padding:0 18px 18px;margin:20px 0;min-width:0}
+.profile-fields{border:1px solid #e5eaf0;border-radius:14px;padding:0 18px 18px;margin:20px 0;min-width:0}
 .profile-fields legend{padding:0 7px;font-size:12px;font-weight:600;color:#40556d}
 .checkbox-label{display:flex;align-items:center;gap:9px;font-size:12px;color:#62778e;margin:18px 0}
 .checkbox-label input{width:17px;height:17px;accent-color:#405b7c}

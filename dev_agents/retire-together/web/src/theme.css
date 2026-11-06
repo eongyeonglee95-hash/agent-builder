@@ -13,10 +13,15 @@
 @import "tw-animate-css";
 @import "pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css";
 
+/* 사내 글꼴 LIFEPLUS (2026-11-06 사용자 결정: 오픈베타 로그인 시안의 디자인 요소 이식 1). 없으면 Pretendard로 */
+@font-face { font-family: "LIFEPLUS"; font-weight: 300; font-style: normal; font-display: swap; src: url(/fonts/LIFEPLUS-300.woff2) format("woff2"); }
+@font-face { font-family: "LIFEPLUS"; font-weight: 500; font-style: normal; font-display: swap; src: url(/fonts/LIFEPLUS-500.woff2) format("woff2"); }
+@font-face { font-family: "LIFEPLUS"; font-weight: 700; font-style: normal; font-display: swap; src: url(/fonts/LIFEPLUS-700.woff2) format("woff2"); }
+
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --radius: 0.375rem;   /* 6px, 엑셀 격자 안은 0 */
+  --radius: 0.875rem;   /* 14px (2026-11-06 시안 이식 2: 큰 둥근 모서리), 엑셀 격자 안은 0 */
   /* 회색 — 토스 디자인 시스템(TDS) grey50~900 그대로 (docs/research/UI_REFERENCES.md) */
   --grey-50: #f9fafb; --grey-100: #f2f4f6; --grey-200: #e5e8eb; --grey-300: #d1d6db; --grey-400: #b0b8c1;
   --grey-500: #8b95a1; --grey-600: #6b7684; --grey-700: #4e5968; --grey-800: #333d4b; --grey-900: #191f28;
@@ -67,7 +72,7 @@
 }
 
 @theme inline {
-  --font-sans: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
+  --font-sans: "LIFEPLUS", "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
   --radius-sm: calc(var(--radius) - 2px);
   --radius-md: var(--radius);
   --radius-lg: calc(var(--radius) + 2px);

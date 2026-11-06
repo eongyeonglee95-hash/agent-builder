@@ -20,16 +20,17 @@
 .tower-eyebrow {font-size:var(--text-xs);font-weight:600;letter-spacing:2px;color:var(--muted-foreground)}
 .tower-intro h1 {font-size:var(--text-2xl);letter-spacing:-.8px;line-height:1.4;font-weight:700;margin:0}
 .tower-intro p {font-size:var(--text-sm);color:var(--muted-foreground)}
-.tower-scope {display:flex;flex-shrink:0;border:1px solid var(--border);background:var(--muted);padding:4px;border-radius:12px}
-.tower-scope button {min-width:64px;min-height:38px;font-size:var(--text-sm);color:var(--muted-foreground);padding:6px 14px;border:0;border-radius:8px;background:none;white-space:nowrap}
-.tower-scope button[aria-pressed=true] {background:var(--background);color:var(--foreground);font-weight:650;box-shadow:0 2px 6px color-mix(in srgb,var(--foreground) 6%,transparent)}
+/* 조회 범위는 알약 칩 (2026-11-06 시안 이식 4) */
+.tower-scope {display:flex;flex-shrink:0;gap:6px}
+.tower-scope button {min-width:64px;min-height:38px;font-size:var(--text-sm);font-weight:600;color:var(--foreground);padding:6px 15px;border:1.5px solid var(--input);border-radius:999px;background:var(--background);white-space:nowrap;transition:background .15s,color .15s,border-color .15s}
+.tower-scope button[aria-pressed=true] {background:var(--primary);color:var(--primary-foreground);border-color:var(--primary)}
 .tower-toolbar {display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:16px;font-size:var(--text-xs);color:var(--muted-foreground)}
 .tower-toolbar>div {display:flex;gap:16px;flex-wrap:wrap}
 .tower-toolbar button {display:flex;align-items:center;gap:5px;background:none;border:0;font-size:var(--text-xs);color:var(--grey-700);min-height:32px;padding:0}
 .tower-alert {display:flex;align-items:center;gap:12px;padding:16px;background:var(--muted);border:1px solid var(--border);border-radius:12px;margin-bottom:18px;font-size:var(--text-sm)}
 .tower-alert>div {flex:1;min-width:0}.tower-alert strong{font-weight:600}.tower-alert p{color:var(--muted-foreground);font-size:var(--text-xs);margin-top:4px}
 .tower-hero {display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:22px;align-items:stretch}
-.tower-tower-card {background:var(--card);border:1px solid var(--border);border-radius:20px;overflow:hidden}
+.tower-tower-card {background:var(--card);border:1px solid var(--border);border-radius:26px;overflow:hidden}
 .tower-tower-heading {padding:23px 26px 0;display:flex;justify-content:space-between;align-items:center;gap:12px}
 .tower-tower-heading h2 {font-size:var(--text-base);font-weight:650;letter-spacing:-.4px}
 .tower-tower-heading>span {font-size:var(--text-xs);color:var(--muted-foreground);white-space:nowrap}
@@ -91,7 +92,8 @@
 .tower-assumptions-summary ul{list-style:none;padding:0;margin:12px 0;display:grid;gap:8px}.tower-assumptions-summary li{display:flex;justify-content:space-between;align-items:center;gap:15px}.tower-assumptions-summary li strong{font-weight:550;color:var(--foreground)}
 .tower-tower-caption {padding:17px 26px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:14px;font-size:var(--text-xs);color:var(--muted-foreground)}
 .tower-tower-caption a {display:flex;align-items:center;gap:5px;color:var(--foreground);white-space:nowrap;text-decoration:none;font-weight:550}
-.tower-summary {display:flex;flex-direction:column;position:relative;background:var(--grey-900);color:var(--primary-foreground);padding:27px 26px;border-radius:20px;overflow:hidden}
+/* 검은 카드: 모서리에 은은한 방사형 빛 (2026-11-06 시안 이식 3). 색은 자산군 팔레트에서만 */
+.tower-summary {display:flex;flex-direction:column;position:relative;background-color:var(--grey-900);background-image:radial-gradient(60% 50% at 85% 0%,color-mix(in srgb,var(--cls-mid-bond) 26%,transparent),transparent 65%),radial-gradient(50% 40% at 0% 100%,color-mix(in srgb,var(--cls-gold) 16%,transparent),transparent 65%);color:var(--primary-foreground);padding:27px 26px;border-radius:26px;overflow:hidden}
 .tower-summary:before {content:"";position:absolute;pointer-events:none;top:-155px;right:-76px;width:230px;height:230px;border:1px solid color-mix(in srgb,var(--background) 10%,transparent);border-radius:50%;box-shadow:0 0 0 25px color-mix(in srgb,var(--background) 3%,transparent),0 0 0 60px color-mix(in srgb,var(--background) 2%,transparent)}
 .tower-summary-kicker {display:flex;gap:7px;align-items:center;font-size:var(--text-sm);color:var(--grey-200)}
 .tower-summary-kicker i {height:5px;width:5px;border-radius:50%;background:var(--cls-mid-bond)}
@@ -165,6 +167,8 @@
 .tower-form-grid {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
 .tower-field {display:flex;flex-direction:column;gap:7px;font-size:var(--text-sm);min-width:0}.tower-field>span:first-child{font-weight:550}.tower-field small{font-size:var(--text-xs);color:var(--muted-foreground);line-height:1.6}
 .tower-input-unit {display:flex;align-items:center;gap:8px;min-width:0}.tower-input-unit input{min-width:0;height:42px}.tower-input-unit>span{font-size:var(--text-xs);flex-shrink:0;color:var(--muted-foreground)}
+/* 숫자 입력창은 높고 굵게 (2026-11-06 시안 이식 2) */
+.tower-plan-dialog input[type=number] {height:52px;font-size:17px;font-weight:650;font-variant-numeric:tabular-nums;border-radius:12px;padding-inline:14px}
 .tower-field-detail {grid-column:1/-1}.tower-field-detail summary{display:flex;flex-direction:column;gap:3px;cursor:pointer;list-style:none}.tower-field-detail summary::-webkit-details-marker{display:none}.tower-field-detail summary>span{font-weight:550}.tower-field-detail[open] summary>small{display:none}.tower-plan-dialog a{text-decoration:underline;text-underline-offset:3px}
 .tower-form-note {font-size:var(--text-xs);padding:13px;background:var(--muted);border-radius:8px;color:var(--muted-foreground);line-height:1.7}
 .tower-error {font-size:var(--text-sm);color:var(--destructive);line-height:1.6}
