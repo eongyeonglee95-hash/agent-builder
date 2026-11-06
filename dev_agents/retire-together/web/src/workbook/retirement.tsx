@@ -17,10 +17,13 @@ export type ServicePeriod = { years: number; months: number; days: number }
 export type DbEstimate = { method: 'reported' | 'tenure'; as_of: string; tenure: ServicePeriod | null; missing: string[]; accrued_now: number | null; lump_at_retire: number | null; eligible_now?: boolean | null; timeline: { year: number; date: string; tenure: ServicePeriod | null; amount: number; eligible: boolean | null }[] }
 type Db = { years_left: number; lump_at_retire: number }
 export type Used = { age: number; retire_age: number; national_start_age: number; private_start_age: number; balances: Record<string, number>; db: Db | null }
-export type Row = { year: number; ages: Record<string, number>; retired: boolean; items: { person: 'me' | 'partner'; layer: number; real: number; nominal: number; label: string }[]; total_real: number; extra_real?: number; extra_nominal?: number; total_nominal: number; layers_real: Record<string, number>; need_real?: number | null; gap_real?: number | null; need_nominal?: number | null; gap_nominal?: number | null; coverage: { total: number; layers: Record<string, number> } | null }
+export type PensionTaxRule = { annual_threshold: number; separate_rate_with_local_tax: number; checked_on: string; source_url: string }
+export type PensionTaxCheck = { person: 'me' | 'partner'; annual_nominal: number }
+export type Row = { year: number; ages: Record<string, number>; retired: boolean; items: { person: 'me' | 'partner'; layer: number; real: number; nominal: number; label: string }[]; total_real: number; extra_real?: number; extra_nominal?: number; total_nominal: number; layers_real: Record<string, number>; need_real?: number | null; gap_real?: number | null; need_nominal?: number | null; gap_nominal?: number | null; pension_tax_checks?: PensionTaxCheck[]; coverage: { total: number; layers: Record<string, number> } | null }
 export type NationalOption = { shift: number; start_age: number; start_year: number; factor: number; monthly_real: number; gap_years: number; breakeven_age: number | null; selected: boolean }
 export type SurvivorCheck = { survivor: string; deceased: string; own_monthly: number; deceased_monthly: number; tiers: Record<string, { survivor_only: number; own_plus: number; larger: 'own_plus' | 'survivor_only' }> }
 export type Result = { plan: Plan; used: Partial<Record<'me' | 'partner', Used>>; missing: string[]; error: string | null; line: string; base_year: number
+  pension_tax_rule?: PensionTaxRule
   payout_defaults: { private_start_age: number }
   spending_budget_template: SpendingBudget
   savings_plan_template: { annual: number; end_age: number; start_year_offset: number }

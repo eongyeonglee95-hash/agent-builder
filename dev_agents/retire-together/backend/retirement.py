@@ -19,6 +19,7 @@ from pydantic import Field, field_validator, model_validator
 from backend import registration, storage
 from backend.storage import InputModel
 from tools.assets import load_accounts
+from tools.pension_tax_notice import load_tax_notice_rules, private_pension_tax_checks
 from tools.pension import (LAYER_LABELS, Assumptions, Person, db_estimate, load_pension_rules, national_options, national_start_age, project, savings_breakdown, savings_schedule, spending_budget_totals, spending_target, survivor_check)
 
 router = APIRouter(prefix="/api/retirement", tags=["retirement"])
@@ -149,6 +150,7 @@ def build(plan: dict, family: dict | None, bal: dict[str, dict[int, int]], base_
           as_of: dt.date | None = None) -> dict:
     """계획·가족 정보·적립금 → 계산에 쓴 사람별 값(기본값 채움)과 시뮬레이션. 빠진 입력은 missing으로 알린다."""
     a = Assumptions.from_rules(rules, return_rate=plan.get("return_rate"), inflation=plan.get("inflation"))
+    tax_notice_rules = load_tax_notice_rules()
     family = family or {}
     me_f, pa_f = family.get("me") or {}, family.get("partner") or {}
     goal = family.get("retirement_age")
@@ -205,6 +207,7 @@ def build(plan: dict, family: dict | None, bal: dict[str, dict[int, int]], base_
         used[key] = {"age": age, "retire_age": retire, "national_start_age": p.national_start_age,
                      "private_start_age": p.private_start_age, "balances": {str(k): v for k, v in b.items()}, "db": db}
     result = {"plan": plan, "used": used, "missing": missing, "assumptions": a.__dict__, "base_year": base_year,
+              "pension_tax_rule": tax_notice_rules,
               "payout_defaults": {"private_start_age": rules["private"]["start_age_default"]},
               "spending_budget_template": SpendingBudget(**rules.get("spending_budget_template", {})).model_dump(),
               "savings_plan_template": rules["savings_plan_template"], "savings_plans": savings_plans, "savings_errors": savings_errors,
@@ -221,6 +224,8 @@ def build(plan: dict, family: dict | None, bal: dict[str, dict[int, int]], base_
     result["national"] = {"options": {p.key: national_options(p, a, base_year) for p in people}, "survivor": survivor_check(people, a)}
     try:
         result["projection"] = project(people, a, base_year, plan.get("monthly_need"))
+        for row in result["projection"]["rows"]:
+            row["pension_tax_checks"] = private_pension_tax_checks(row["items"], tax_notice_rules)
         for person in people:
             if person.key in savings_plans:
                 savings_plans[person.key].update(savings_breakdown(person, a))

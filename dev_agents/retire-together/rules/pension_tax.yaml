@@ -1,0 +1,5 @@
+# docs/TAX_RULES.md §1 · 현재 기준의 확인 안내. 세액 계산이나 미래 세법 예측이 아니다.
+annual_threshold: 15000000
+separate_rate_with_local_tax: 0.165
+checked_on: '2026-11-07'
+source_url: https://www.nts.go.kr/nts/cm/cntnts/cntntsView.do?cntntsId=7888&mi=6452

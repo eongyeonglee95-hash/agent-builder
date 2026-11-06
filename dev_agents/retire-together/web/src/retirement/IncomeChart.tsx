@@ -1,16 +1,18 @@
 import { useEffect, useId, useRef, useState, type CSSProperties, type PointerEvent } from 'react'
 import { ChevronLeft, ChevronRight, LockKeyhole, MousePointer2 } from 'lucide-react'
-import type { Row } from '../workbook/retirement'
+import type { PensionTaxRule, Row } from '../workbook/retirement'
 import { amount, LAYERS, PEOPLE, type Scope } from './presentation'
+import { PensionTaxNotice } from './PensionTaxNotice'
 import './income-chart.css'
 
 const man = (value: number) => (value / 10000).toLocaleString('ko-KR', { maximumFractionDigits: 1 })
 const incomeLayers = LAYERS.filter(layer => layer.id < 4)
 const color = (layer: number) => `var(--income-layer-${layer})`
 
-export function IncomeChart({ rows, scope, year, onYearChange, onLayerSelect, hidden, showNeed }: {
+export function IncomeChart({ rows, scope, year, onYearChange, onLayerSelect, hidden, showNeed, taxRule }: {
   rows: Row[]; scope: Scope; year: number; onYearChange: (year: number) => void;
   onLayerSelect: (layer: number) => void; hidden: boolean; showNeed: boolean
+  taxRule?: PensionTaxRule
 }) {
   const uid = useId().replaceAll(':', '')
   const container = useRef<HTMLDivElement>(null)
@@ -30,6 +32,7 @@ export function IncomeChart({ rows, scope, year, onYearChange, onLayerSelect, hi
     return () => window.removeEventListener('keydown', dismiss)
   }, [hoverYear])
   const selected = rows.find(row => row.year === year) ?? rows[0]
+  const taxChecks = (selected.pension_tax_checks ?? []).filter(check => scope === 'together' || check.person === scope)
   const hovered = rows.find(row => row.year === hoverYear)
   const cursor = hovered ?? selected
   const first = rows[0].year, last = rows[rows.length - 1].year
@@ -145,13 +148,13 @@ export function IncomeChart({ rows, scope, year, onYearChange, onLayerSelect, hi
     <div className="tower-income-legend">{incomeLayers.map(layer => {
       const value = amount(selected, scope, layer.id) ?? 0
       const start = rows.find(row => (amount(row, scope, layer.id) ?? 0) > 0)?.year
-      return <button key={layer.id} type="button" aria-label={`${layer.name} 상세 보기`} onClick={() => onLayerSelect(layer.id)}
+      return <div key={layer.id} className="tower-income-legend-cell"><button type="button" aria-label={`${layer.name} 상세 보기`} onClick={() => onLayerSelect(layer.id)}
         onPointerEnter={() => setFocusedLayer(layer.id)} onPointerLeave={() => setFocusedLayer(null)} onFocus={() => setFocusedLayer(layer.id)} onBlur={() => setFocusedLayer(null)}
         className="tower-income-legend-item" style={{ '--income-color': color(layer.id) } as CSSProperties}>
         <span className="tower-income-legend-title"><i/>{layer.name}<ChevronRight size={13}/></span>
         <strong data-testid={`income-chart-layer-${layer.id}`} data-won={hidden ? undefined : value}>{hidden ? '••••••' : <>{man(value)}<small>만 원</small></>}</strong>
         <span className="tower-income-legend-status">{start == null ? '준비 정보 없음' : selected.year < start ? `${start}년부터 수령` : value > 0 ? '수령 중' : '수령 기간 종료'}</span>
-      </button>
+      </button>{layer.id === 3 && !hidden && taxRule && taxChecks.length > 0 && <PensionTaxNotice key={`${selected.year}-${scope}`} checks={taxChecks} rule={taxRule} year={selected.year}/>}</div>
     })}</div>
     <div className="tower-income-footer"><p>국민연금은 종신 · 그래프 끝은 계산 범위 · 4층 추가연금은 기본 합계에 넣지 않음</p><span><MousePointer2 size={12}/>색을 짚으면 해당 연금이 강조돼요</span></div>
   </div>

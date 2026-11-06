@@ -1,0 +1,22 @@
+.tower-income-legend-cell {display:flex;align-items:center;align-self:start;flex-wrap:wrap;min-width:0}
+.tower-income-legend-cell .tower-income-legend-item {flex:1;min-width:80px}
+.tower-tax-badge {display:inline-flex;align-items:center;justify-content:center;gap:4px;min-height:30px;padding:4px 7px;margin:4px 8px 4px 0;border-radius:7px;border:1px solid color-mix(in srgb,var(--cls-gold) 70%,var(--up-big));background:color-mix(in srgb,var(--cls-gold) 18%,var(--card));color:color-mix(in srgb,var(--cls-gold) 30%,var(--grey-900));font-size:var(--text-xs)!important;white-space:nowrap;cursor:pointer}
+.tower-tax-badge:hover,.tower-tax-badge[data-state=open] {background:color-mix(in srgb,var(--cls-gold) 30%,var(--card))}
+.tower-tax-popover {z-index:70;width:350px;max-width:calc(100vw - 24px);max-height:var(--radix-popover-content-available-height);overflow-y:auto;padding:16px;border:1px solid var(--border);border-radius:var(--radius);background:var(--popover);color:var(--popover-foreground);box-shadow:0 8px 25px color-mix(in srgb,var(--foreground) 12%,transparent);font-family:var(--font-sans);font-size:var(--text-sm);line-height:1.65;word-break:keep-all}
+.tower-tax-popover p {margin:10px 0}
+.tower-tax-heading {display:flex;align-items:center;justify-content:space-between;gap:8px}
+.tower-tax-heading h3 {font-size:var(--text-base);font-weight:650;margin:0}
+.tower-tax-heading button {display:grid;place-items:center;flex-shrink:0;min-width:32px;min-height:32px;border-radius:6px;color:var(--muted-foreground);cursor:pointer}
+.tower-tax-heading button:hover {background:var(--muted)}
+.tower-tax-popover .tower-tax-date {margin:0 0 12px;color:var(--muted-foreground);font-size:var(--text-xs)}
+.tower-tax-people {display:grid;gap:10px;padding:12px;background:color-mix(in srgb,var(--cls-gold) 12%,var(--card));border-radius:8px}
+.tower-tax-people>div {display:grid;gap:3px}
+.tower-tax-people strong {font-weight:600}
+.tower-tax-people span {font-size:var(--text-xs);color:var(--muted-foreground)}
+.tower-tax-people b {color:var(--foreground);font-weight:600;font-variant-numeric:tabular-nums}
+.tower-tax-popover .tower-tax-note {color:var(--muted-foreground);font-size:var(--text-xs)}
+.tower-tax-popover a {display:inline-block;margin-top:4px;color:var(--primary);text-decoration:underline;text-underline-offset:3px;font-size:var(--text-xs)}
+.tower-tax-popover :is(button,a):focus-visible {outline:2px solid var(--ring);outline-offset:3px}
+@media(max-width:600px) {
+  .tower-tax-badge {margin:2px 4px 4px;min-height:36px}
+}
