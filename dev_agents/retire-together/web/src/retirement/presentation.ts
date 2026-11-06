@@ -3,10 +3,10 @@ import type { Result, Row } from '../workbook/retirement'
 export type Scope = 'together' | 'me' | 'partner'
 export const PEOPLE = [['me', '나'], ['partner', '배우자']] as const
 export const LAYERS = [
-  { id: 1, name: '국민연금', caption: '일상의 기초', description: '공단 예상 월액으로 그리는 기본 소득' },
-  { id: 2, name: '퇴직연금', caption: '쌓아온 시간', description: 'DB 퇴직금과 DC·IRP 적립금으로 계산해요' },
-  { id: 3, name: '개인연금', caption: '준비한 내일', description: '세제적격 연금저축·IRP 개인납입 — 넣을 때 세액공제, 받을 때 연금소득세' },
-  { id: 4, name: '추가연금', caption: '더하는 여유', description: '세제비적격 연금보험 · ISA 등 — 세액공제는 없지만 받을 때 세금 부담이 적고 급하면 해지해 쓸 수 있어요' },
+  { id: 1, name: '국민연금', caption: '일상의 기초', plain: '나라가 평생 주는 기본 연금', description: '공단 예상 월액으로 그리는 기본 소득' },
+  { id: 2, name: '퇴직연금', caption: '쌓아온 시간', plain: '회사가 쌓아 준 퇴직금·DC·IRP', description: 'DB 퇴직금과 DC·IRP 적립금으로 계산해요' },
+  { id: 3, name: '개인연금', caption: '준비한 내일', plain: '내가 넣은 연금저축·IRP', description: '세제적격 연금저축·IRP 개인납입 — 넣을 때 세액공제, 받을 때 연금소득세' },
+  { id: 4, name: '추가연금', caption: '더하는 여유', plain: '연금보험·ISA 같은 여유 자금', description: '세제비적격 연금보험 · ISA 등 — 세액공제는 없지만 받을 때 세금 부담이 적고 급하면 해지해 쓸 수 있어요' },
 ] as const
 
 export const amount = (row: Row | undefined, scope: Scope, layer?: number) => {
