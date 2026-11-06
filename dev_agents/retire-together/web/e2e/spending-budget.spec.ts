@@ -46,7 +46,7 @@ test('생활비 계산: 초안·취소·명시적 적용·항목 복원·목표�
   // Direct goal input stays available; its value is not replaced by the prior breakdown.
   await page.getByRole('button', { name: '생활비 설정', exact: true }).click()
   const direct = page.getByRole('dialog', { name: '은퇴 후 생활비', exact: true })
-  await direct.getByRole('spinbutton', { name: '은퇴 후 부부 월 생활비', exact: true }).fill('4000000')
+  await direct.getByRole('spinbutton', { name: '은퇴 후 부부 월 생활비', exact: true }).fill('400')
   await direct.getByRole('button', { name: '저장하고 다시 계산', exact: true }).click()
   await expect(direct).toBeHidden()
   await opener.click()

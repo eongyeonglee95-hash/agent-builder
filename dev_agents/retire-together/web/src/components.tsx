@@ -3,7 +3,7 @@ import { ArrowUpRight, Check, ChevronRight, Eye, EyeOff, Info, X } from 'lucide-
 import { classInfo, compactMoney, money, type Strategy } from './model'
 
 export function Brand({ compact = false }: { compact?: boolean }) {
-  return <div className={`brand ${compact ? 'compact' : ''}`}><svg width="32" height="32" viewBox="0 0 40 40" fill="currentColor" aria-hidden="true"><circle cx="12" cy="10" r="5"/><circle cx="27" cy="10" r="5"/><path d="M2 32v-5a10 10 0 0 1 20 0v5H2Zm23 0v-5a13 13 0 0 0-4-9 10 10 0 0 1 16 9v5H25Z"/></svg><span>둘이서은퇴<small>RETIRE TOGETHER</small></span></div>
+  return <div className={`brand ${compact ? 'compact' : ''}`}><svg width="32" height="32" viewBox="0 0 48 48" fill="none" aria-hidden="true"><use href="#rt-mark"/></svg><span><em>둘이서</em>은퇴<small>RETIRE TOGETHER</small></span></div>
 }
 export function PanelHeading({ title, detail, children }: { title: string; detail?: string; children?: ReactNode }) {
   return <div className="panel-heading"><div><h2>{title}</h2>{detail && <p>{detail}</p>}</div>{children}</div>

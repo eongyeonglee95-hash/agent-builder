@@ -1,0 +1,16 @@
+/* 주색 바: 화면 아래 가운데 한 줄. 접으면 오른쪽 아래 작은 '주색' 알약. 화면 위 버튼을 가리지 않게 아래에 둔다 */
+.brand-mode{position:fixed;z-index:70;font-family:var(--font-sans,sans-serif);font-size:12.5px;color:#191f28}
+.brand-mode[data-open=true]{bottom:14px;left:50%;transform:translateX(-50%);width:max-content;max-width:calc(100vw - 32px)}
+.brand-mode[data-open=false]{right:16px;bottom:16px}
+.bm-bar{display:flex;flex-wrap:wrap;align-items:center;gap:5px;padding:6px 8px;background:rgba(255,255,255,.94);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid #e5e8eb;border-radius:999px;box-shadow:0 10px 30px rgba(0,0,0,.12)}
+.bm-bar em{font-style:normal;font-size:10.5px;letter-spacing:.1em;font-weight:700;color:#6b7684;padding:0 4px 0 6px}
+.brand-mode button{display:inline-flex;align-items:center;gap:6px;padding:5px 10px 5px 6px;border-radius:999px;border:1.5px solid #e5e8eb;background:#fff;color:inherit;font:600 12.5px var(--font-sans,sans-serif);cursor:pointer;white-space:nowrap}
+.brand-mode button i{width:14px;height:14px;border-radius:50%;display:inline-block;box-shadow:inset 0 0 0 1px rgba(0,0,0,.12)}
+.brand-mode button[aria-pressed=true]{background:#191f28;color:#fff;border-color:#191f28}
+.bm-pick{display:inline-flex;align-items:center;gap:6px;border:1.5px dashed #d1d6db;border-radius:999px;padding:2px 9px 2px 3px;cursor:pointer}
+.bm-pick input{width:22px;height:22px;border:0;padding:0;background:none;border-radius:50%;overflow:hidden;cursor:pointer}
+.bm-pick input::-webkit-color-swatch-wrapper{padding:0}.bm-pick input::-webkit-color-swatch{border:0;border-radius:50%}
+.bm-pick code{font:500 11.5px ui-monospace,Menlo,monospace;color:#6b7684}
+.bm-close{padding:5px 10px!important;color:#6b7684!important}
+.brand-mode .bm-toggle{min-height:40px;padding:8px 13px;box-shadow:0 4px 14px rgba(0,0,0,.08)}
+@media(max-width:900px){.brand-mode[data-open=true],.brand-mode[data-open=false]{bottom:76px}.brand-mode button[data-hex] span{display:none}.bm-pick code{display:none}}

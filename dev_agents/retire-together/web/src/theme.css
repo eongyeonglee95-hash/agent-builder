@@ -22,6 +22,10 @@
 
 :root {
   --radius: 0.875rem;   /* 14px (2026-11-06 시안 이식 2: 큰 둥근 모서리), 엑셀 격자 안은 0 */
+  /* 브랜드 주색 — 화면 오른쪽 아래 '테마' 버튼으로 바꾼다 (2026-11-06 사용자: 사이트 안에서 색을 고르는 모드 전환). 기본은 소나무.
+     src/brand-mode.ts 가 고른 색에서 틴트·어두운 면을 계산해 :root 인라인 스타일로 덮어쓴다. 상승 빨강·하락 파랑·자산군 색은 건드리지 않는다 */
+  --brand: #0f5c4a; --brand-tint: #e3f0ea; --brand-dark: #0c1f1a; --brand-ink: #ffffff;
+  --page-bg: #f7f6f2;   /* 바탕: 흰색·미색·주색 틴트 중 선택. 카드는 흰색 그대로 */
   /* 회색 — 토스 디자인 시스템(TDS) grey50~900 그대로 (docs/research/UI_REFERENCES.md) */
   --grey-50: #f9fafb; --grey-100: #f2f4f6; --grey-200: #e5e8eb; --grey-300: #d1d6db; --grey-400: #b0b8c1;
   --grey-500: #8b95a1; --grey-600: #6b7684; --grey-700: #4e5968; --grey-800: #333d4b; --grey-900: #191f28;
@@ -32,8 +36,8 @@
   --card-foreground: var(--grey-900);
   --popover: #ffffff;
   --popover-foreground: var(--grey-900);
-  --primary: var(--grey-900);           /* 주 버튼: 진한 글자색. 파랑은 하락에만 */
-  --primary-foreground: #ffffff;
+  --primary: var(--brand);              /* 주 버튼·선택 상태: 브랜드 주색 (2026-11-06). 파랑은 하락에만 */
+  --primary-foreground: var(--brand-ink);
   --secondary: var(--grey-100);
   --secondary-foreground: var(--grey-900);
   --muted: var(--grey-100);
@@ -51,7 +55,7 @@
   --cls-stock: #5985ec; --cls-long-bond: #42b3aa; --cls-mid-bond: #8ed2c8; --cls-gold: #e6ba69; --cls-commodity: #d397b5; --cls-cash: #b0b8c1;
   /* 엑셀 보기 — 유일한 강조색 초록은 선택 테두리와 현재 시트 탭에만 */
   --sheet-line: var(--grey-200); --sheet-head: var(--grey-50); --sheet-head-text: var(--grey-600);
-  --sheet-select: #217346; --sheet-select-soft: #e8f2ec;
+  --sheet-select: var(--brand); --sheet-select-soft: var(--brand-tint);   /* 엑셀 선택 초록 → 브랜드 주색으로 통일 (2026-11-06) */
 }
 
 /* Tailwind 기본 팔레트·글자 크기를 지운다 — 아래 토큰 밖의 색·크기는 코드에 쓸 수 없다 (지금 CSS 색 529개가 다시 생기지 않게) */
@@ -117,7 +121,12 @@
   --color-grey-900: var(--grey-900);
 }
 
+@layer utilities {
+  .wb { background-color: var(--page-bg); }   /* 워크북 바탕은 테마의 바탕색을 따른다 */
+}
+
 @layer base {
+  body { background-color: var(--page-bg); }
   .wb, .wb *, [data-slot] { font-family: var(--font-sans); }
   .wb { font-feature-settings: "tnum"; }
 }

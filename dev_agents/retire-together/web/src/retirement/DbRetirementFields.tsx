@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Input } from '@/components/ui/input'
+import { toMan, fromMan } from './PlanDialog'
 import { api } from '../local-data'
 import type { PersonPlan, Plan, Result, ServicePeriod } from '../workbook/retirement'
 import './db-retirement.css'
@@ -52,8 +53,8 @@ export function DbRetirementFields({ who, value, asOf, preview, onChange }: {
     </div>
     <div className="tower-db-inputs">
       <label className="tower-field"><span>월급 (최근 3개월 평균) · 세전</span>
-        <span className="tower-input-unit"><Input aria-label={`${name} 세전 월 평균급여`} type="number" inputMode="numeric" min={automatic ? 1 : 0} max={1e12} step={1} required={automatic}
-          value={value.db_monthly_wage || ''} onChange={e => onChange({ db_monthly_wage: Number(e.target.value) })}/><span>원</span></span>
+        <span className="tower-input-unit"><Input aria-label={`${name} 세전 월 평균급여`} type="number" inputMode="decimal" min={0} max={1e8} step="any" required={automatic}
+          value={value.db_monthly_wage ? toMan(value.db_monthly_wage) : ''} onChange={e => onChange({ db_monthly_wage: fromMan(e.target.value) })}/><span>만 원</span></span>
         <small>세금·4대 보험 공제 전 급여 3개월 합계 ÷ 3</small>
       </label>
       {automatic ? <label className="tower-field"><span>입사일</span>
@@ -61,8 +62,8 @@ export function DbRetirementFields({ who, value, asOf, preview, onChange }: {
           onChange={e => onChange({ db_start_date: e.target.value || null })}/>
         <small>입사일부터 오늘까지 근속기간을 자동 계산해요.</small>
       </label> : <label className="tower-field"><span>지금 쌓인 퇴직금</span>
-        <span className="tower-input-unit"><Input aria-label={`${name} 지금 쌓인 퇴직금`} type="number" inputMode="numeric" min={0} max={1e12} step={1}
-          value={value.db_accrued || ''} onChange={e => onChange({ db_accrued: Number(e.target.value) })}/><span>원</span></span>
+        <span className="tower-input-unit"><Input aria-label={`${name} 지금 쌓인 퇴직금`} type="number" inputMode="decimal" min={0} max={1e8} step="any"
+          value={value.db_accrued ? toMan(value.db_accrued) : ''} onChange={e => onChange({ db_accrued: fromMan(e.target.value) })}/><span>만 원</span></span>
         <small>회사에서 확인한 현재 예상 퇴직금 · 과거 근속 포함</small>
       </label>}
     </div>

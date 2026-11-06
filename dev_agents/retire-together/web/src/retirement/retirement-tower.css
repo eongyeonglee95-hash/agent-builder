@@ -2,7 +2,7 @@
    legacy mobile shell, which changes the root font size to 13px. */
 .tower-workspace,.tower-plan-dialog {--text-xs:12px;--text-sm:13px;--text-base:15px;--text-lg:17px;--text-xl:20px;--text-2xl:22px;--text-3xl:30px}
 .tower-workspace {
-  --tower-layer-1:var(--grey-700);--tower-layer-2:var(--cls-long-bond);--tower-layer-3:var(--cls-commodity);--tower-layer-4:var(--cls-gold);
+  --tower-layer-1:var(--brand);--tower-layer-2:var(--cls-long-bond);   /* 1층 기단은 브랜드 주색 (2026-11-06), 위 세 층은 자산군 색 */--tower-layer-3:var(--cls-commodity);--tower-layer-4:var(--cls-gold);
   --tower-fill-1:var(--tower-layer-1);--tower-fill-2:var(--tower-layer-2);--tower-fill-3:var(--tower-layer-3);--tower-fill-4:var(--tower-layer-4);
   width:100%; max-width:1440px; margin:0 auto; padding:30px 36px 36px; color:var(--foreground); font-family:var(--font-sans); font-size:var(--text-base); line-height:1.55; word-break:keep-all; font-feature-settings:"tnum";
 }
