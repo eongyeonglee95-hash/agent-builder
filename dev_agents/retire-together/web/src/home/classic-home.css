@@ -1,0 +1,58 @@
+/* 기본 목업의 3개 요약 카드 → 도넛/목표/알림 → 전략/소득 배치. */
+.classic-home { display: flex; flex-direction: column; gap: 16px; }
+.classic-home-heading { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+.classic-home-heading h1 { font-size: var(--text-xl); font-weight: 700; letter-spacing: -.5px; }
+.classic-home-heading p { margin-top: 5px; color: var(--muted-foreground); font-size: var(--text-xs); }
+.classic-home-controls { display: flex; align-items: center; gap: 14px; }
+.classic-home .stats-grid, .classic-home .bottom-grid { margin: 0; }
+.classic-home .panel, .classic-home .stat-card { border-radius: var(--radius); }
+.classic-home .panel { padding: 18px 20px; }
+.classic-home .panel-heading { margin-bottom: 12px; min-height: 20px; }
+.classic-home .panel-heading h2 { font-size: var(--text-sm); }
+.classic-home .dashboard-grid { gap: 16px; }
+.classic-home .right-stack { gap: 12px; }
+.classic-home .retirement-card { margin: 0; order: 0; }
+.classic-home .retirement-value { margin: 12px 0; }
+.classic-home .donut-layout { margin: 18px 0; }
+.classic-home .donut { width: 150px; height: 150px; padding: 23px; }
+.classic-home .donut strong { font-size: var(--text-2xl); }
+.classic-home .bottom-grid { gap: 16px; }
+.classic-home .income-svg { height: 155px; }
+.classic-home .alert-row { padding: 9px 0; }
+.classic-home .checklist-panel { margin: 0; }
+.classic-home .checklist-panel .panel-heading p { display: none; }
+.classic-home .recent-assets { margin: 0; }
+.classic-empty-chart { display: flex; align-items: center; justify-content: space-around; gap: 16px; min-height: 186px; color: var(--muted-foreground); font-size: var(--text-xs); }
+.classic-empty-chart > div { display: grid; place-items: center; flex-shrink: 0; width: 150px; height: 150px; border: 23px solid var(--muted); border-radius: 50%; }
+.classic-empty-chart > span { max-width: 130px; line-height: 2; }
+.classic-income-empty { min-height: 175px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; color: var(--muted-foreground); font-size: var(--text-xs); }
+.home-preview-notice { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; margin-bottom: 16px; border: 1px solid var(--border); border-radius: var(--radius); font-size: var(--text-sm); }
+.home-preview-notice a { color: var(--primary); text-decoration: underline; }
+@media (max-width: 1050px) {
+  .classic-home .donut { width: 125px; height: 125px; padding: 19px; }
+  .classic-home-controls { gap: 8px; }
+}
+@media (max-width: 650px) {
+  .classic-home { gap: 14px; padding-top: 10px; }
+  .classic-home-heading { flex-wrap: wrap; gap: 12px; }
+  .classic-home-heading h1 { font-size: var(--text-lg); }
+  .classic-home-controls { width: 100%; }
+  .classic-home-controls .owner-switch { flex: 1; width: auto; }
+  .classic-home-controls .register-shortcut { white-space: nowrap; margin: 0; }
+  .classic-home .stats-grid .stat-body { position: static; width: 100%; }
+  .classic-home .stats-grid .total-stat { min-height: 108px; }
+  .classic-home .stats-grid .total-stat .stat-body { padding: 4px 0; min-height: 34px; }
+  .classic-home .stats-grid .total-stat .stat-note { margin-top: 0; }
+  .classic-home .stat-card:not(.total-stat) { min-height: 178px; }
+  .classic-home .stat-card:not(.total-stat) .stat-number { font-size: var(--text-lg); }
+  .classic-home .stat-note { font-size: var(--text-xs); }
+  .classic-home .dashboard-grid, .classic-home .bottom-grid { grid-template-columns: 1fr; }
+  .classic-home-checklist { order: -1; }
+  .classic-home-heading { order: -3; }
+  .classic-home > .stats-grid { order: -2; }
+  .classic-home .checklist { gap: 0; }
+  .classic-home .check-item small { display: none; }
+  .classic-home .check-item { padding-block: 10px; }
+  .classic-home .panel { padding: 18px; }
+  .classic-home .donut { width: 140px; height: 140px; padding: 21px; }
+}

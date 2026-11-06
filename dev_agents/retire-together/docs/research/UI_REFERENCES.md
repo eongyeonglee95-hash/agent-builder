@@ -122,6 +122,62 @@
 - TDS greyBackground의 hex(`lightThemeGrey100`이라는 이름만 있음). TDS 다크 모드 값.
 - tweakcn의 조절 항목·내보내기 형식. shadcn을 커스텀 테마로 쓴 공식 사례 글.
 
+## D. 미국 금융·은퇴 서비스 디자인 조사 — 2026-11-06
+
+사용자는 직접 만든 오픈베타플랫폼 로그인(C01)·스모크(C02)의 디자인 요소를 둘이서은퇴에 이식하고, 미국 금융·연금 서비스에서 적용할 요소도 조사하도록 요청했다. 적용 페이지를 먼저 질문한 뒤, 사용자가 큰 두 타일·목표 카드·사진 구성의 추천안을 우선 적용하도록 요청했다. 홈 요약 `#home`을 첫 대상으로 안내하고 아래 적용 기록까지 완료했다. 조사 관찰·디자인 제안과 실제 구현 범위를 구분한다.
+
+### 확인 범위
+
+- 여섯 서비스의 공식 공개 페이지를 1440×1000 브라우저에서 렌더링해 확인했다. Monarch의 목표 카드, Boldin의 상태 요약, ProjectionLab의 생애 사건 설정 등 공개 제품 이미지도 확인했다.
+- ProjectionLab 앱 진입은 가입 화면으로 연결되어 계정 내부 사용 경험은 검증하지 않았다. 다른 서비스도 공개 소개 화면과 제품 이미지 기준이며 가입·결제·계좌 연결은 하지 않았다.
+- 아래 배치·색·크기에 대한 평가는 화면을 본 디자인 해석이다. 디자인 시스템의 공식 토큰 값이나 운영 성과를 입증하는 자료는 아니다.
+- 기존 2026-10-28 문서의 Monarch 색·글꼴 미확인 항목은 유지한다. 이번에는 시각적 구성을 확인했으며 공식 폰트 라이선스·색상 명세를 조사한 것은 아니다.
+
+### 서비스별 관찰과 적용 후보
+
+| 공식 출처 | 화면에서 확인한 구성 | 둘이서은퇴에 적용할 제안 |
+|---|---|---|
+| [Robinhood Retirement](https://robinhood.com/us/en/about/retirement/) | 어두운 상단, 큰 명조 제목, 여백이 큰 히어로와 입체 조형물, 적은 수의 행동 버튼. 상단 라임색과 본문 흰색 버튼으로 구역별 대비를 줌 | 핵심 메시지·월액의 크기 차이와 주 버튼의 대비. 한 화면에서 가장 중요한 숫자를 하나 정하고 나머지 숫자에 크기 차이를 둠 |
+| [Wealthfront Retirement](https://www.wealthfront.com/retirement) · [Planning](https://www.wealthfront.com/planning) | 옅은 바탕 위 진한 글자, 제목의 굵기 대비, 크게 배치한 앱 화면. 공개 앱 이미지에서 큰 잔액 아래 그래프·납입 진행 표시가 이어짐 | 핵심 금액 → 기준/시점 → 관련 그래프 순서. 노후·현금 주머니를 목적별로 구분하고 상세 내역을 아래에서 이어서 확인 |
+| [Betterment Retirement](https://www.betterment.com/retirement) | 짙은 파란 면과 밝은 글자, 두 사람이 걷는 사진, 사진에 일부 겹치는 작은 목표 그래프 카드, 노란 주 버튼 | 홈에서 생활 사진과 실제 자료 기반 요약을 함께 배치. 사진 옆에 노후 주머니 또는 입력한 생활비 목표를 보여주되 숫자는 불투명한 면 위에 배치 |
+| [Monarch](https://www.monarch.com/) · [Planning](https://www.monarch.com/features/planning) | 생활 장면을 크게 사용하고 얇은 내비게이션을 얹음. 공개 제품 이미지에는 목표마다 사진·금액·짧은 진행 표시가 있는 카드 그리드가 있음 | 두 주머니의 큰 타일, 집·은퇴 등 목적에 맞는 사진, 같은 위치에 정렬한 금액과 행동 버튼. 홈 요약에 가장 직접적으로 적용하기 좋은 구성 |
+| [Boldin](https://www.boldin.com/) · [How It Works](https://www.boldin.com/retirement/how-it-works/) | 흰 바탕·넓은 여백. 공개 대시보드는 현재/미래 수치와 그래프를 구분하고, 상태 요약 이미지는 관심 지표를 일정한 카드 구조로 묶음 | 연금의 월 수령액·생활비 목표·차액을 같은 기준으로 나란히 표시. 기존 데이터의 미입력/계산 가능 상태와 다음 행동을 가까이 둠 |
+| [ProjectionLab](https://projectionlab.com/) | 공개 제품 이미지에서 자산 곡선에 나이·사건 표시를 얹고 해당 시점의 상세 숫자를 보여줌. 별도 이미지에는 본인·배우자 은퇴 등 사건별 설정이 정렬됨 | 기존 연금 시간표에서 은퇴·국민연금 시작 시점을 사람별로 읽기 쉽게 표시. 선택 연도의 월액과 상세 내역을 시간표 가까이에 배치 |
+
+### 페이지별 적용 방향
+
+1. **홈 요약 (`#home`) — 우선 제안:** 사용자 스모크의 넓은 두 타일 + Monarch의 목표 카드 + Betterment의 생활 사진/요약 카드. 상단 핵심 금액, 노후·현금 주머니 두 영역, 이어지는 실제 자산 내역 순서. 데이터가 없는 상태에서도 큰 제목과 등록 행동이 선명하게 보이도록 구성한다.
+2. **연금 (`#pension`):** 기존 연금탑을 유지하면서 Boldin의 요약 배치와 ProjectionLab의 시간축을 참고한다. 월 연금·적용 생활비·차액의 위계를 정리하고, 탑과 층별 내역은 같은 화면에서 읽히게 배치한다. 입력 전 상태와 개인/부부 범위별 의미를 유지한다.
+3. **엑셀형 첫 화면:** 위쪽 요약의 숫자 크기와 여백을 확장하고 표의 밀도·키보드 동작은 유지한다. 금융 장부를 보는 영역에는 사진·반투명 처리를 얹지 않는다.
+
+### 구현 시 사용할 시각 기준 제안
+
+아래 수치는 외부 서비스에서 추출한 공식 값이 아닌 **둘이서은퇴용 제안**이다. 적용 페이지가 정해지면 `theme.css`에 의미가 있는 토큰으로 추가하고 해당 페이지에서만 사용한다.
+
+- 핵심 금액: 데스크톱 40~56px, 모바일 32~40px. 제목 28~40px, 본문 15~17px. 금액에 단위·기준 시점·소유자 범위를 함께 둔다.
+- 주요 영역 내부 여백 24~32px, 영역 사이 32~48px. 긴 표의 기존 글자 크기·행 높이와 분리한다.
+- 큰 타일의 모서리는 20~26px 범위에서 선택한다. 현재 테마에는 다른 세션이 기본 14px·LIFEPLUS를 이미 반영했으므로 다시 덮어쓰지 않는다.
+- 기존 네이비·회색을 기본으로 하고 강한 대비는 주요 숫자/행동에 집중한다. 상승·하락·자산군의 기존 색 의미와 겹치지 않게 한다.
+- 사진은 사용자가 보고 싶은 생활·목표와 연결한다. 반투명 면은 사진 위 짧은 요약에 한정하고, 표·긴 설명·입력값은 선명한 불투명 면에 둔다.
+- 미국 서비스의 IRA 제도, 납입 보너스, 은퇴 성공확률, 투자 추천이나 자동 계좌 연동은 디자인 이식 범위가 아니다. 기존 계산 결과가 없는 곡선·확률을 장식용 실데이터처럼 만들지 않는다.
+
+### 현재 진행 상태
+
+2026-11-07 사용자 검수 결과 **사진형의 기본 홈 적용을 철회**했다. 사용자는 원본 `concept.jpg`의 깔끔한 대시보드 구조와 시안 선택권을 강조했다. 기본 `#home`은 요약 3개·도넛/은퇴 목표·알림·전략/소득 배치로 복구했다. `home/ClassicHome.tsx`가 기본이고 사진형 `HomeDashboard.tsx`는 `/?homeDesign=photo#home` 비교 주소에만 남긴다. 아래 11월 6일 기록은 철회 전 시안의 구현 이력이며 최종 승인된 디자인이 아니다. 연금 시간축 제안도 아직 적용하지 않았다.
+
+### 홈 적용 기록 — 2026-11-06
+
+- 구현: `web/src/home/HomeDashboard.tsx`·`home.css`. 스모크의 큰 두 타일을 노후·현금 주머니에 대응하고, 사진 위에 읽기 쉬운 흰색 금액 카드를 겹쳤다. 순자산은 상단, 자산 구성·은퇴 목표·다음 행동은 하단. 기존 LIFEPLUS와 사용자가 선택한 주색·바탕을 따른다.
+- 데이터: 실제/예시/미등록 화면이 같은 구조를 사용한다. 주머니 비중은 금융자산 기준이며 부동산·부채는 전체 자산에서 확인한다. 미입력·조회 실패를 0원이나 가상의 목표 달성률로 채우지 않는다. 소유자 전환·금액 숨김·기존 등록/수정/삭제 경로를 유지한다.
+- 검증: 빌드와 관련 브라우저 테스트 10개 통과. 360~1440px에서 검수했으며 공용 5180에서는 조회만 수행했다. 캡처: [등록 전](../assets/home-design-empty.png) · [예시 데스크톱](../assets/home-design-desktop.png) · [예시 모바일](../assets/home-design-mobile.png).
+- 이미지: 노후 타일은 기존 `web/public/coastal-couple.png` 재사용. 현금 타일은 내장 `image_gen`으로 생성한 사진을 웹용 JPEG로 변환한 [home-future-living.jpg](../../web/public/home-future-living.jpg)(502,782 bytes). CLI 생성은 사용하지 않았다. 원본은 `/Users/eongyeonglee/.codex/generated_images/01a1b126-1c3f-7b90-a56d-b5f9846edb4f/exec-1994ac85-0876-4861-966b-71ad0240ad17.png`에 보존했다.
+
+최종 이미지 생성 프롬프트:
+
+```text
+Use case: photorealistic-natural. Create one premium editorial lifestyle photograph for the cash savings / future home card in a Korean couples' retirement planning app. A quiet, inviting modern apartment living room, warm oak floor, cream linen sofa at the lower right, two simple ceramic coffee cups on a small oak table, large windows looking onto leafy trees. Late-afternoon natural sunlight from the right creates gentle architectural shadows. Understated lived-in comfort, attainable and elegant, no mansion luxury, no people. Composition: landscape 3:2, photograph fills frame, fairly simple darker shaded wall/foliage in the upper left to hold white UI text later, room details mainly center and right, keep lower quarter composition uncluttered for an overlaid white data card. Authentic architecture/interior editorial photography, tactile linen and timber, restrained warm stone and olive colors, realistic lens and light. No text, no logos, no watermark, no app interface, no diagrams.
+```
+
 ## D. 2026-11-06 추가 — 해외·국내 금융 앱 9곳 실측 (Playwright 렌더링, 계산된 스타일)
 
 사용자 요청("잘 운영되는 연금·투자 앱 보고 적용할 것 생각") 으로 홈을 1440px로 렌더링해 바탕색·제목 글꼴·버튼 배경(가장 많이 쓰인 순)을 뽑았다. 마케팅 홈 기준이라 앱 내부 화면과 다를 수 있다.

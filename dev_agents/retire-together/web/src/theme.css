@@ -56,6 +56,17 @@
   /* 엑셀 보기 — 유일한 강조색 초록은 선택 테두리와 현재 시트 탭에만 */
   --sheet-line: var(--grey-200); --sheet-head: var(--grey-50); --sheet-head-text: var(--grey-600);
   --sheet-select: var(--brand); --sheet-select-soft: var(--brand-tint);   /* 엑셀 선택 초록 → 브랜드 주색으로 통일 (2026-11-06) */
+  /* Home editorial scale (2026-11-06): used only by home/home.css. */
+  --home-display: 50px; --home-display-small: 42px; --home-display-mobile: 38px;
+  --home-amount: 48px; --home-amount-small: 38px; --home-amount-mobile: 36px;
+  --home-tile-title: 38px; --home-tile-title-small: 32px;
+  --home-pocket-amount: 34px; --home-pocket-amount-small: 30px;
+  --home-section-title: 24px; --home-subamount: 20px;
+  --home-body: 15px; --home-caption: 13px; --home-small: 12px;
+  --home-radius: 24px; --home-card-radius: 20px;
+  --home-photo-shade: color-mix(in srgb, var(--grey-900) 65%, transparent);
+  --home-photo-border: color-mix(in srgb, var(--primary-foreground) 65%, transparent);
+  --home-card-shadow: 0 12px 36px -22px color-mix(in srgb, var(--grey-900) 32%, transparent);
 }
 
 /* Tailwind 기본 팔레트·글자 크기를 지운다 — 아래 토큰 밖의 색·크기는 코드에 쓸 수 없다 (지금 CSS 색 529개가 다시 생기지 않게) */

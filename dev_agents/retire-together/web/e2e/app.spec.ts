@@ -4,7 +4,7 @@ test('프로필 없이 첫 자산을 확인·저장하고 갱신·삭제하며 �
   const errors: string[] = []
   page.on('pageerror', e => errors.push(e.message))
   await page.goto('/#home')
-  await expect(page.getByRole('heading', { name: '자산 하나부터 시작해요.' })).toBeVisible()
+  await expect(page.getByRole('region', { name: '자산 요약' })).toContainText('미등록')
   await expect(page.getByRole('button', { name: '자산 등록', exact: true })).toHaveCount(1)
   await page.screenshot({ path: test.info().outputPath('asset-first-home.png'), fullPage: true })
   await page.getByRole('button', { name: '자산 등록', exact: true }).click()
@@ -114,7 +114,7 @@ for (const width of [1440, 1024, 390, 360]) {
     await page.setViewportSize({ width, height: 1000 })
     await page.goto('/#home')
     await page.getByRole('button', { name: '예시 보기', exact: true }).click()
-    await expect(page.locator('.hero')).toBeVisible()
+    await expect(page.getByRole('region', { name: '자산 요약' })).toBeVisible()
     await page.screenshot({ path: testInfo.outputPath(`home-${width}.png`), fullPage: true })
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
     await page.goto('/#assets')
