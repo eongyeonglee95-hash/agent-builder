@@ -3,6 +3,7 @@
 이 저장소에서 작업하는 Codex는 `CLAUDE.md`를 먼저 읽고 같은 제품·계산·보안 원칙을 따른다.
 
 - 현재 실행 계획과 파일 담당: `docs/AGENT_DESIGN.md` §0.
+- Shrimp 시범 운영: `retire-together-shrimp` MCP로 SHARE-02~07을 관리한다. 상태 원본은 계속 `docs/AGENT_DESIGN.md` §0이며, 착수 전 인계 확인·완료 검증 후 문서 반영을 유지한다. 작업 상태는 한 세션만 수정한다. 규칙 자동 초기화·전체 작업 초기화·연속 자동 실행은 사용자가 요청한 범위를 넘겨 수행하지 않는다. 사용법과 MCP 미연결 시 조회 명령은 `docs/LOCAL_DEVELOPMENT.md`의 Shrimp 절.
 - 제품 맥락: `docs/MASTER_CONTEXT.md`.
 - 화면 기준: `docs/assets/concept.jpg`, `docs/SCREEN_REFERENCE.md`.
 - UI 변경 범위(2026-11-07 사용자 재확인): 처음 정한 깔끔한 대시보드 구조를 유지한다. 디자인 참고·색/글꼴/여백 개선 요청을 레이아웃 교체나 소개·온보딩 추가로 확대하지 않는다. 구조가 다른 제안은 별도 시안으로 먼저 보여주고, 사용자가 선택하기 전 기본 화면을 대체하지 않는다.

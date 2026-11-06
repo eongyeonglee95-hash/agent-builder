@@ -1,0 +1,9 @@
+
+
+[mcp_servers.retire-together-shrimp]
+command = "/bin/sh"
+args = ["/Users/eongyeonglee/retire-together/dev_agents/retire-together/scripts/shrimp-mcp.sh"]
+cwd = "/Users/eongyeonglee/retire-together/dev_agents/retire-together"
+startup_timeout_sec = 20
+tool_timeout_sec = 120
+enabled_tools = ["plan_task", "analyze_task", "reflect_task", "split_tasks", "list_tasks", "execute_task", "verify_task", "update_task", "query_task", "get_task_detail"]

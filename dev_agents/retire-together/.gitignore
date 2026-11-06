@@ -11,6 +11,9 @@ data/*
 .streamlit/secrets.toml
 .taskmaster/
 
+# Shrimp MCP 설치본 (작업 데이터는 기존 data/local/ 제외 규칙 사용)
+.tools/shrimp-task-manager/
+
 # AI 도구 세션 상태 (oh-my-claudecode 등) — 환경 파일, 저장소에 올리지 않는다
 .omc/
 web/node_modules/

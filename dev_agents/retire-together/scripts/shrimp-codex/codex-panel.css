@@ -1,0 +1,24 @@
+.codex-panel { margin: 0 0 18px; padding: 18px 20px; border: 1px solid #4c7390; border-radius: 10px; background: #17293c; color: #e5edf5; text-align: left; }
+.codex-panel-heading, .codex-panel-actions, .codex-job > div { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+.codex-panel-heading { justify-content: space-between; }
+.codex-panel-heading strong { font-size: 18px; }
+.codex-connection { display: inline-block; margin-left: 12px; font-size: 13px; color: #cbd5e1; }
+.codex-connection.connected, .codex-notice, .codex-assigned { color: #83e0ce; }
+.codex-panel p { margin: 10px 0; font-size: 14px; line-height: 1.6; }
+.codex-panel button { min-height: 38px; padding: 8px 13px; border: 1px solid #5f7b91; border-radius: 6px; background: #2c4158; color: #fff; font-size: 14px; cursor: pointer; }
+.codex-panel button:focus-visible { outline: 3px solid #83e0ce; outline-offset: 3px; }
+.codex-panel button:disabled { opacity: .45; cursor: not-allowed; }
+.codex-panel button.codex-run { background: #236b62; border-color: #4eac9d; font-weight: 700; }
+.codex-panel button.codex-stop { border-color: #df8b7d; }
+.codex-panel-actions { margin: 15px 0 10px; }
+.codex-panel small { color: #b4c5d4; line-height: 1.6; }
+.codex-error { color: #ffb4a5; }
+.codex-job { border-top: 1px solid #3c5269; padding-top: 12px; margin-top: 14px; }
+.codex-job-state { margin-left: auto; font-size: 12px; padding: 3px 8px; background: #34485d; border-radius: 5px; }
+.codex-job-state.completed { background: #236b62; }
+.codex-job-state.failed, .codex-job-state.blocked { background: #7a453c; }
+.codex-panel summary { cursor: pointer; font-size: 13px; color: #a8d5eb; }
+.codex-panel pre { max-height: 250px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; padding: 12px; background: #0b1725; border-radius: 5px; color: #cddce9; font-size: 12px; }
+.codex-answer { white-space: pre-wrap; overflow-wrap: anywhere; }
+.codex-assigned { font-size: 13px; font-weight: 600; }
+@media (max-width: 600px) { .codex-panel { padding: 14px; } .codex-connection { display: block; margin: 6px 0 0; } .codex-panel-actions > span { flex-basis: 100%; } }
