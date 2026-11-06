@@ -20,3 +20,6 @@ web/test-results/
 web/playwright-report/
 
 web/test-results-*/
+
+# 디자인 자료는 docs/assets 한 곳에. 실제 계좌·잔고 캡처만 mydata/ 아래에 두고 올리지 않는다 (2026-11-07)
+docs/assets/mydata/
