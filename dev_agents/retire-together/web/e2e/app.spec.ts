@@ -385,10 +385,15 @@ test('엑셀처럼: 복사한 표를 붙여 넣고 키보드로 고쳐 저장하
   expect(errors).toEqual([])
 })
 
-test('첫 화면은 엑셀 워크북: 한 줄 요약·시트 탭·보고서·다른 버전 오가기', async ({ page, request }) => {
+test('첫 화면은 메인: 표로 보기·새로고침·시트 탭·보고서·돌아오기', async ({ page, request }) => {
   const errors: string[] = []
   page.on('pageerror', e => errors.push(e.message))
   await page.goto('/')
+  await expect(page.getByRole('region', { name: '자산 요약' })).toBeVisible()
+  await expect(page.getByRole('grid', { name: '요약 시트' })).toHaveCount(0)
+  await page.getByRole('button', { name: '표로 보기', exact: true }).click()
+  await expect(page).toHaveURL(/#sheet-summary$/)
+  await page.reload()
   const summary = page.getByRole('grid', { name: '요약 시트' })
   await expect(summary).toBeVisible()
   await expect(page.getByText(/기준 순자산/)).toBeVisible()

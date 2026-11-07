@@ -1,63 +1,62 @@
-# 계좌 목록 — 워크플로우 0단계 (docs/AGENT_DESIGN.md §1)
-# 모든 잔고 행은 owner / broker / account_type 세 칸을 달고 다닌다.
-# PoC는 이 파일로 고정. 로그인·가족 초대는 v1.5.
-# owner: me | spouse
-# broker: mirae | kiwoom | kis (한국투자증권)
-# account_type: pension_savings(연금저축) | irp | isa | general(일반)
-# pocket: pension(노후 주머니) | cash(현금 주머니)
-# pool: 리밸런싱 단위. 같은 pool의 계좌는 합산해서 비중을 보고 주문은 계좌별. 계좌 하나만 넣으면 "계좌별" 리밸런싱이 된다.
-#       pool마다 전략(자산배분 로직)을 따로 고른다 → 아래 pools:
-# layer: 연금 4층 석탑 (1 국민연금, 2 퇴직연금, 3 개인연금, 4 ISA) — 현금 주머니는 null
+# 계좌 목록 — 워크플로우 0단계 (docs/AGENT_DESIGN.md §1). 설정 화면에서 저장하면 이 파일이 다시 쓰인다.
+# owner: me | spouse · broker: mirae | kiwoom | kis · account_type: pension_savings | irp | isa | general
+# pocket: pension | cash · layer: 1 국민연금 2 퇴직연금 3 개인연금 4 ISA (현금 주머니는 null)
+# pool: 리밸런싱 단위. 같은 pool = 합산, 계좌 하나만 = 계좌별. pools: 풀마다 strategy(전략)와 mode(rebalance | buy_only)
 accounts:
-  - id: me_mirae_pension_new
-    label: 연금저축계좌(신)
-    pool: me_pension_new
-    owner: me
-    broker: mirae
-    account_type: pension_savings
-    pocket: pension
-    layer: 3
-    api: false              # 미래에셋 연금계좌 API 없음 → 수동 주문
-    active: true            # PoC 대상. 2026-10-26 캡처 기준 평가금액 23,501,048원, 종목 5개
-  - id: me_mirae_pension_old
-    label: 연금저축계좌(구)
-    pool: me_pension_old
-    owner: me
-    broker: mirae
-    account_type: pension_savings
-    pocket: pension
-    layer: 3
-    api: false
-    active: true            # PoC 대상. 2026-10-26 캡처 기준 평가금액 39,011,874원, 종목 6개
-  - id: me_irp
-    pool: me_irp
-    owner: me
-    broker: mirae           # 미확인, 가정 (docs/DECISIONS.md)
-    account_type: irp
-    pocket: pension
-    layer: 2
-    api: false
-    active: false           # 회의 후 추가
-  - id: me_kiwoom_general
-    owner: me
-    broker: kiwoom
-    account_type: general
-    pocket: cash
-    layer: null
-    api: false
-    active: false           # PoC 범위 밖
-  - id: me_kis_pension
-    owner: me
-    broker: kis
-    account_type: pension_savings
-    pocket: pension
-    layer: 3
-    api: true               # 2027년 개설 예정, 자동주문(2단계) 대상
-    active: false
-
-# 리밸런싱 풀 — 풀마다 전략 하나 + 모드 하나. 계좌를 묶으면 합산, 하나면 계좌별 (2026-10-26 사용자: 계좌별로 따로)
-# mode: rebalance = 매도·매수로 목표 비율 맞춤 / buy_only = 매도 없이 납입금으로만 부족한 자산군 매수 (기계적 적립)
-# (구)=리밸런싱, (신)=매수만 — 2026-10-26 사용자 확정. 화면(설정)에서 바꿀 수 있다
+- id: me_mirae_pension_new
+  label: 연금저축계좌(신)
+  pool: me_pension_new
+  owner: me
+  broker: mirae
+  account_type: pension_savings
+  pocket: pension
+  layer: 3
+  api: false
+  active: true
+- id: me_mirae_pension_old
+  label: 연금저축계좌(구)
+  pool: me_pension_old
+  owner: me
+  broker: mirae
+  account_type: pension_savings
+  pocket: pension
+  layer: 3
+  api: false
+  active: true
+- id: me_irp
+  pool: me_irp
+  owner: me
+  broker: mirae
+  account_type: irp
+  pocket: pension
+  layer: 2
+  api: false
+  active: false
+- id: me_kiwoom_general
+  owner: me
+  broker: kiwoom
+  account_type: general
+  pocket: cash
+  layer: null
+  api: false
+  active: false
+- id: me_kis_pension
+  owner: me
+  broker: kis
+  account_type: pension_savings
+  pocket: pension
+  layer: 3
+  api: true
+  active: false
+- id: me_mirae_pension_savings
+  label: ㅇㅇㅇㅇㅇ
+  owner: me
+  broker: mirae
+  account_type: pension_savings
+  pocket: pension
+  layer: 3
+  api: false
+  active: true
 pools:
   me_pension_old:
     label: 연금저축(구) — 리밸런싱

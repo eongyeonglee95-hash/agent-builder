@@ -1,0 +1,15 @@
+/* Shared wordmark: two people, one horizon. Dimensions follow each host header. */
+.brand { gap: 10px; }
+.brand > span { font-family: var(--font-sans); font-weight: 700; letter-spacing: -.055em; }
+.brand em { font-weight: 500; }
+.brand small { font-family: var(--font-sans); font-weight: 500; letter-spacing: .19em; }
+.brand > svg { overflow: visible; }
+.auth-header .brand { gap: 12px; }
+.auth-header .brand > svg { width: 40px; height: 40px; }
+.auth-header .brand > span { font-size: var(--home-section-title); }
+.auth-header .brand small { font-size: var(--home-small); letter-spacing: .17em; }
+@media (max-width: 760px) {
+  .auth-header .brand { gap: 9px; }
+  .auth-header .brand > svg { width: 34px; height: 34px; }
+  .auth-header .brand > span { font-size: var(--home-subamount); }
+}

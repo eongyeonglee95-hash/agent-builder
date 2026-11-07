@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { classInfo, type Family, type Owner, type Snapshot } from './model'
+import { apiFetch } from './auth/session'
 
 export const emptySnapshot: Snapshot = { assets: [], debts: [], total: 0, retirement: 0, cash: 0, property: 0, debt: 0, net: 0, financial: 0, classes: [], count: 0, unclassified: 0, as_of: null }
 export async function api<T>(path: string, method = 'GET', body?: unknown, signal?: AbortSignal): Promise<T> {
   let response: Response
   try {
-    response = await fetch(`/api${path}`, { method, signal, headers: { 'Content-Type': 'application/json', 'X-Retire-Local': '1' }, body: body === undefined ? undefined : JSON.stringify(body) })
+    response = await apiFetch(`/api${path}`, { method, signal, headers: { 'Content-Type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) })
   } catch (e) { if (signal?.aborted) throw e; throw new Error('저장 서버에 연결할 수 없습니다. 서버 실행 상태를 확인한 뒤 다시 시도해 주세요.') }
   if (!response.ok) {
     let detail: unknown

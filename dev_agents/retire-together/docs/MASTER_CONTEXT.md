@@ -5,6 +5,7 @@
 문서 지도: SCREEN_REFERENCE.md(화면) · MASTER_PRD.md(요구사항) · AGENT_DESIGN.md(Agent·PoC 범위) · REBALANCING_RULES.md(자산배분 규칙) · TAX_RULES.md(세금·수령 규칙) · CALCULATION_RULES.md(공식) · DECISIONS.md(결정 기록) · CHANGELOG.md
 
 ## 현재 작업 방향 — 2026-10-27 사용자 승인
+- 2026-11-07 변경: 첫 진입은 메인 대시보드, 엑셀 워크북은 ‘표로 보기’로 연다. Google 로그인은 팝업에서 진행하고 원래 화면으로 이어지며, 첫 Google 동의는 유지한다.
 - 화면 기준은 저장소의 `docs/assets/concept.jpg`. 컨셉에 가까운 데스크톱·모바일 홈을 첫 검수 결과물로 삼는다.
 - React·TypeScript·Vite + Python·FastAPI로 전환하고 기존 계산 코드는 검증을 보강해 재사용한다. 현재 실행 가능한 UI는 아직 Streamlit이다.
 - 단일 실행 계획·담당·인계 상태는 `AGENT_DESIGN.md` §0. 상세 조사 근거는 `ARCHITECTURE_REVIEW.md`. 이전 PoC 일정과 충돌하면 현재 실행 계획이 우선한다.

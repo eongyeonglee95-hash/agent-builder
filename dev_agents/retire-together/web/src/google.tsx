@@ -1,3 +1,4 @@
+import { useAuth } from './auth/AuthGate'
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Check, ExternalLink, Info, RefreshCw, Sheet, Unplug } from 'lucide-react'
 import { api } from './local-data'
@@ -8,12 +9,14 @@ import { api } from './local-data'
 export type SheetStatus = { client_secret: boolean; connected: boolean; connecting: boolean; connect_error: string | null; spreadsheet: { spreadsheet_id: string; url: string; title: string } | null; active: boolean; disabled: boolean; asset_rows?: number | null; health?: string }
 
 export function useSheetStatus(poll = false) {
+  const { mode } = useAuth()
   const [status, setStatus] = useState<SheetStatus | null>(null)
   const [error, setError] = useState('')
   const refresh = useCallback(async () => {
+    if (mode === 'web') return
     try { setStatus(await api<SheetStatus>('/google/status')); setError('') }
     catch (e) { setError(e instanceof Error ? e.message : '연결 상태를 확인하지 못했어요.') }
-  }, [])
+  }, [mode])
   useEffect(() => { refresh() }, [refresh])
   useEffect(() => {
     if (!poll || !status?.connecting) return
@@ -29,7 +32,13 @@ export function SheetBadge({ onClick }: { onClick: () => void }) {
   return <button className={`sheet-badge ${status.active ? 'on' : ''}`} onClick={onClick} aria-label="구글 시트 연결 설정"><Sheet size={13}/>{status.active ? '구글 시트' : '로컬 저장'}</button>
 }
 
-export function GoogleSheetPanel({ onChanged }: { onChanged: () => void }) {
+export function GoogleSheetPanel(props: { onChanged: () => void }) {
+  const { mode } = useAuth()
+  if (mode === 'web') return <p>구글 로그인은 연결되었습니다. 공통 시트 연결은 다음 단계에서 제공됩니다.</p>
+  return <LocalGoogleSheetPanel {...props}/>
+}
+
+function LocalGoogleSheetPanel({ onChanged }: { onChanged: () => void }) {
   const { status, error, refresh, setStatus } = useSheetStatus(true)
   const [busy, setBusy] = useState('')
   const [formError, setFormError] = useState('')

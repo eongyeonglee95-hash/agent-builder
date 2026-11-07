@@ -1,8 +1,10 @@
 # 구글 로그인과 공통 스프레드시트
 
+2026-11-07 로그인 화면 연결: `http://127.0.0.1:5180/`에서 **Google로 로그인**을 눌러 본인 계정을 선택한다. 첫 성공 계정이 고정 오너이며, 실제 최초 로그인과 활성 오너 세션을 확인했다. 로그인 버튼은 팝업으로 진행하고 완료 후 원래 앱의 메인 대시보드가 열린다. 공통 시트 생성·배우자 초대는 후속 작업이다.
+
 갱신: 2026-11-06. 사용자가 먼저 구글 계정으로 시작해 고정 오너가 되고, 초대받은 배우자가 같은 가구와 공통 스프레드시트에 합류한다. 자산 데이터는 두 분의 구글 시트를 원천으로 유지한다. 사진·직접 입력·파일로 등록한 결과도 시트에 쓰이며, 시트에서 직접 고친 값은 앱에 반영한다.
 
-현재는 설계와 후속 작업을 정리한 단계다. 기존 `SHEET-01`은 로컬 컴퓨터의 시트 연결 기능이며, 웹 로그인·가구 인증·초대 기능은 아직 없다. 구현 상태의 원본은 [AGENT_DESIGN §0](AGENT_DESIGN.md)의 `SHARE-*` 작업이다.
+SHARE-02의 웹 OAuth·서버 세션·고정 오너 코드와 합성 자동 테스트를 추가했다(2026-11-07). 최소 로그인 화면·계정 메뉴·프론트 CSRF 연결 및 브라우저 검수를 추가하고 공용 서버를 웹 모드로 전환했다. 실제 최초 Google 로그인과 활성 오너 세션을 확인했다. 기존 `SHEET-01`은 컴퓨터 공용 시트 연결이고, 웹 공통 파일·배우자 초대 화면은 후속 작업이다. 구현 상태의 원본은 [AGENT_DESIGN §0](AGENT_DESIGN.md)의 `SHARE-*` 작업이다.
 
 ## 확정한 제품 규칙
 
@@ -78,12 +80,12 @@
 1. [Google Cloud Console](https://console.cloud.google.com/)에서 프로젝트 이름은 영문 `Retire Together`로 생성/선택한다. 프로젝트 ID는 콘솔의 자동 생성값을 사용한다. [프로젝트 이름·ID 규칙](https://docs.cloud.google.com/resource-manager/docs/creating-managing-projects)
 2. **Google Auth Platform → Branding → 시작하기**에서 앱 이름 `둘이서은퇴`, 지원/연락 이메일을 입력하고 대상은 **외부(External)**로 설정한다.
 3. **Audience → Test users**에 본인 Google 이메일을 추가한다. 배우자 테스트 전에 배우자도 추가하며 개발 중에는 테스트 상태를 유지한다. [공식 동의 화면 설정](https://developers.google.com/workspace/guides/configure-oauth-consent)
-4. **Clients → Create client → Web application**을 선택한다. 이름은 `둘이서은퇴 로컬 개발`. 승인된 JavaScript 원본은 `http://127.0.0.1:5180`, 승인된 리디렉션 URI는 `http://127.0.0.1:5180/api/auth/google/callback`로 등록한다. 이 콜백은 SHARE-02에서 구현할 예정인 주소이며 현재 구현 완료를 뜻하지 않는다. 배포 시에는 실제 HTTPS 주소를 별도로 등록한다. [공식 웹 OAuth 안내](https://developers.google.com/identity/protocols/oauth2/web-server)
+4. **Clients → Create client → Web application**을 선택한다. 이름은 `둘이서은퇴 로컬 개발`. 승인된 JavaScript 원본은 `http://127.0.0.1:5180`, 승인된 리디렉션 URI는 `http://127.0.0.1:5180/api/auth/google/callback`로 등록한다. 콜백 코드는 SHARE-02에 추가했으며 실제 Google 왕복은 아직 검증 전이다. 배포 시에는 실제 HTTPS 주소를 별도로 등록한다. [공식 웹 OAuth 안내](https://developers.google.com/identity/protocols/oauth2/web-server)
 5. 생성 직후 클라이언트 JSON을 다운로드해 로컬에 보관한다. 클라이언트 비밀값을 대화·문서·Git에 붙여 넣지 않는다. 구현 시 서버 전용 설정으로 연결하며 브라우저 코드에 포함하지 않는다.
 
 현재 PC 설정 전달(2026-11-07): 사용자가 제공한 웹 OAuth JSON은 `data/local/google/web-client.json`에 보관한다(Git 제외, 파일 권한 0600). 위 개발 원본/콜백을 등록한 웹 클라이언트임을 확인했다. SHARE-02 구현에서 서버 전용으로 이 경로를 읽으며, 기존 데스크톱용 `client_secret.json`과 구분한다. 실제 Google 동의 화면의 테스트 사용자 설정과 사용자 로그인 성공 여부는 별도 확인해야 한다.
 
-아래는 현재 로컬 시트 연결의 기존 안내이며, 새 웹 로그인에는 위 **웹 애플리케이션** 유형을 사용한다.
+SHARE-02 서버 설정·검수 순서는 [LOCAL_DEVELOPMENT의 웹 인증 절](LOCAL_DEVELOPMENT.md#share-02-웹-인증-설정과-검수)을 따른다. 아래는 현재 로컬 시트 연결의 기존 안내이며, 새 웹 로그인에는 위 **웹 애플리케이션** 유형을 사용한다.
 
 ## 기존 로컬 연결 설정
 

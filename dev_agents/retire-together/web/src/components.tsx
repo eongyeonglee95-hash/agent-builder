@@ -1,9 +1,10 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { ArrowUpRight, Check, ChevronRight, Eye, EyeOff, Info, X } from 'lucide-react'
 import { classInfo, compactMoney, money, type Strategy } from './model'
+import './brand.css'
 
 export function Brand({ compact = false }: { compact?: boolean }) {
-  return <div className={`brand ${compact ? 'compact' : ''}`}><svg width="32" height="32" viewBox="0 0 48 48" fill="none" aria-hidden="true"><use href="#rt-mark"/></svg><span><em>둘이서</em>은퇴<small>RETIRE TOGETHER</small></span></div>
+  return <div className={`brand ${compact ? 'compact' : ''}`}><svg width="32" height="32" viewBox="0 0 48 48" fill="none" aria-hidden="true"><use href="#rt-mark"/></svg><span><em>둘이서</em> 은퇴<small>RETIRE TOGETHER</small></span></div>
 }
 export function PanelHeading({ title, detail, children }: { title: string; detail?: string; children?: ReactNode }) {
   return <div className="panel-heading"><div><h2>{title}</h2>{detail && <p>{detail}</p>}</div>{children}</div>

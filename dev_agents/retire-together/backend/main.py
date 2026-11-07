@@ -2,21 +2,20 @@
 from pathlib import Path
 from typing import Literal
 from uuid import UUID
-from urllib.parse import urlparse
 
-from fastapi import FastAPI, HTTPException, Request, Query, Response
-from fastapi.middleware.trustedhost import TrustedHostMiddleware
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI, HTTPException, Query, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import ValidationError
 import yaml
 
 from backend.strategies import StrategyDisplay, load_strategy_display
 from backend import storage, rebalance, registration, google_api, holdings, workbook, portfolio, retirement, property, property_move
+from backend import auth
 
 app = FastAPI(title="둘이서은퇴 · 로컬 API", version="0.1.0", docs_url="/api/docs",
               redoc_url=None, openapi_url="/api/openapi.json")
-app.add_middleware(TrustedHostMiddleware, allowed_hosts=["127.0.0.1", "localhost", "[::1]"])
+app.middleware("http")(auth.boundary)
+app.include_router(auth.router)          # SHARE-02 웹 로그인·서버 세션·고정 오너
 app.include_router(registration.router)   # REG-01 자산 등록(사진·파일) — Claude 담당
 app.include_router(google_api.router)     # SHEET-01 구글 시트 연결 — Claude 담당
 app.include_router(holdings.router)       # 보유 종목 손익 — Claude 담당 (CALCULATION_RULES §7)
@@ -27,27 +26,9 @@ app.include_router(property.router)       # PROPERTY-02 부동산 메뉴 집 등
 app.include_router(property_move.router)  # PROPERTY-MOVE 갈아타기 목표·후보·자금 계획 — Codex
 
 
-@app.middleware("http")
-async def local_boundary(request: Request, call_next):
-    if request.url.path.startswith("/api/"):
-        origin = request.headers.get("origin")
-        if request.method not in ("GET", "HEAD", "OPTIONS"):
-            if not origin or request.headers.get("x-retire-local") != "1":
-                return JSONResponse({"detail": "A local app request is required"}, status_code=403)
-        if (origin and urlparse(origin).netloc != request.headers.get("host")) or request.headers.get("sec-fetch-site") == "cross-site":
-            return JSONResponse({"detail": "Cross-origin requests are not supported"}, status_code=403)
-    response = await call_next(request)
-    response.headers["X-Content-Type-Options"] = "nosniff"
-    response.headers["X-Frame-Options"] = "DENY"
-    response.headers["Referrer-Policy"] = "no-referrer"
-    if request.url.path.startswith("/api/"):
-        response.headers["Cache-Control"] = "no-store"
-    return response
-
-
 @app.get("/api/health")
 def health():
-    return {"status": "ok", "mode": "local", "broker_connected": False}
+    return {"status": "ok", "mode": auth.auth_config.mode(), "broker_connected": False}
 
 @app.get("/api/family")
 def family():

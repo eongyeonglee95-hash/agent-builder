@@ -2,6 +2,7 @@
 // 고른 주색 하나에서 틴트·어두운 면·버튼 글자색을 계산해 :root 토큰(--brand 계열, --page-bg)을 덮어쓴다. 상승 빨강·하락 파랑·자산군 색은 건드리지 않는다.
 // 로고는 <symbol id="rt-mark">를 바꿔 끼운다 — Brand 컴포넌트는 <use href="#rt-mark">만 그린다. 저장은 localStorage 'rt-brand'.
 import './brand-mode.css'
+import togetherMark from './assets/retire-together-mark.svg?raw'
 
 type Preset = { hex: string; name: string; ref?: boolean }
 const PRESETS: Preset[] = [
@@ -11,6 +12,7 @@ const PRESETS: Preset[] = [
 ]
 // 로고 마크 후보 — 48×48, 단색(currentColor). 24px에서도 읽히는 굵기
 export const MARKS: Record<string, { name: string; svg: string }> = {
+  together: { name: '나란한 내일', svg: togetherMark.replace(/<\/?svg\b[^>]*>/g, '') },
   rings: { name: '두 고리', svg: '<circle cx="18" cy="24" r="11" stroke="currentColor" stroke-width="5" fill="none"/><circle cx="30" cy="24" r="11" stroke="currentColor" stroke-width="5" fill="none" opacity=".55"/>' },
   bridge: { name: '함께 건너는 다리', svg: '<path d="M5 34 Q24 6 43 34" stroke="currentColor" stroke-width="5" fill="none" stroke-linecap="round"/><path d="M5 34 H43" stroke="currentColor" stroke-width="5" stroke-linecap="round"/><path d="M16 34 V22 M32 34 V22" stroke="currentColor" stroke-width="3.5" opacity=".55" stroke-linecap="round"/>' },
   sunrise: { name: '두 줄 위 해', svg: '<path d="M10 28 A14 14 0 0 1 38 28 Z" fill="currentColor"/><path d="M6 33 H42" stroke="currentColor" stroke-width="4" stroke-linecap="round"/><path d="M12 40 H36" stroke="currentColor" stroke-width="4" stroke-linecap="round" opacity=".55"/>' },
@@ -35,10 +37,10 @@ function vars(hex: string, bg: string) {
     '--page-bg': bg === 'white' ? '#ffffff' : bg === 'tint' ? rgb2hex(mix(c, white, 0.95)) : '#f7f6f2',
   }
 }
-type Saved = { hex: string; bg: string; mark: string; vars: Record<string, string> }
+type Saved = { hex: string; bg: string; mark: string; markVersion: number; vars: Record<string, string> }
 function load(): Saved {
-  try { const s = JSON.parse(localStorage.getItem(KEY) || 'null'); if (s && s.hex && s.bg) return { mark: 'rings', ...s } } catch { /* 저장 없음 */ }
-  return { hex: PRESETS[0].hex, bg: 'cream', mark: 'rings', vars: vars(PRESETS[0].hex, 'cream') }
+  try { const s = JSON.parse(localStorage.getItem(KEY) || 'null'); if (s && s.hex && s.bg) return { ...s, mark: s.markVersion === 2 && MARKS[s.mark] ? s.mark : 'together', markVersion: 2 } } catch { /* 저장 없음 */ }
+  return { hex: PRESETS[0].hex, bg: 'cream', mark: 'together', markVersion: 2, vars: vars(PRESETS[0].hex, 'cream') }
 }
 let state = load()
 // e2e 같은 자동화 브라우저에서는 버튼을 가리지 않게 접은 채로 시작
@@ -50,7 +52,7 @@ sprite.setAttribute('aria-hidden', 'true'); sprite.style.cssText = 'position:abs
 sprite.innerHTML = '<symbol id="rt-mark" viewBox="0 0 48 48"></symbol>'
 document.body.prepend(sprite)
 function applyMark() {
-  const m = MARKS[state.mark] ?? MARKS.rings
+  const m = MARKS[state.mark] ?? MARKS.together
   sprite.querySelector('symbol')!.innerHTML = m.svg
   // 파비콘도 같은 마크로
   const fav = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect width="48" height="48" rx="13" fill="${state.vars['--brand-dark']}"/><g color="#fff" transform="translate(6 6) scale(.75)">${m.svg}</g></svg>`
@@ -58,7 +60,7 @@ function applyMark() {
 }
 function apply(next: Partial<Saved>) {
   const hex = next.hex ?? state.hex, bg = next.bg ?? state.bg, mark = next.mark ?? state.mark
-  state = { hex, bg, mark, vars: vars(hex, bg) }
+  state = { hex, bg, mark, markVersion: 2, vars: vars(hex, bg) }
   for (const [k, v] of Object.entries(state.vars)) document.documentElement.style.setProperty(k, v)
   applyMark()
   try { localStorage.setItem(KEY, JSON.stringify(state)) } catch { /* 비공개 창 등 */ }
@@ -69,7 +71,7 @@ const host = document.createElement('div'); host.className = 'brand-mode'; docum
 const dot = (hex: string) => `<i style="background:${hex}"></i>`
 function render() {
   host.dataset.open = String(open)
-  // 주색만 고른다 (2026-11-07 사용자: "주색 이것만 선택되게끔"). 바탕은 미색, 로고는 두 고리로 고정 — 코드엔 남겨 두고 바에서는 뺀다
+  // 주색만 고른다. 로고는 2026-11-07 리디자인한 '나란한 내일'을 기본으로 쓴다.
   host.innerHTML = open ? `<div class="bm-bar" role="toolbar" aria-label="주색 고르기"><em>주색</em>${PRESETS.map(p => `<button type="button" data-hex="${p.hex}" aria-pressed="${p.hex === state.hex}" title="${p.ref ? '레퍼런스 · ' : ''}${p.name}">${dot(p.hex)}<span>${p.name}</span></button>`).join('')}
       <label class="bm-pick" title="직접 고르기"><input type="color" value="${state.hex}" aria-label="주색 직접 고르기"><code>${state.hex}</code></label>
       <button type="button" class="bm-close" aria-label="주색 바 접기">접기</button></div>` : `<button type="button" class="bm-toggle" aria-label="색상 변경" aria-expanded="false">${dot(state.hex)}색상 변경</button>`

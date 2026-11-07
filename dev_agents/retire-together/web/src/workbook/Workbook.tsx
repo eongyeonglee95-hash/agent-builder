@@ -1,3 +1,4 @@
+import { AccountMenu } from '../auth/AuthGate'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ChevronDown, Download, FileSpreadsheet, Camera, LayoutGrid, RefreshCw, Copy, Landmark } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -101,7 +102,7 @@ export function Workbook({ onClassic }: { onClassic: () => void }) {
     <header className="flex h-12 shrink-0 items-center gap-2 border-b border-grey-200 bg-white px-3 sm:gap-3 sm:px-4">
       <span className="shrink-0 whitespace-nowrap text-base font-semibold tracking-tight">둘이서은퇴</span>
       <span className="hidden text-xs text-grey-600 sm:inline">우리 자산.xlsx</span>
-      <div className="ml-auto flex min-w-0 items-center gap-1.5 sm:gap-2">
+      <div className="ml-auto flex min-w-0 items-center gap-1.5 sm:gap-2"><AccountMenu/>
         <Select value={owner} onValueChange={v => setOwner(v as Owner)}>
           <SelectTrigger size="sm" className="h-8 w-[92px] text-sm sm:w-[110px]" aria-label="누구의 자산"><SelectValue/></SelectTrigger>
           <SelectContent><SelectItem value="together">부부 전체</SelectItem><SelectItem value="me">나</SelectItem><SelectItem value="partner">배우자</SelectItem></SelectContent>

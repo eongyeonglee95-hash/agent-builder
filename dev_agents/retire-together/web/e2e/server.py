@@ -11,6 +11,9 @@ import uvicorn
 
 with TemporaryDirectory(prefix="retire-browser-") as test_data:
     storage.DB_PATH = Path(test_data) / "test.sqlite3"
+    os.environ["RETIRE_AUTH_MODE"] = "local"
+    os.environ["RETIRE_AUTH_DB"] = str(Path(test_data) / "auth.sqlite3")
+    os.environ["RETIRE_GOOGLE_WEB_CLIENT"] = str(Path(test_data) / "web-client.json")
     # REG-01/SHEET-01: 등록 테스트가 실제 규칙 파일·스냅샷·구글 시트를 건드리지 않도록 임시 경로
     os.environ["RETIRE_SHEETS"] = "off"
     os.environ["RETIRE_ACCOUNTS_PATH"] = str(Path(test_data) / "accounts.yaml")

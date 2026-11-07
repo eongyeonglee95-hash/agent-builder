@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { ArrowLeft, ArrowRight, Camera, Check, Download, FileSpreadsheet, Info, PencilLine, Plus, Sheet, Upload, X } from 'lucide-react'
 import { AssetForm } from './forms'
 import { api } from './local-data'
+import { apiFetch } from './auth/session'
 import { classInfo, money, type Asset, type Family, type Owner } from './model'
 import './register.css'
 import { AssetSheet } from './sheet'
@@ -28,7 +29,7 @@ const TYPES: [string, string][] = [['pension_savings', '연금저축'], ['irp', 
 
 async function upload<T>(path: string, form: FormData): Promise<T> {
   let response: Response
-  try { response = await fetch(`/api${path}`, { method: 'POST', body: form, headers: { 'X-Retire-Local': '1' } }) }
+  try { response = await apiFetch(`/api${path}`, { method: 'POST', body: form }) }
   catch { throw new Error('저장 서버에 연결할 수 없습니다. 서버 실행 상태를 확인한 뒤 다시 시도해 주세요.') }
   if (!response.ok) {
     let detail: unknown

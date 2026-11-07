@@ -10,6 +10,17 @@
 set -euo pipefail
 project_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$project_root"
+# Explicit local opt-in survives a server restart; never source executable settings.
+# "bootstrap" allows the first owner setup, "web" keeps login on after setup.
+auth_mode_file="$project_root/data/local/auth/dev-mode"
+if [[ -z "${RETIRE_AUTH_MODE+x}" && -f "$auth_mode_file" ]]; then
+  read -r saved_auth_mode < "$auth_mode_file"
+  case "$saved_auth_mode" in
+    bootstrap) export RETIRE_AUTH_MODE=web RETIRE_AUTH_ALLOW_HTTP=1 RETIRE_AUTH_BOOTSTRAP=1 ;;
+    web) export RETIRE_AUTH_MODE=web RETIRE_AUTH_ALLOW_HTTP=1 RETIRE_AUTH_BOOTSTRAP=0 ;;
+    *) echo '웹 로그인 실행 설정을 확인해 주세요: data/local/auth/dev-mode' >&2; exit 1 ;;
+  esac
+fi
 export RETIRE_API_PORT="${RETIRE_API_PORT:-8010}" RETIRE_WEB_PORT="${RETIRE_WEB_PORT:-5180}"
 web_url="http://127.0.0.1:$RETIRE_WEB_PORT"
 api_url="http://127.0.0.1:$RETIRE_API_PORT"
@@ -22,6 +33,7 @@ ours() {   # 이 포트를 듣는 프로세스가 이 프로젝트 것인가
   done
 }
 busy() { lsof -nP -iTCP:"$1" -sTCP:LISTEN >/dev/null 2>&1; }
+api_ready() { curl -sf -H "Host: 127.0.0.1:$RETIRE_WEB_PORT" "$api_url/api/health" >/dev/null; }
 
 if [[ "${1:-}" == "--restart" ]]; then
   echo "이 프로젝트의 개발 서버를 내립니다…"
@@ -34,7 +46,7 @@ if [[ "${1:-}" == "--restart" ]]; then
 fi
 
 if busy "$RETIRE_API_PORT" || busy "$RETIRE_WEB_PORT"; then
-  if [[ -n "$(ours "$RETIRE_API_PORT")" && -n "$(ours "$RETIRE_WEB_PORT")" ]] && curl -sf "$api_url/api/health" >/dev/null && curl -sf "$web_url/" >/dev/null; then
+  if [[ -n "$(ours "$RETIRE_API_PORT")" && -n "$(ours "$RETIRE_WEB_PORT")" ]] && api_ready && curl -sf "$web_url/" >/dev/null; then
     echo "개발 서버가 이미 떠 있어요: $web_url  (다시 띄울 필요 없음. 코드가 바뀌면 저절로 반영돼요. 꼭 다시 띄우려면 --restart)"
     exit 0
   fi
@@ -59,7 +71,7 @@ for attempt in {1..100}; do
     wait "$api_pid"
     exit 1
   fi
-  if curl --silent --fail "$api_url/api/health" >/dev/null; then
+  if api_ready; then
     break
   fi
   sleep 0.1

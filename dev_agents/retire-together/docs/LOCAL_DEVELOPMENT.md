@@ -55,6 +55,61 @@ npm --prefix web run test:e2e
 
 2026-10-27 검증: Python 95개, 브라우저 7개 통과. 브라우저 항목은 프로필/자산 저장·재접속·수정·삭제·예시 분리, CSV 입력 오류/계좌 전환/계산 표시, 1440·1024·390·360px 화면 넘침이다. 사용자 디자인 승인은 별도다.
 
+## SHARE-02 웹 인증 설정과 검수
+
+2026-11-07 후속: SHARE-02에 최소 로그인 화면·계정 메뉴·로그아웃·공통 JSON/업로드 CSRF 연결을 포함했다. 공용 5180/8010은 웹 로그인 모드로 전환했으며, 앱 첫 화면의 **Google로 로그인**으로 시작한다. 최초 본인 계정의 실제 Google 로그인과 활성 오너 세션을 확인했다. 로그인 버튼은 팝업에서 진행하고, 로그인 후 첫 화면은 메인 대시보드다. 표는 ‘표로 보기’로 연다. 시트 연결·초대·두 사람 자료 공유는 SHARE-03~06의 후속 범위다. `RETIRE_AUTH_MODE=local`은 기존 한 컴퓨터 개발용이며 웹 공유 인증 모드가 아니다.
+
+서버 설정:
+
+| 설정 | 용도·기본값 |
+|---|---|
+| `RETIRE_AUTH_MODE` | `local`(기본) 또는 `web`; 오타는 503으로 차단 |
+| `RETIRE_GOOGLE_WEB_CLIENT` | 다운로드한 **web** JSON 경로. 기본 `data/local/google/web-client.json`, 권한 0600. 비밀값을 환경 출력·브라우저·문서에 넣지 않는다 |
+| `RETIRE_AUTH_ORIGIN` | 경로/끝 슬래시 없는 단일 출처. 기본 `http://127.0.0.1:5180`. JSON의 redirect URI에 이 출처 + `/api/auth/google/callback`이 정확히 있어야 한다 |
+| `RETIRE_AUTH_ALLOW_HTTP` | 로컬 HTTP 검수만 `1`. localhost/127.0.0.1/::1 이외 HTTP는 항상 거부 |
+| `RETIRE_AUTH_BOOTSTRAP` | 최초 설정 때만 `1`. 출처와 실제 접속자가 loopback이고 전달 헤더가 없어야 첫 오너 생성 허용. 공개 출처에 켜면 설정 오류 |
+| `RETIRE_AUTH_DB` | 기본 `data/local/auth/auth.sqlite3`. 금융 DB와 분리·0600·Git 제외. 초기화/삭제로 오너를 바꾸는 운영은 금지 |
+
+읽기 전용 설정 검사(서버 시작·DB 생성·Google 접속 없음):
+
+```sh
+RETIRE_AUTH_ALLOW_HTTP=1 .venv/bin/python -m backend.auth_config
+```
+
+전달된 웹 클라이언트는 위 검사에 통과했다. 이는 클라이언트 종류·필수값·파일 권한·콜백 일치 검사이며 Google 서버가 자격 증명을 수락했다는 뜻은 아니다. 라이브 검수는 운영자가 공용 서버를 쓰는 다른 세션들과 전환 시간을 맞추고 기존 실행을 정상 종료한 뒤, 다음 환경으로 **같은 5180/8010 하나만** 시작한다. 이미 실행 중인 프로세스에는 셸 환경 변경이 전파되지 않는다.
+
+```sh
+RETIRE_AUTH_MODE=web RETIRE_AUTH_ALLOW_HTTP=1 RETIRE_AUTH_BOOTSTRAP=1 \
+  bash scripts/dev-web.sh --restart
+```
+
+본인 컴퓨터에서 `http://127.0.0.1:5180/`의 **Google로 로그인**을 누르고 팝업에서 **본인 계정**을 선택한다. 완료되면 원래 앱 화면이 열린다. 팝업이 차단되면 같은 탭으로 이동하며, 로그인 오류 시 ‘다른 Google 계정 선택’으로 다시 고를 수 있다. 직접 시작 주소는 `/api/auth/google/login`이다. 최초 설정 중 터널/외부 프록시를 열지 않는다. 첫 성공 계정이 원자적으로 고정 오너가 되며 다른 계정은 가입 없이 접근할 수 없다. 이후 `/api/auth/session`으로 오너/멤버 ID와 세션 상태를 확인하고, 로그아웃→같은 계정 재로그인 때 ID 유지 및 제3자 차단을 확인한다. 실계정 식별자·세션/CSRF 토큰을 작업 기록에 복사하지 않는다. 최초 로그인 확인 후 `data/local/auth/dev-mode`를 `web`으로 바꾸고 다음 서버 기동부터 최초 설정을 닫는다. 명시적 환경 설정 방식은 `RETIRE_AUTH_BOOTSTRAP=0`을 사용한다. DB가 유지되는 동안 설정 플래그를 다시 켜도 오너를 바꾸거나 새 가구를 만들 수 없다.
+
+이 PC의 재시작 설정은 Git 제외 `data/local/auth/dev-mode`(0600)에 저장한다. `bootstrap`은 로컬 최초 오너 설정, `web`은 설정 후 로그인 유지다. `scripts/dev-web.sh`는 명시적 `RETIRE_AUTH_MODE`가 없을 때 이 값만 읽으며 파일을 셸 코드로 실행하지 않는다. 설정 후 평소 실행 명령으로 서버를 다시 시작해도 로그인 모드를 유지한다. 웹 인증의 Host 검사에 맞춰 서버 상태 확인도 UI의 Host를 사용한다.
+
+Google 첫 로그인에서는 동의가 필요하다. 재방문 시 유효한 앱 세션이 있으면 바로 메인으로 들어가며, 재로그인의 `prompt=select_account`는 최초 오너 설정과 명시적인 다른 계정 선택에만 쓴다. 팝업은 서버가 검증한 흐름 정보에 연결하고 완료 알림에 토큰/계정 정보를 담지 않는다. 원래 화면은 `/api/auth/session`으로 직접 확인한다. [Google 동의 안내](https://developers.google.com/identity/gsi/web/guides/migration#user_consent_and_revoking_permission) · [OIDC prompt](https://developers.google.com/identity/openid-connect/openid-connect#authenticationuriparameters)
+
+화면 연결용 API 계약:
+
+- `GET /api/auth/status`: local/web·로그인 활성·초기화 여부(비밀값 없음).
+- `GET /api/auth/google/login`: 로그인 시작, Google로 303. 10분짜리 state·nonce·PKCE·브라우저 쿠키로 요청을 묶고 콜백을 한 번만 소비한다.
+- `GET /api/auth/google/callback`: Google 응답 검증 후 기존 세션을 회전하고 `/`로 이동. 요청자가 지정한 복귀 URL은 사용하지 않는다.
+- `GET /api/auth/session`: 로그인한 계정·가구·멤버·역할·만료와 `csrf_token`. 응답은 no-store, 토큰은 프론트 메모리에만 두고 저장소/로그에 넣지 않는다.
+- `POST /api/auth/logout`: 동일 출처 `Origin`과 세션에서 받은 `X-Retire-CSRF` 필요. 서버 세션과 브라우저 쿠키를 폐기하며 시트 연결이나 고정 오너는 지우지 않는다.
+- 나머지 개인/등록/설정/다운로드/문서 API도 공통 세션 검사 대상. 쓰기에는 동일한 CSRF 검사가 적용되며 `X-Retire-Local`은 웹 인증을 대신하지 않는다. SHARE-04/05의 권한/사람 매핑 전에는 기존 금융 API를 오너에게만 허용한다. 웹 모드의 `/api/google/*`는 기존 InstalledAppFlow/공용 토큰 사용 방지를 위해 409로 차단한다.
+
+세션은 무작위 불투명 쿠키·서버에는 해시만 저장하며 12시간 절대 만료다. HTTPS 쿠키는 `__Host-`·Secure·HttpOnly·SameSite=Lax·Path=/, 로컬 HTTP는 별도 이름과 명시적 허용을 쓴다. Google 로그인은 `openid email`만 요청하고 ID/access/refresh 토큰을 영구 저장하지 않는다. Drive/Sheets 자격 증명 분리는 SHARE-03 범위다. Uvicorn 접근 로그의 `/api/auth/*` 쿼리는 제거한다. 향후 외부 HTTPS 프록시를 붙일 때도 콜백 쿼리를 기록하지 않고, 정확한 Host/HTTPS 전달·신뢰할 프록시 범위를 운영 설정으로 확인해야 한다. 이번에는 배포/프록시 설정을 변경하지 않았다.
+
+검수 명령:
+
+```sh
+.venv/bin/python -m pytest -q tests/test_web_auth.py tests/test_web_api.py tests/test_local_data.py
+.venv/bin/python -m pytest -q
+RETIRE_AUTH_BROWSER_TEST=1 RETIRE_E2E_PORT=8779 npm --prefix web run test:e2e -- --config auth.playwright.config.ts
+```
+
+Python 인증 전용 51개, 전체 444개 통과. 합성 RSA 서명/가짜 Google HTTP·임시 DB로 서명/issuer/audience/만료/nonce·state 재사용·동시 초기화·고정 오너 변경·CSRF·재로그인·로그아웃·세션 만료/비활성화를 검사했다. 추가 저장 경로 테스트의 첫 실행은 빈 프로필 fixture 처리 오류 1건이었고 수정 후 전체 통과했다. 전용 브라우저 테스트는 Google 이동을 가짜 응답으로 대체하고 별도 임시 인증/금융 DB만 사용한다. 초기 Shrimp 실행에서 포트 제한으로 멈췄던 브라우저 검수는 후속 로컬 세션에서 완료했다. 기존 리디렉션 모킹을 별도 localhost 가짜 제공자로 교체해 외부 요청 없이 4개 검사(로그인·UI 저장·재로그인·로그아웃, 제3자/취소, 설정 실패/재시도, 업로드 CSRF/세션 만료)를 통과했다. 인증/API Python 105개와 빌드도 통과했다. 추가 기존 앱 회귀는 19개 중 17개 통과하며, 2개는 기존 계좌 선택자의 합계 셀 중복 매칭과 변경된 개인연금 입력창의 옛 필드 선택자 불일치로 실패했다. 관련 제품 UI는 이 작업에서 변경하지 않았다. 후속 팝업/메인 전환까지 인증/API Python 108개·인증 브라우저 6개·메인/표 전환 1개를 통과했다. 실제 최초 Google 로그인과 활성 오너 세션도 확인하여 SHARE-02를 완료했다. 실제 계정으로 새 팝업 재로그인은 자동 검수 결과와 구분한다. UI 디자인 검수·공통 시트 연결·두 계정 통합 완료를 이 결과로 대신하지 않는다.
+
 ## Shrimp 작업 관리
 
 2026-11-07 설치. **[Shrimp 작업 화면 열기](http://127.0.0.1:9998/?lang=ko&profile=retire-together)**에서 작업을 확인하고 현재 ChatGPT 구독으로 로그인한 로컬 Codex에 실행을 맡길 수 있다. 공식 Task Viewer에 이 프로젝트용 연결 기능을 추가했다. 작업 상태는 기존 MCP 파일을 읽으며, 제품 로그인 기능의 완료 여부와 도구 설치 완료는 별개다.

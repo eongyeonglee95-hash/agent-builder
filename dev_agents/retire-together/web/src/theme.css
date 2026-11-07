@@ -67,6 +67,12 @@
   --home-photo-shade: color-mix(in srgb, var(--grey-900) 65%, transparent);
   --home-photo-border: color-mix(in srgb, var(--primary-foreground) 65%, transparent);
   --home-card-shadow: 0 12px 36px -22px color-mix(in srgb, var(--grey-900) 32%, transparent);
+  /* Photo-led login entrance; the dashboard keeps its existing type scale. */
+  --auth-display: 68px;
+  --auth-display-mobile: 34px;
+  --auth-photo-ink: #ffffff;
+  --auth-photo-base: #162a25;
+  --auth-glass: color-mix(in srgb, var(--card) 94%, transparent);
 }
 
 /* Tailwind 기본 팔레트·글자 크기를 지운다 — 아래 토큰 밖의 색·크기는 코드에 쓸 수 없다 (지금 CSS 색 529개가 다시 생기지 않게) */
