@@ -7,10 +7,6 @@
 .brand-mode button{display:inline-flex;align-items:center;gap:6px;padding:5px 10px 5px 6px;border-radius:999px;border:1.5px solid #e5e8eb;background:#fff;color:inherit;font:600 12.5px var(--font-sans,sans-serif);cursor:pointer;white-space:nowrap}
 .brand-mode button i{width:14px;height:14px;border-radius:50%;display:inline-block;box-shadow:inset 0 0 0 1px rgba(0,0,0,.12)}
 .brand-mode button[aria-pressed=true]{background:#191f28;color:#fff;border-color:#191f28}
-.bm-pick{display:inline-flex;align-items:center;gap:6px;border:1.5px dashed #d1d6db;border-radius:999px;padding:2px 9px 2px 3px;cursor:pointer}
-.bm-pick input{width:22px;height:22px;border:0;padding:0;background:none;border-radius:50%;overflow:hidden;cursor:pointer}
-.bm-pick input::-webkit-color-swatch-wrapper{padding:0}.bm-pick input::-webkit-color-swatch{border:0;border-radius:50%}
-.bm-pick code{font:500 11.5px ui-monospace,Menlo,monospace;color:#6b7684}
 .bm-close{padding:5px 10px!important;color:#6b7684!important}
 .brand-mode .bm-toggle{min-height:40px;padding:8px 13px;box-shadow:0 4px 14px rgba(0,0,0,.08)}
-@media(max-width:900px){.brand-mode[data-open=true],.brand-mode[data-open=false]{bottom:76px}.brand-mode button[data-hex] span{display:none}.bm-pick code{display:none}}
+@media(max-width:900px){.brand-mode[data-open=true],.brand-mode[data-open=false]{bottom:76px}}

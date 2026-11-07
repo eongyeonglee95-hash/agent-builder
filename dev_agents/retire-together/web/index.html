@@ -8,7 +8,7 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>둘이서은퇴 · 우리의 자산, 함께 그리는 내일</title>
     <script>/* 저장된 브랜드 테마를 첫 그리기 전에 적용해 색이 번쩍이지 않게 (src/brand-mode.ts 가 저장) */
-      try { var t = JSON.parse(localStorage.getItem("rt-brand") || "null"); if (t && t.vars) for (var k in t.vars) document.documentElement.style.setProperty(k, t.vars[k]) } catch (e) {}</script>
+      try { var t = JSON.parse(localStorage.getItem("rt-brand") || "null"); if (t && t.vars) for (var k in t.vars) document.documentElement.style.setProperty(k, t.vars[k]); document.documentElement.dataset.theme = t && t.dark ? "dark" : "light" } catch (e) {}</script>
   </head>
   <body>
     <div id="root"></div>

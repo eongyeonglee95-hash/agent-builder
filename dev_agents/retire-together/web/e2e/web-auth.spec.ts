@@ -74,7 +74,7 @@ test('첫 로그인 화면 → 오너 생성 → 실제 화면 저장 → 재로
   expect(result.request().headers()['x-retire-csrf']).toBe(first.csrf_token)
   await expect(dialog).toBeHidden()
   await page.reload()
-  await expect(page.locator('.stat-number').first()).toContainText('1,000만원')
+  await expect(page.locator('.total-stat .stat-number').first()).toContainText('1,000만원')
   // HTTP cookie rotation and immutable owner identity through a second round trip.
   await page.goto('/api/auth/google/login')
   await page.getByRole('link', { name: '테스트 오너', exact: true }).click()

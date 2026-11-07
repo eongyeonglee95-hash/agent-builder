@@ -1,15 +1,16 @@
-// 화면 위 '테마 바' — 주색·바탕·로고를 바꿔 가며 실제 화면에서 본다 (2026-11-06~07 사용자: "색상을 이렇게 바꿔가면서 화면에서 볼 수 있게", "로고는 다시 그려보자").
-// 고른 주색 하나에서 틴트·어두운 면·버튼 글자색을 계산해 :root 토큰(--brand 계열, --page-bg)을 덮어쓴다. 상승 빨강·하락 파랑·자산군 색은 건드리지 않는다.
+// 화면 '테마' 버튼 — 테마 3개 중 하나를 골라 :root 토큰(--brand 계열, --page-bg, --accent-hi)을 덮어쓴다 (2026-11-07 사용자: 시안 A·D·C를 "다크모드처럼 손쉽게" 바꾸기, 기본은 D).
+// 다크는 html[data-theme=dark]로 켜고 shell-theme.css가 사이드바·상단·홈만 어둡게 한다(다른 페이지는 밝게 유지 — 사용자 결정). 상승 빨강·하락 파랑·자산군 색은 건드리지 않는다.
 // 로고는 <symbol id="rt-mark">를 바꿔 끼운다 — Brand 컴포넌트는 <use href="#rt-mark">만 그린다. 저장은 localStorage 'rt-brand'.
 import './brand-mode.css'
 import togetherMark from './assets/retire-together-mark.svg?raw'
 
-type Preset = { hex: string; name: string; ref?: boolean }
-const PRESETS: Preset[] = [
-  { hex: '#0f5c4a', name: '소나무' }, { hex: '#3f3ca8', name: '인디고' }, { hex: '#6e2a5b', name: '자두' },
-  { hex: '#1d6ae5', name: 'Betterment', ref: true }, { hex: '#ff692d', name: 'Monarch', ref: true },
-  { hex: '#437cef', name: 'Copilot', ref: true }, { hex: '#ccff00', name: 'Robinhood', ref: true },
-]
+// 이름은 우리 말로, 참고 사이트는 title에만 (실제 회사 이름을 화면 라벨로 쓰지 않는다)
+const THEMES = {
+  light: { name: '라이트', ref: 'Ramp 결', dark: false, swatch: '#0a0a0a', vars: { '--brand': '#0a0a0a', '--brand-tint': '#f1f6d9', '--brand-dark': '#0b0b0c', '--brand-ink': '#ffffff', '--page-bg': '#fafaf8', '--accent-hi': '#d4f04c', '--accent-hi-ink': '#0a0a0a' } },
+  green: { name: '그린', ref: 'Mercury 결', dark: false, swatch: '#0f5c4a', vars: { '--brand': '#0f5c4a', '--brand-tint': '#e3f0ea', '--brand-dark': '#0e1a17', '--brand-ink': '#ffffff', '--page-bg': '#f6f6f3', '--accent-hi': '#7fd1b4', '--accent-hi-ink': '#0e1a17' } },
+  dark: { name: '다크', ref: 'Robinhood 결', dark: true, swatch: '#10221a', vars: { '--brand': '#0b8a5c', '--brand-tint': '#e2f6ec', '--brand-dark': '#0f1318', '--brand-ink': '#ffffff', '--page-bg': '#f6f7f9', '--accent-hi': '#5ee0a8', '--accent-hi-ink': '#06130d' } },
+} as const
+type ThemeId = keyof typeof THEMES
 // 로고 마크 후보 — 48×48, 단색(currentColor). 24px에서도 읽히는 굵기
 export const MARKS: Record<string, { name: string; svg: string }> = {
   together: { name: '나란한 내일', svg: togetherMark.replace(/<\/?svg\b[^>]*>/g, '') },
@@ -22,25 +23,13 @@ export const MARKS: Record<string, { name: string; svg: string }> = {
 }
 const KEY = 'rt-brand'
 
-const hex2rgb = (h: string) => { const n = parseInt(h.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255] }
-const rgb2hex = (c: number[]) => '#' + c.map(v => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, '0')).join('')
-const mix = (a: number[], b: number[], t: number) => a.map((v, i) => v + (b[i] - v) * t)
-const lum = ([r, g, b]: number[]) => (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255
-
-function vars(hex: string, bg: string) {
-  const c = hex2rgb(hex), white = [255, 255, 255], night = [11, 13, 16]
-  return {
-    '--brand': hex,
-    '--brand-tint': rgb2hex(mix(c, white, 0.88)),
-    '--brand-dark': rgb2hex(mix(c, night, 0.72)),
-    '--brand-ink': lum(c) > 0.6 ? '#111318' : '#ffffff',   // 밝은 주색이면 버튼 글자를 어둡게
-    '--page-bg': bg === 'white' ? '#ffffff' : bg === 'tint' ? rgb2hex(mix(c, white, 0.95)) : '#f7f6f2',
-  }
-}
-type Saved = { hex: string; bg: string; mark: string; markVersion: number; vars: Record<string, string> }
+// index.html의 첫 그리기 스크립트가 vars·dark를 그대로 읽는다
+type Saved = { theme: ThemeId; mark: string; markVersion: number; dark: boolean; vars: Record<string, string> }
+function saved(theme: ThemeId, mark: string): Saved { return { theme, mark, markVersion: 2, dark: THEMES[theme].dark, vars: { ...THEMES[theme].vars } } }
 function load(): Saved {
-  try { const s = JSON.parse(localStorage.getItem(KEY) || 'null'); if (s && s.hex && s.bg) return { ...s, mark: s.markVersion === 2 && MARKS[s.mark] ? s.mark : 'together', markVersion: 2 } } catch { /* 저장 없음 */ }
-  return { hex: PRESETS[0].hex, bg: 'cream', mark: 'together', markVersion: 2, vars: vars(PRESETS[0].hex, 'cream') }
+  // 예전 주색 저장(hex)은 테마가 없으므로 기본 테마로 시작하되 로고 선택은 이어받는다
+  try { const s = JSON.parse(localStorage.getItem(KEY) || 'null'); if (s) return saved(s.theme in THEMES ? s.theme : 'light', s.markVersion === 2 && MARKS[s.mark] ? s.mark : 'together') } catch { /* 저장 없음 */ }
+  return saved('light', 'together')
 }
 let state = load()
 // e2e 같은 자동화 브라우저에서는 버튼을 가리지 않게 접은 채로 시작
@@ -58,10 +47,11 @@ function applyMark() {
   const fav = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect width="48" height="48" rx="13" fill="${state.vars['--brand-dark']}"/><g color="#fff" transform="translate(6 6) scale(.75)">${m.svg}</g></svg>`
   const link = document.querySelector<HTMLLinkElement>('link[rel="icon"]'); if (link) link.href = 'data:image/svg+xml,' + encodeURIComponent(fav)
 }
-function apply(next: Partial<Saved>) {
-  const hex = next.hex ?? state.hex, bg = next.bg ?? state.bg, mark = next.mark ?? state.mark
-  state = { hex, bg, mark, markVersion: 2, vars: vars(hex, bg) }
+function apply(theme: ThemeId) {
+  state = saved(theme, state.mark)
   for (const [k, v] of Object.entries(state.vars)) document.documentElement.style.setProperty(k, v)
+  document.documentElement.dataset.theme = state.dark ? 'dark' : 'light'
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', state.vars['--brand-dark'])
   applyMark()
   try { localStorage.setItem(KEY, JSON.stringify(state)) } catch { /* 비공개 창 등 */ }
   render()
@@ -71,17 +61,14 @@ const host = document.createElement('div'); host.className = 'brand-mode'; docum
 const dot = (hex: string) => `<i style="background:${hex}"></i>`
 function render() {
   host.dataset.open = String(open)
-  // 주색만 고른다. 로고는 2026-11-07 리디자인한 '나란한 내일'을 기본으로 쓴다.
-  host.innerHTML = open ? `<div class="bm-bar" role="toolbar" aria-label="주색 고르기"><em>주색</em>${PRESETS.map(p => `<button type="button" data-hex="${p.hex}" aria-pressed="${p.hex === state.hex}" title="${p.ref ? '레퍼런스 · ' : ''}${p.name}">${dot(p.hex)}<span>${p.name}</span></button>`).join('')}
-      <label class="bm-pick" title="직접 고르기"><input type="color" value="${state.hex}" aria-label="주색 직접 고르기"><code>${state.hex}</code></label>
-      <button type="button" class="bm-close" aria-label="주색 바 접기">접기</button></div>` : `<button type="button" class="bm-toggle" aria-label="색상 변경" aria-expanded="false">${dot(state.hex)}색상 변경</button>`
+  const current = THEMES[state.theme]
+  host.innerHTML = open ? `<div class="bm-bar" role="toolbar" aria-label="화면 테마 고르기"><em>테마</em>${(Object.keys(THEMES) as ThemeId[]).map(id => `<button type="button" data-theme="${id}" aria-pressed="${id === state.theme}" title="${THEMES[id].ref}">${dot(THEMES[id].swatch)}<span>${THEMES[id].name}</span></button>`).join('')}
+      <button type="button" class="bm-close" aria-label="테마 바 접기">접기</button></div>` : `<button type="button" class="bm-toggle" aria-label="테마 변경" aria-expanded="false">${dot(current.swatch)}테마 · ${current.name}</button>`
 }
 host.addEventListener('click', e => {
   const t = e.target as HTMLElement
   if (t.closest('.bm-toggle,.bm-close')) { open = !open; try { localStorage.setItem(KEY + '-open', open ? '1' : '0') } catch { /* */ } render(); return }
-  const b = t.closest('button[data-hex],button[data-bg],button[data-mark]') as HTMLElement | null
-  if (!b) return
-  if (b.dataset.hex) apply({ hex: b.dataset.hex }); else if (b.dataset.bg) apply({ bg: b.dataset.bg }); else if (b.dataset.mark) apply({ mark: b.dataset.mark })
+  const b = t.closest('button[data-theme]') as HTMLElement | null
+  if (b?.dataset.theme && b.dataset.theme in THEMES) apply(b.dataset.theme as ThemeId)
 })
-host.addEventListener('input', e => { const i = e.target as HTMLInputElement; if (i.type === 'color') apply({ hex: i.value }) })
-apply({})
+apply(state.theme)

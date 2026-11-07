@@ -17,7 +17,7 @@ test('개인연금: 새 초안·미리보기·취소·저장·재진입과 현�
   await expect(open).toHaveCount(1)
   await open.click()
   const dialog = page.getByRole('dialog', { name: '개인연금 미래 납입 계획' })
-  await expect(page.getByRole('button', { name: '색상 변경', exact: true })).toBeHidden()
+  await expect(page.getByRole('button', { name: '테마 변경', exact: true })).toBeHidden()
   await expect(dialog.getByLabel('매년 납입할 금액')).toHaveValue('600')
   await expect(dialog.getByLabel('납입 시작 연도')).toHaveValue(String(initial.base_year + 1))
   await expect(dialog.getByLabel('납입 종료 나이')).toHaveValue('55')
@@ -31,7 +31,7 @@ test('개인연금: 새 초안·미리보기·취소·저장·재진입과 현�
   }
   await dialog.getByRole('button', { name: '취소' }).click()
   await expect(open).toBeFocused()
-  await expect(page.getByRole('button', { name: '색상 변경', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: '테마 변경', exact: true })).toBeVisible()
   expect((await (await request.get('/api/retirement')).json()).plan).toEqual(initial.plan)
   await open.click()
   await dialog.getByLabel('납입 시작 연도').fill(String(initial.base_year + 3))

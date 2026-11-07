@@ -67,6 +67,8 @@
   --home-photo-shade: color-mix(in srgb, var(--grey-900) 65%, transparent);
   --home-photo-border: color-mix(in srgb, var(--primary-foreground) 65%, transparent);
   --home-card-shadow: 0 12px 36px -22px color-mix(in srgb, var(--grey-900) 32%, transparent);
+  /* 다크 테마(Robinhood 결) — shell-theme.css의 사이드바·상단·홈 다크에서만 쓴다 (2026-11-07). 바탕 차콜, 포인트는 --accent-hi(brand-mode.ts) */
+  --night-bg: #0b0d10; --night-surface: #14171c; --night-surface-2: #1a1e24; --night-hover: #1a2028; --night-selected: #262c35; --night-line: #1e232b; --night-line-strong: #2b323c; --night-ink: #eceef1; --night-ink-2: #c9d1d9; --night-muted: #a3acb8; --night-faint: #8c95a1; --night-hero: #10221a; --night-hero-line: #1f4a37; --night-up: #ff7a7a; --night-down: #7fb0ff; --night-amber-bg: #2a2112; --night-amber: #f5b85a; --night-purple-bg: #221d33; --night-purple: #b39cff;
   /* Photo-led login entrance; the dashboard keeps its existing type scale. */
   --auth-display: 68px;
   --auth-display-mobile: 34px;

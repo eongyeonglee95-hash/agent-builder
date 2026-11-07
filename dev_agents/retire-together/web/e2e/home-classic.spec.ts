@@ -25,7 +25,7 @@ test('기본 홈은 실제 합계·범위·숨김·조회 실패를 처리한다
   await page.getByRole('button', { name: '배우자', exact: true }).click()
   await expect(total).toContainText('3,000만원')
   await expect(pension).toContainText('미등록')
-  await page.getByRole('button', { name: '현금 주머니 상세 보기' }).click()
+  await page.getByRole('button', { name: '갈아타기 재원 상세 보기' }).click()
   await expect(page).toHaveURL(/#assets$/)
   await expect(page.locator('.filter-tabs').getByRole('button', { name: '현금 주머니', exact: true })).toHaveAttribute('aria-pressed', 'true')
   failed = true

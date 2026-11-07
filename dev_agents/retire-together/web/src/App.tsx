@@ -18,10 +18,14 @@ import { HoldingsPanel } from './holdings'   // 종목 잔고·손익 (Claude �
 import { PensionLayers } from './workbook/retirement'
 import { RetirementPage } from './retirement/RetirementTower'
 import './retirement/retirement-layout.css'
+import './shell-theme.css'   // 사이드바 다듬기 + 다크 테마(사이드바·상단·홈만)
 
 type ModalKind = 'about' | 'goal' | 'family' | 'import' | 'strategy' | 'house' | 'tax' | 'notifications' | 'help' | 'profile' | 'delete' | 'manual' | 'sheets' | null
 const pageNames: Record<Page, string> = { home: '우리의 오늘', assets: '우리 자산', pension: '연금', stocks: '주식', property: '부동산', rebalance: '리밸런싱' }
-const nav = [{ id: 'home', label: '홈', icon: LayoutDashboard }, { id: 'assets', label: '우리 자산', icon: Wallet }, { id: 'pension', label: '연금', icon: Landmark }, { id: 'stocks', label: '주식', icon: TrendingUp }, { id: 'property', label: '부동산', icon: House }, { id: 'rebalance', label: '리밸런싱', icon: RefreshCw }] as const
+// 사이드바 묶음 (2026-11-07 사용자): '우리 자산' 아래 연금(리밸런싱·수령·세금)·주식·부동산(갈아타기 계획)
+const assetNav = [{ id: 'pension', label: '연금', icon: Landmark }, { id: 'stocks', label: '주식', icon: TrendingUp }, { id: 'property', label: '부동산', icon: House }] as const
+// 메뉴 오른쪽 금액은 짧게 (억/만). 이름(링크 이름)에는 넣지 않는다
+const shortAmount = (v: number) => v <= 0 ? '' : v >= 1e8 ? `${(v / 1e8).toFixed(2)}억` : `${Math.round(v / 1e4).toLocaleString()}만`
 const tasks = [{ id: 'pension', label: '이번 달 연금 납입 확인', detail: '꾸준히 쌓아가는 노후 주머니' }, { id: 'rebalance', label: '자산 배분 점검', detail: '우리가 정한 비율과 비교해요' }, { id: 'loan', label: '대출 상환 내역 확인', detail: '우리 집의 가벼워진 짐 확인' }]
 function readChecks(): Record<string, boolean> {
   try { const value = JSON.parse(localStorage.getItem('retire-demo-checklist-v1') ?? '{}'); return typeof value === 'object' && value !== null ? value : {} } catch { return {} }
@@ -96,9 +100,16 @@ export default function App() {
     <aside className={`sidebar ${menuOpen ? 'is-open' : ''}`} aria-label="주 메뉴">
       <div className="sidebar-brand"><Brand/><button className="mobile-close icon-button" aria-label="메뉴 닫기" onClick={() => setMenuOpen(false)}><X size={20}/></button></div>
       <p className="sidebar-slogan">함께라서, 더 든든한 내일.</p>
-      <span className="nav-caption">OUR SPACE</span>
-      <nav>{nav.map(item => <a href={`#${item.id}`} key={item.id} className={`nav-item ${page === item.id ? 'active' : ''}`} aria-current={page === item.id ? 'page' : undefined} onClick={e => { e.preventDefault(); go(item.id) }}><item.icon size={19}/><span>{item.label}</span>{page === item.id && <span className="active-dot"/>}</a>)}<div className="nav-divider"/><button className="nav-item" onClick={() => { setIsDemo(false); go('property') }}><House size={19}/><span>갈아타기 계획</span></button><button className="nav-item" onClick={() => { setModal('tax'); setMenuOpen(false) }}><FileText size={19}/><span>세금 · 수령</span><small>준비 중</small></button></nav>
-      <div className="sidebar-bottom"><div className="sidebar-quote"><div className="quote-symbol">“</div><p>우리의 오늘이,<br/>더 나은 내일이 되도록.</p><div className="quote-line"/></div><button className="nav-item settings-link" onClick={() => { setModal('profile'); setMenuOpen(false) }}><Settings size={18}/><span>내 정보 · 설정</span></button><button className="family-profile" onClick={() => { setModal('family'); setMenuOpen(false) }}><span className="avatar-pair"><span>나</span><span>짝</span></span><span><strong>우리 가족</strong><small>함께 만드는 은퇴 계획</small></span><ChevronRight size={16}/></button></div>
+      <nav className="side-nav">
+        <a href="#home" className={`nav-item ${page === 'home' ? 'active' : ''}`} aria-current={page === 'home' ? 'page' : undefined} onClick={e => { e.preventDefault(); go('home') }}><LayoutDashboard size={18}/><span>홈</span></a>
+        <div className="nav-group-head"><a href="#assets" className={`nav-group-link ${page === 'assets' ? 'active' : ''}`} aria-current={page === 'assets' ? 'page' : undefined} onClick={e => { e.preventDefault(); go('assets') }}><Wallet size={18}/><span>우리 자산</span></a><button className="nav-sheet" aria-label="우리 자산 표 열기" onClick={() => { location.hash = 'sheet-summary' }}>표로 보기</button></div>
+        <div className="nav-tree">{assetNav.map(item => <div key={item.id}>
+          <a href={`#${item.id}`} className={`nav-item ${page === item.id ? 'active' : ''}`} aria-current={page === item.id ? 'page' : undefined} onClick={e => { e.preventDefault(); go(item.id) }}><item.icon size={17}/><span>{item.label}</span><small className="nav-amount" aria-hidden="true">{hidden ? '••' : shortAmount(item.id === 'pension' ? snapshot.retirement : item.id === 'stocks' ? stockTotal : snapshot.property)}</small></a>
+          {item.id === 'pension' && <><a href="#rebalance" className={`nav-sub ${page === 'rebalance' ? 'active' : ''}`} aria-current={page === 'rebalance' ? 'page' : undefined} onClick={e => { e.preventDefault(); go('rebalance') }}><span>리밸런싱</span>{largestDeviation !== null && <small className="nav-badge" aria-hidden="true">{largestDeviation.toFixed(1)}%p</small>}</a><button className="nav-sub" onClick={() => { setModal('tax'); setMenuOpen(false) }}><span>수령 · 세금</span><small aria-hidden="true">준비 중</small></button></>}
+          {item.id === 'property' && <button className="nav-sub" onClick={() => { setIsDemo(false); go('property') }}><span>갈아타기 계획</span></button>}
+        </div>)}</div>
+      </nav>
+      <div className="sidebar-bottom"><button className="nav-item settings-link" onClick={() => { setModal('profile'); setMenuOpen(false) }}><Settings size={18}/><span>내 정보 · 설정</span></button><button className="family-profile" onClick={() => { setModal('family'); setMenuOpen(false) }}><span className="avatar-pair"><span>나</span><span>짝</span></span><span><strong>우리 가족</strong><small>함께 만드는 은퇴 계획</small></span><ChevronRight size={16}/></button></div>
     </aside>
     <div className={`workspace${page === 'pension' && !isDemo ? ' tower-shell' : page === 'home' && photoPreview ? ' home-shell' : ''}`}>
       <header className="topbar"><div className="topbar-left"><button className="icon-button menu-toggle" aria-label="메뉴 열기" aria-expanded={menuOpen} onClick={() => setMenuOpen(true)}><Menu size={22}/></button><span className="desktop-breadcrumb">{(page !== 'pension' || isDemo) && <>우리의 공간 <ChevronRight size={13}/></>} <b>{pageNames[page]}</b></span><div className="mobile-brand"><Brand compact/></div></div><div className="topbar-right"><AccountMenu/><div className="data-mode-switch" role="group" aria-label="데이터 보기"><button className={!isDemo ? 'active' : ''} aria-pressed={!isDemo} onClick={() => setIsDemo(false)}>내 자산</button><button className={isDemo ? 'active' : ''} aria-pressed={isDemo} onClick={() => setIsDemo(true)}>예시 보기</button></div>{(page !== 'pension' || isDemo) && <><SheetBadge onClick={() => setModal('sheets')}/><span className="header-date">{asOf} 기준</span><button className="icon-button notification-button" aria-label="알림 2개 보기" onClick={() => setModal('notifications')}><Bell size={18}/><i/></button><button className="header-avatar" aria-label="가족 계정 보기" onClick={() => setModal('family')}>우리</button></>}</div></header>

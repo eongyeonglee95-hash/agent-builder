@@ -1,0 +1,100 @@
+/* 테마 3개(brand-mode.ts) 공통 사이드바 + 다크 테마 (2026-11-07 사용자: 시안 Theme-Switch 적용).
+   레이어 밖(unlayered)이라 legacy 규칙보다 우선한다 — 그래서 폭·여백처럼 반응형 legacy 규칙이 바꾸는 값은 여기서 건드리지 않는다.
+   --accent-hi는 테마마다 하나뿐인 포인트색(라이트 연두·그린 민트·다크 민트). 다크는 사이드바·상단·홈만 (다른 페이지는 밝게 유지 — 사용자 결정). */
+
+/* ── 사이드바: 글자 12px 이상, 줄바꿈 대신 말줄임, 메뉴 오른쪽 금액 ── */
+.sidebar { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; color: #c9d1ce; }
+.sidebar .brand small { font-size: 9px; letter-spacing: .16em; }
+.sidebar-slogan { font-size: 12px; letter-spacing: 0; color: #ffffff8c; margin: 14px 0 26px 6px; }
+.side-nav { display: flex; flex-direction: column; gap: 2px; }
+.sidebar .nav-item, .nav-group-link { display: flex; align-items: center; gap: 11px; min-height: 40px; margin: 0; padding: 0 12px; border-radius: 9px; font-size: 14px; font-weight: 500; letter-spacing: -.01em; color: #ffffffc7; white-space: nowrap; }
+.sidebar .nav-item > span, .nav-group-link > span, .nav-sub > span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.sidebar .nav-item:hover, .nav-group-link:hover, .nav-sub:hover { background: #ffffff0f; color: #fff; }
+.sidebar .nav-item.active, .nav-group-link.active { background: #ffffff17; color: #fff; box-shadow: inset 3px 0 0 var(--accent-hi); }
+.sidebar .nav-item.active::before { display: none; }
+.sidebar .nav-item.active svg, .nav-group-link.active svg { color: var(--accent-hi); }
+.sidebar .nav-item small { font-size: 12px; color: #ffffff80; margin-left: auto; font-variant-numeric: tabular-nums; }
+.nav-group-head { display: flex; align-items: center; gap: 6px; margin-top: 14px; }
+.nav-group-link { flex: 1; min-width: 0; font-weight: 600; color: #fff; }
+.nav-sheet { flex: none; height: 26px; padding: 0 10px; border: 1px solid #ffffff29; border-radius: 99px; font-size: 12px; font-weight: 500; color: #ffffffb3; white-space: nowrap; }
+.nav-sheet:hover { border-color: var(--accent-hi); color: #fff; }
+.nav-tree { display: flex; flex-direction: column; gap: 1px; margin: 2px 0 0 18px; padding-left: 6px; border-left: 1px solid #ffffff1f; }
+.nav-tree .nav-item { padding-left: 10px; padding-right: 8px; }
+.nav-sub { display: flex; align-items: center; gap: 6px; width: 100%; min-height: 34px; padding: 0 8px 0 30px; border-radius: 8px; font-size: 13px; color: #ffffff99; text-align: left; white-space: nowrap; }
+.nav-sub.active { background: #ffffff14; color: #fff; }
+.nav-sub small { margin-left: auto; font-size: 12px; color: #ffffff73; }
+.sidebar .nav-sub .nav-badge { flex: none; padding: 1px 7px; border-radius: 99px; background: var(--accent-hi); color: var(--accent-hi-ink); font-weight: 700; font-variant-numeric: tabular-nums; }
+.sidebar .settings-link { font-size: 14px; padding-bottom: 14px; }
+.family-profile { border-top-color: #ffffff17; }
+.family-profile strong { font-size: 13px; color: #fff; }
+.family-profile small { font-size: 12px; color: #ffffff80; }
+.avatar-pair span { width: 28px; height: 28px; font-size: 11px; border-color: var(--brand-dark); }
+.avatar-pair span:first-child { background: var(--accent-hi); color: var(--accent-hi-ink); }
+
+/* ── 홈 노후 주머니 카드: 테마의 어두운 면 + 포인트색 (메인 주머니 강조) ── */
+.classic-home .stat-card.pocket-hero { background: var(--brand-dark); border-color: var(--brand-dark); color: #fff; }
+.classic-home .pocket-hero .stat-top h2 { color: var(--accent-hi); font-weight: 700; }
+.classic-home .pocket-hero .stat-top svg, .classic-home .pocket-hero .stat-note { color: #ffffffa6; }
+.classic-home .pocket-hero .ring > div { background: var(--brand-dark); color: #fff; }
+
+/* ── 다크 (Robinhood 결): 사이드바·상단·홈 ── */
+html[data-theme=dark] body:has(main.ux-home), html[data-theme=dark] .workspace:has(main.ux-home) { background: var(--night-bg); }
+html[data-theme=dark] .sidebar { border-right: 1px solid var(--night-line); }
+html[data-theme=dark] .topbar { background: var(--night-bg); border-bottom-color: var(--night-line); color: var(--night-ink); }
+html[data-theme=dark] .desktop-breadcrumb { color: var(--night-faint); }
+html[data-theme=dark] .desktop-breadcrumb b { color: var(--night-ink); }
+html[data-theme=dark] .header-date { color: var(--night-muted); }
+html[data-theme=dark] .topbar .icon-button { color: var(--night-muted); }
+html[data-theme=dark] .topbar .icon-button:hover { background: var(--night-hover); color: #fff; }
+html[data-theme=dark] .data-mode-switch { background: var(--night-surface); }
+html[data-theme=dark] .data-mode-switch button { color: var(--night-muted); }
+html[data-theme=dark] .data-mode-switch button.active { background: var(--night-selected); color: #fff; box-shadow: none; }
+html[data-theme=dark] .header-avatar { background: var(--night-hover); color: var(--night-ink-2); border-color: var(--night-line-strong); }
+html[data-theme=dark] .notification-button i { border-color: var(--night-bg); }
+
+/* 홈 안쪽: 토큰을 뒤집고(토큰을 쓰는 새 화면), 색이 박힌 예전 규칙은 아래에서 하나씩 */
+html[data-theme=dark] main.ux-home {
+  color: var(--night-ink);
+  --background: var(--night-bg); --foreground: var(--night-ink); --card: var(--night-surface); --card-foreground: var(--night-ink);
+  --muted: var(--night-surface-2); --muted-foreground: var(--night-muted); --secondary: var(--night-surface-2); --accent: var(--night-surface-2); --border: var(--night-line); --input: var(--night-line-strong);
+  --primary: var(--accent-hi); --primary-foreground: var(--accent-hi-ink);
+  --up: var(--night-up); --down: var(--night-down);
+}
+html[data-theme=dark] main.ux-home .panel, html[data-theme=dark] main.ux-home .stat-card { background: var(--night-surface); border-color: var(--night-line); box-shadow: none; }
+html[data-theme=dark] main.ux-home .stat-card.pocket-hero { background: var(--night-hero); border-color: var(--night-hero-line); }
+html[data-theme=dark] main.ux-home .pocket-hero .ring > div { background: var(--night-hero); }
+html[data-theme=dark] main.ux-home .total-stat { border-top-color: var(--night-line-strong); }
+html[data-theme=dark] main.ux-home .ring > div, html[data-theme=dark] main.ux-home .donut > div { background: var(--night-surface); box-shadow: 0 0 0 5px var(--night-surface); }
+html[data-theme=dark] main.ux-home .stat-top h2, html[data-theme=dark] main.ux-home .stat-note, html[data-theme=dark] main.ux-home .panel-heading p { color: var(--night-muted); }
+html[data-theme=dark] main.ux-home .pocket-hero .stat-top h2 { color: var(--accent-hi); }
+html[data-theme=dark] main.ux-home .owner-switch { background: var(--night-surface); }
+html[data-theme=dark] main.ux-home .owner-switch button { color: var(--night-muted); }
+html[data-theme=dark] main.ux-home .owner-switch button.active { background: var(--night-selected); color: #fff; box-shadow: none; }
+html[data-theme=dark] main.ux-home .register-shortcut { color: var(--accent-hi); }
+html[data-theme=dark] main.ux-home .icon-button:hover { background: var(--night-hover); color: #fff; }
+html[data-theme=dark] main.ux-home .text-link, html[data-theme=dark] main.ux-home .outline-tag, html[data-theme=dark] main.ux-home .small-tag { color: var(--night-muted); border-color: var(--night-line-strong); background: transparent; }
+html[data-theme=dark] main.ux-home .text-link:hover { color: #fff; }
+html[data-theme=dark] main.ux-home .donut span, html[data-theme=dark] main.ux-home .donut-legend li > span:first-child, html[data-theme=dark] main.ux-home .legend-amount { color: var(--night-muted); }
+html[data-theme=dark] main.ux-home .donut-legend b, html[data-theme=dark] main.ux-home .asset-summary strong { color: var(--night-ink); }
+html[data-theme=dark] main.ux-home .asset-summary { background: var(--night-surface-2); color: var(--night-muted); }
+html[data-theme=dark] main.ux-home .asset-summary b { color: var(--night-ink-2); }
+html[data-theme=dark] main.ux-home .retirement-value > span:first-child, html[data-theme=dark] main.ux-home .year-tag, html[data-theme=dark] main.ux-home .goal-caption { color: var(--night-muted); }
+html[data-theme=dark] main.ux-home .goal-progress { background: var(--night-line); }
+html[data-theme=dark] main.ux-home .goal-progress span { background: var(--accent-hi); }
+html[data-theme=dark] main.ux-home .goal-caption b, html[data-theme=dark] main.ux-home .check-count { color: var(--accent-hi); }
+html[data-theme=dark] main.ux-home .alert-row + .alert-row, html[data-theme=dark] main.ux-home .check-item + .check-item { border-color: var(--night-line); }
+html[data-theme=dark] main.ux-home .alert-row small, html[data-theme=dark] main.ux-home .check-item small, html[data-theme=dark] main.ux-home .check-status, html[data-theme=dark] main.ux-home .check-count span { color: var(--night-faint); }
+html[data-theme=dark] main.ux-home .check-box { background: var(--night-surface-2); border-color: var(--night-line-strong); }
+html[data-theme=dark] main.ux-home .check-item.checked .check-box { background: var(--accent-hi); border-color: var(--accent-hi); color: var(--accent-hi-ink); }
+html[data-theme=dark] main.ux-home .check-item.checked strong { color: var(--night-faint); }
+html[data-theme=dark] main.ux-home .income-svg text { fill: var(--night-faint); }
+html[data-theme=dark] main.ux-home select { background: var(--night-surface-2); color: var(--night-ink); border-color: var(--night-line-strong); }
+html[data-theme=dark] main.ux-home .strategy-row { border-color: var(--night-line); background: transparent; }
+html[data-theme=dark] main.ux-home .strategy-row-head strong { color: var(--night-ink); }
+html[data-theme=dark] main.ux-home .strategy-row-head span, html[data-theme=dark] main.ux-home .strategy-legend, html[data-theme=dark] main.ux-home .strategy-row-empty { color: var(--night-faint); }
+html[data-theme=dark] main.ux-home .amber { background: var(--night-amber-bg); color: var(--night-amber); }
+html[data-theme=dark] main.ux-home .purple { background: var(--night-purple-bg); color: var(--night-purple); }
+html[data-theme=dark] main.ux-home .footer, html[data-theme=dark] main.ux-home .footer > button { color: var(--night-faint); }
+
+/* 다크를 아직 입히지 않은 다른 페이지: 밝은 화면 그대로 + 위에 한 줄 안내 */
+html[data-theme=dark] main:not(.ux-home)::before { content: '이 화면은 아직 밝게 보여요 · 다크 모드는 홈부터 적용 중'; display: block; margin-bottom: 16px; padding: 10px 14px; border-radius: 8px; background: var(--night-surface); color: var(--night-ink-2); font-size: 12px; }

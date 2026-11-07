@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>테마 전환 홈</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Inter+Tight:wght@500;600;700;800&amp;family=Geist:wght@400;500;600;700&amp;family=Geist+Mono:wght@400;500;600&amp;family=Noto+Sans+KR:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;text-rendering:optimizeLegibility}
+a{color:inherit}
+.n{font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+.nw{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+</style>
+</helmet>
+<div style="min-height: 1280px; display: flex; flex-wrap: wrap; background: {{t.bg}}; color: {{t.ink}}; font-family: {{t.fBody}}; font-size: 14px; line-height: 1.5; letter-spacing: -0.005em; transition: background .25s, color .25s;">
+
+  <!-- 사이드바 -->
+  <nav aria-label="주 메뉴" style="flex: 1 1 264px; box-sizing: border-box; background: {{t.side}}; color: {{t.sideInk}}; padding: 28px 16px 20px; display: flex; flex-direction: column; gap: 24px; transition: background .25s;">
+    <div style="display: flex; align-items: center; gap: 12px; padding: 0 10px;">
+      <span style="width: 36px; height: 36px; border-radius: {{t.rs}}px; background: {{t.sideBar}}; display: flex; align-items: center; justify-content: center; flex: none;">
+        <svg width="22" height="16" viewBox="0 0 28 20" aria-hidden="true" fill="none" stroke="{{t.side}}" stroke-width="2.6"><circle cx="9.5" cy="10" r="6.5"/><circle cx="18.5" cy="10" r="6.5"/></svg>
+      </span>
+      <span style="display: flex; flex-direction: column; min-width: 0;">
+        <span class="nw" style="font-family: {{t.fHead}}; font-size: 18px; font-weight: {{t.wHead}}; color: {{t.sideStrong}}; letter-spacing: -0.02em; line-height: 1.25;">둘이서은퇴</span>
+        <span class="nw" style="font-size: 12px; color: {{t.sideMuted}};">함께라서, 더 든든한 내일</span>
+      </span>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 2px;">
+      <a href="#" aria-current="page" style="display: flex; align-items: center; gap: 12px; height: 42px; padding: 0 12px; border-radius: {{t.rs}}px; background: {{t.sideActiveBg}}; color: {{t.sideActiveInk}}; text-decoration: none; font-weight: 600; white-space: nowrap; box-shadow: inset 3px 0 0 {{t.sideBar}};"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true" style="flex: none;"><path d="M3 10.5 12 3l9 7.5V21h-6v-6H9v6H3z"/></svg>홈</a>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 2px;">
+      <div style="display: flex; align-items: center; padding: 0 12px 6px; gap: 8px;">
+        <span class="nw" style="flex: 1; font-size: 12px; font-weight: 600; color: {{t.sideMuted}};">우리 자산</span>
+        <a href="#" style="display: flex; align-items: center; gap: 5px; height: 26px; padding: 0 10px; border: 1px solid {{t.sideLine}}; border-radius: 99px; font-size: 12px; font-weight: 500; color: {{t.sideInk}}; text-decoration: none; white-space: nowrap;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg>표로 보기</a>
+      </div>
+
+      <a href="#" style="display: flex; align-items: center; gap: 12px; height: 40px; padding: 0 12px; border-radius: {{t.rs}}px; color: {{t.sideInk}}; text-decoration: none; font-weight: 500; white-space: nowrap;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true" style="flex: none;"><path d="M3 10h18M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 21h18M12 3l9 5H3z"/></svg><span class="nw" style="flex: 1;">연금</span><span class="n" style="font-size: 12px; color: {{t.sideAmt}};">4.23억</span></a>
+      <div style="display: flex; flex-direction: column; margin-left: 20px; padding-left: 10px; border-left: 1px solid {{t.sideLine}};">
+        <a href="#" style="display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 12px 0 13px; border-radius: {{t.rs}}px; color: {{t.sideSub}}; text-decoration: none; font-size: 13px; white-space: nowrap;"><span class="nw" style="flex: 1;">리밸런싱</span><span class="n" style="font-size: 12px; font-weight: 700; padding: 1px 8px; border-radius: 99px; background: {{t.sideBar}}; color: {{t.side}};">점검</span></a>
+        <a href="#" style="display: flex; align-items: center; height: 34px; padding: 0 12px 0 13px; border-radius: {{t.rs}}px; color: {{t.sideSub}}; text-decoration: none; font-size: 13px; white-space: nowrap;"><span class="nw">수령 · 세금</span></a>
+      </div>
+      <a href="#" style="display: flex; align-items: center; gap: 12px; height: 40px; padding: 0 12px; border-radius: {{t.rs}}px; color: {{t.sideInk}}; text-decoration: none; font-weight: 500; white-space: nowrap;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true" style="flex: none;"><path d="M3 17l6-6 4 4 8-8M15 7h6v6"/></svg><span class="nw" style="flex: 1;">주식</span><span class="n" style="font-size: 12px; color: {{t.sideAmt}};">3.23억</span></a>
+      <a href="#" style="display: flex; align-items: center; gap: 12px; height: 40px; padding: 0 12px; border-radius: {{t.rs}}px; color: {{t.sideInk}}; text-decoration: none; font-weight: 500; white-space: nowrap;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true" style="flex: none;"><path d="M4 21V9l8-6 8 6v12M9 21v-6h6v6"/></svg><span class="nw" style="flex: 1;">부동산</span><span class="n" style="font-size: 12px; color: {{t.sideAmt}};">6.00억</span></a>
+      <div style="display: flex; flex-direction: column; margin-left: 20px; padding-left: 10px; border-left: 1px solid {{t.sideLine}};">
+        <a href="#" style="display: flex; align-items: center; gap: 8px; height: 34px; padding: 0 12px 0 13px; border-radius: {{t.rs}}px; color: {{t.sideSub}}; text-decoration: none; font-size: 13px; white-space: nowrap;"><span class="nw" style="flex: 1;">갈아타기 계획</span><span class="n" style="font-size: 12px; color: {{t.sideAmt}};">87%</span></a>
+      </div>
+    </div>
+
+    <div style="height: 1px; background: {{t.sideLine}}; margin: 0 12px;"></div>
+    <a href="#" style="display: flex; align-items: center; gap: 12px; height: 40px; padding: 0 12px; margin-top: -12px; border-radius: {{t.rs}}px; color: {{t.sideInk}}; text-decoration: none; font-weight: 500; white-space: nowrap;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true" style="flex: none;"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/></svg>설정</a>
+
+    <div style="margin-top: auto; padding: 14px; border-radius: {{t.r}}px; background: {{t.sideCard}}; display: flex; flex-direction: column; gap: 12px;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <span style="display: flex; flex: none;"><span style="width: 30px; height: 30px; border-radius: 15px; background: {{t.sideBar}}; color: {{t.side}}; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center;">남</span><span style="width: 30px; height: 30px; border-radius: 15px; background: #E8C7A0; color: #3A2A17; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; margin-left: -8px; box-shadow: 0 0 0 2px {{t.sideCard}};">아</span></span>
+        <span style="display: flex; flex-direction: column; min-width: 0;"><span class="nw" style="font-size: 13px; font-weight: 600; color: {{t.sideStrong}};">우리 가족</span><span class="nw" style="font-size: 12px; color: {{t.sideMuted}};">2명 · 함께 편집</span></span>
+      </div>
+      <span style="display: flex; align-items: center; gap: 7px; font-size: 12px; color: {{t.sideAmt}}; white-space: nowrap;"><span style="width: 7px; height: 7px; border-radius: 4px; background: {{t.sideBar}}; flex: none;"></span><span class="nw">구글 시트 동기화 · 2분 전</span></span>
+    </div>
+  </nav>
+
+  <!-- 본문 -->
+  <main style="flex: 999 1 640px; min-width: 0; box-sizing: border-box; display: flex; flex-direction: column;">
+    <header style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 14px 40px; border-bottom: 1px solid {{t.line}}; background: {{t.top}};">
+      <span style="font-size: 13px; color: {{t.muted}}; white-space: nowrap;">우리의 공간 <span style="margin: 0 6px; color: {{t.faint}};">/</span><b style="color: {{t.ink}}; font-weight: 600;">우리의 오늘</b></span>
+      <div style="margin-left: auto; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+        <span style="font-size: 12px; font-weight: 600; color: {{t.muted}};">화면 테마</span>
+        <div role="group" aria-label="화면 테마" style="display: flex; padding: 3px; gap: 2px; border-radius: 99px; background: {{t.seg}}; border: 1px solid {{t.line}};">
+          <sc-for list="{{opts}}" as="o" hint-placeholder-count="3">
+            <button type="button" aria-pressed="{{o.pressed}}" onClick="{{o.pick}}" style="display: flex; align-items: center; gap: 7px; height: 32px; padding: 0 14px 0 8px; border: 0; border-radius: 99px; background: {{o.bg}}; color: {{o.ink}}; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; box-shadow: {{o.shadow}}; transition: background .2s;">
+              <span style="width: 18px; height: 18px; border-radius: 9px; background: {{o.swatch}}; box-shadow: 0 0 0 1.5px {{o.ring}};"></span>{{o.label}}
+            </button>
+          </sc-for>
+        </div>
+        <button type="button" aria-label="알림" style="width: 38px; height: 38px; border: 1px solid {{t.line}}; border-radius: 99px; background: {{t.surfaceSolid}}; color: {{t.ink}}; display: flex; align-items: center; justify-content: center; cursor: pointer;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8M10 20a2 2 0 0 0 4 0"/></svg></button>
+      </div>
+    </header>
+
+    <div style="width: 100%; max-width: 1180px; box-sizing: border-box; padding: 32px 40px 48px; display: flex; flex-direction: column; gap: {{t.gap}}px;">
+      <div style="display: flex; flex-wrap: wrap; align-items: flex-end; gap: 14px;">
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+          <span style="font-size: 12px; color: {{t.muted}};">2026년 11월 7일 기준</span>
+          <h1 style="margin: 0; font-family: {{t.fHead}}; font-size: {{t.h1}}px; font-weight: {{t.wHead}}; letter-spacing: -0.03em; line-height: 1.25;">우리 부부의 자산 현황</h1>
+        </div>
+        <div role="group" aria-label="보기 대상" style="margin-left: auto; display: flex; padding: 3px; border-radius: {{t.pill}}px; background: {{t.seg}};">
+          <button type="button" aria-pressed="true" style="height: 32px; padding: 0 14px; border: 0; border-radius: {{t.pill}}px; background: {{t.surfaceSolid}}; color: {{t.ink}}; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.08);">부부 전체</button>
+          <button type="button" aria-pressed="false" style="height: 32px; padding: 0 14px; border: 0; border-radius: {{t.pill}}px; background: transparent; color: {{t.muted}}; font: inherit; font-size: 13px; cursor: pointer;">나</button>
+          <button type="button" aria-pressed="false" style="height: 32px; padding: 0 14px; border: 0; border-radius: {{t.pill}}px; background: transparent; color: {{t.muted}}; font: inherit; font-size: 13px; cursor: pointer;">배우자</button>
+        </div>
+        <button type="button" style="height: 38px; padding: 0 18px; border: 0; border-radius: {{t.pill}}px; background: {{t.btn}}; color: {{t.btnInk}}; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap;">+ 자산 등록</button>
+      </div>
+
+      <!-- 요약: 노후 → 갈아타기 → 총자산 -->
+      <section aria-label="요약" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: {{t.gap}}px;">
+        <article style="background: {{t.hero}}; color: {{t.heroInk}}; border-radius: {{t.r}}px; padding: 24px 26px; display: flex; flex-direction: column; gap: 10px; transition: background .25s;">
+          <div style="display: flex; align-items: center; gap: 8px;"><span style="font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 99px; background: {{t.chip}}; color: {{t.chipInk}};">노후 주머니</span><span style="font-size: 12px; color: {{t.heroMuted}};">메인</span></div>
+          <div class="n nw" style="font-family: {{t.fNum}}; font-size: {{t.heroNum}}px; font-weight: {{t.wNum}}; letter-spacing: {{t.ls}}; line-height: 1.1;">4억 2,300<span style="font-size: 0.55em; margin-left: 3px;">만원</span></div>
+          <div style="display: flex; align-items: center; gap: 10px; font-size: 12px; color: {{t.heroMuted}};"><span style="flex: 1; height: 6px; border-radius: 3px; background: {{t.track}}; overflow: hidden;"><span style="display: block; width: 62%; height: 100%; background: {{t.chip}}; border-radius: 3px;"></span></span><span class="n" style="white-space: nowrap;">금융자산의 62%</span></div>
+        </article>
+        <article style="background: {{t.surface}}; border: 1px solid {{t.cardLine}}; border-radius: {{t.r}}px; padding: 24px 26px; display: flex; flex-direction: column; gap: 10px;">
+          <div style="display: flex; align-items: center; gap: 8px; white-space: nowrap;"><span style="font-size: 13px; font-weight: 700; color: {{t.p2}};">갈아타기 재원</span><span style="font-size: 12px; color: {{t.muted}};">현금 주머니</span></div>
+          <div class="n nw" style="font-family: {{t.fNum}}; font-size: {{t.heroNum}}px; font-weight: {{t.wNum}}; letter-spacing: {{t.ls}}; line-height: 1.1;">2억 6,150<span style="font-size: 0.55em; margin-left: 3px;">만원</span></div>
+          <div style="display: flex; align-items: center; gap: 10px; font-size: 12px; color: {{t.muted}};"><span style="flex: 1; height: 6px; border-radius: 3px; background: {{t.p2Soft}}; overflow: hidden;"><span style="display: block; width: 87%; height: 100%; background: {{t.p2Bar}}; border-radius: 3px;"></span></span><span class="n" style="white-space: nowrap;">목표 3억의 87%</span></div>
+        </article>
+        <article style="background: {{t.surface2}}; border: 1px solid {{t.cardLine}}; border-radius: {{t.r}}px; padding: 24px 26px; display: flex; flex-direction: column; gap: 10px;">
+          <div style="display: flex; align-items: center; gap: 8px; white-space: nowrap;"><span style="font-size: 13px; font-weight: 600; color: {{t.muted}};">= 총자산</span><span style="font-size: 12px; color: {{t.muted}};">부동산 포함</span></div>
+          <div class="n nw" style="font-family: {{t.fNum}}; font-size: {{t.heroNum}}px; font-weight: {{t.wNum}}; letter-spacing: {{t.ls}}; line-height: 1.1;">12억 8,450<span style="font-size: 0.55em; margin-left: 3px;">만원</span></div>
+          <div style="display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 12px; color: {{t.muted}};"><span class="n" style="color: {{t.up}}; font-weight: 600;">▲ +0.98% 지난달</span><span class="n">순자산 11억 8,450만</span></div>
+        </article>
+      </section>
+
+      <!-- 자산 구성 + 은퇴/알림 -->
+      <div style="display: flex; flex-wrap: wrap; gap: {{t.gap}}px;">
+        <section style="flex: 3 1 480px; min-width: 0; background: {{t.surface}}; border: 1px solid {{t.cardLine}}; border-radius: {{t.r}}px; padding: 24px 26px; display: flex; flex-direction: column; gap: 18px;">
+          <div style="display: flex; align-items: center;"><h2 style="margin: 0; font-family: {{t.fHead}}; font-size: {{t.h2}}px; font-weight: {{t.wHead}};">자산 구성</h2><a href="#" style="margin-left: auto; font-size: 13px; font-weight: 600; color: {{t.link}}; text-decoration: none;">표로 보기 →</a></div>
+          <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 32px;">
+            <svg width="176" height="176" viewBox="0 0 176 176" role="img" aria-label="자산 구성 도넛 차트" style="flex: none;">
+              <g transform="rotate(-90 88 88)" fill="none" stroke-width="{{t.ring}}">
+                <circle cx="88" cy="88" r="70" stroke="{{t.c1}}" pathLength="100" stroke-dasharray="24.6 75.4" stroke-dashoffset="0"/>
+                <circle cx="88" cy="88" r="70" stroke="{{t.c2}}" pathLength="100" stroke-dasharray="10.6 89.4" stroke-dashoffset="-25"/>
+                <circle cx="88" cy="88" r="70" stroke="{{t.c3}}" pathLength="100" stroke-dasharray="4.6 95.4" stroke-dashoffset="-36"/>
+                <circle cx="88" cy="88" r="70" stroke="{{t.c4}}" pathLength="100" stroke-dasharray="4.6 95.4" stroke-dashoffset="-41"/>
+                <circle cx="88" cy="88" r="70" stroke="{{t.c5}}" pathLength="100" stroke-dasharray="7.6 92.4" stroke-dashoffset="-46"/>
+                <circle cx="88" cy="88" r="70" stroke="{{t.c6}}" pathLength="100" stroke-dasharray="45.6 54.4" stroke-dashoffset="-54"/>
+              </g>
+              <text x="88" y="80" text-anchor="middle" font-size="12" fill="{{t.muted}}" font-family="Noto Sans KR">총자산</text>
+              <text x="88" y="106" text-anchor="middle" font-size="{{t.donutNum}}" font-weight="{{t.wNum}}" fill="{{t.ink}}" font-family="{{t.fNumSvg}}">12.85억</text>
+            </svg>
+            <div style="flex: 1 1 240px; display: flex; flex-direction: column;">
+              <sc-for list="{{legend}}" as="g" hint-placeholder-count="6">
+                <div style="display: grid; grid-template-columns: 1fr 56px 80px; padding: 10px 0; border-bottom: 1px solid {{t.line2}}; align-items: center;"><span style="display: flex; align-items: center; gap: 10px; white-space: nowrap;"><span style="width: 10px; height: 10px; border-radius: 3px; background: {{g.color}}; flex: none;"></span>{{g.name}}</span><span class="n" style="text-align: right; color: {{t.muted}};">{{g.pct}}</span><span class="n" style="text-align: right; font-weight: 600;">{{g.amt}}</span></div>
+              </sc-for>
+            </div>
+          </div>
+          <div style="display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; padding: 12px 14px; border-radius: {{t.rs}}px; background: {{t.surface2}}; font-size: 13px; color: {{t.muted}};"><span>대출 · 부채 <b class="n" style="color: {{t.ink}}; font-weight: 600; margin-left: 6px;">1억원</b></span><span>순자산 <b class="n" style="color: {{t.ink}}; font-weight: 700; margin-left: 6px;">11억 8,450만원</b></span></div>
+        </section>
+
+        <div style="flex: 2 1 340px; min-width: 0; display: flex; flex-direction: column; gap: {{t.gap}}px;">
+          <section style="background: {{t.surface}}; border: 1px solid {{t.cardLine}}; border-radius: {{t.r}}px; padding: 24px 26px; display: flex; flex-direction: column; gap: 12px;">
+            <div style="display: flex; align-items: center;"><h2 style="margin: 0; font-family: {{t.fHead}}; font-size: {{t.h2}}px; font-weight: {{t.wHead}};">함께 그리는 은퇴</h2><button type="button" style="margin-left: auto; height: 30px; padding: 0 12px; border: 1px solid {{t.line}}; border-radius: {{t.pill}}px; background: transparent; color: {{t.muted}}; font: inherit; font-size: 12px; cursor: pointer;">목표 설정</button></div>
+            <div style="display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;"><span class="n" style="font-family: {{t.fNum}}; font-size: {{t.bigNum}}px; font-weight: {{t.wNum}}; letter-spacing: {{t.ls}}; line-height: 1.05; white-space: nowrap;">만 62세</span><span class="n" style="font-size: 13px; color: {{t.muted}};">2048년 · 22년 남음</span></div>
+            <div style="height: 8px; border-radius: 4px; background: {{t.line2}}; overflow: hidden;"><div style="width: 39%; height: 100%; background: {{t.acc}}; border-radius: 4px;"></div></div>
+            <div style="display: flex; justify-content: space-between; font-size: 12px; color: {{t.muted}};"><span>순자산 기준 <b class="n" style="color: {{t.ink}};">39%</b></span><span class="n">목표 30억</span></div>
+          </section>
+          <section style="flex: 1; background: {{t.surface}}; border: 1px solid {{t.cardLine}}; border-radius: {{t.r}}px; padding: 24px 26px; display: flex; flex-direction: column; gap: 4px;">
+            <h2 style="margin: 0 0 8px; font-family: {{t.fHead}}; font-size: {{t.h2}}px; font-weight: {{t.wHead}};">주요 알림</h2>
+            <a href="#" style="display: flex; align-items: center; gap: 12px; padding: 11px 0; border-bottom: 1px solid {{t.line2}}; text-decoration: none;"><span style="width: 36px; height: 36px; border-radius: {{t.rs}}px; background: {{t.p2Soft}}; color: {{t.p2}}; display: flex; align-items: center; justify-content: center; flex: none;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M20 11a8 8 0 0 0-14.9-3M4 4v4h4M4 13a8 8 0 0 0 14.9 3M20 20v-4h-4"/></svg></span><span style="flex: 1; min-width: 0; display: flex; flex-direction: column;"><span class="nw" style="font-weight: 600; font-size: 14px;">리밸런싱 점검 필요</span><span class="n nw" style="font-size: 12px; color: {{t.muted}};">연금 최대 편차 9.2%p · 기준 5%p</span></span><span style="color: {{t.faint}};">›</span></a>
+            <a href="#" style="display: flex; align-items: center; gap: 12px; padding: 11px 0; text-decoration: none;"><span style="width: 36px; height: 36px; border-radius: {{t.rs}}px; background: {{t.surface2}}; color: {{t.ink}}; display: flex; align-items: center; justify-content: center; flex: none;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 10h18M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 21h18M12 3l9 5H3z"/></svg></span><span style="flex: 1; min-width: 0; display: flex; flex-direction: column;"><span class="nw" style="font-weight: 600; font-size: 14px;">연금 수령 계획 확인</span><span class="nw" style="font-size: 12px; color: {{t.muted}};">월 연금과 생활비 비교</span></span><span style="color: {{t.faint}};">›</span></a>
+          </section>
+        </div>
+      </div>
+
+      <!-- 전략 + 소득 -->
+      <div style="display: flex; flex-wrap: wrap; gap: {{t.gap}}px;">
+        <section style="flex: 1 1 400px; min-width: 0; background: {{t.surface}}; border: 1px solid {{t.cardLine}}; border-radius: {{t.r}}px; padding: 24px 26px; display: flex; flex-direction: column; gap: 14px;">
+          <div style="display: flex; align-items: center;"><h2 style="margin: 0; font-family: {{t.fHead}}; font-size: {{t.h2}}px; font-weight: {{t.wHead}};">전략별 자산 배분</h2><a href="#" style="margin-left: auto; font-size: 13px; font-weight: 600; color: {{t.link}}; text-decoration: none;">전략 보기 →</a></div>
+          <div style="display: flex; flex-direction: column; gap: 8px;"><span style="font-size: 13px; white-space: nowrap;"><b>올웨더</b> <span style="color: {{t.muted}};">달리오 · 내 연금</span></span>
+            <div class="n" style="display: flex; height: 28px; gap: 2px; font-size: 12px; font-weight: 700;"><span style="width: 30%; background: {{t.c1}}; color: #FFFFFF; border-radius: {{t.bar}}px; display: flex; align-items: center; justify-content: center;">30</span><span style="width: 40%; background: {{t.c2}}; color: #FFFFFF; border-radius: {{t.bar}}px; display: flex; align-items: center; justify-content: center;">40</span><span style="width: 15%; background: {{t.c3}}; color: #10332E; border-radius: {{t.bar}}px; display: flex; align-items: center; justify-content: center;">15</span><span style="width: 8%; background: {{t.c4}}; color: #2E2205; border-radius: {{t.bar}}px; display: flex; align-items: center; justify-content: center;">8</span><span style="width: 7%; background: {{t.c7}}; color: #33121F; border-radius: {{t.bar}}px; display: flex; align-items: center; justify-content: center;">7</span></div></div>
+          <div style="display: flex; flex-direction: column; gap: 8px;"><span style="font-size: 13px; white-space: nowrap;"><b>박곰희</b> <span style="color: {{t.muted}};">포트폴리오 · 배우자 연금</span></span>
+            <div class="n" style="display: flex; height: 28px; gap: 2px; font-size: 12px; font-weight: 700;"><span style="width: 70%; background: {{t.c1}}; color: #FFFFFF; border-radius: {{t.bar}}px; display: flex; align-items: center; justify-content: center;">70</span><span style="width: 20%; background: {{t.c2}}; color: #FFFFFF; border-radius: {{t.bar}}px; display: flex; align-items: center; justify-content: center;">20</span><span style="width: 5%; background: {{t.c4}}; border-radius: {{t.bar}}px;"></span><span style="width: 5%; background: {{t.c5}}; border-radius: {{t.bar}}px;"></span></div></div>
+          <div style="padding: 10px 12px; border: 1px dashed {{t.line}}; border-radius: {{t.rs}}px; font-size: 12px; color: {{t.muted}};"><b style="color: {{t.ink}};">K-올웨더</b> · 김성일 — 비율 출처 확인 중</div>
+        </section>
+        <section style="flex: 1 1 400px; min-width: 0; background: {{t.surface}}; border: 1px solid {{t.cardLine}}; border-radius: {{t.r}}px; padding: 24px 26px; display: flex; flex-direction: column; gap: 10px;">
+          <div style="display: flex; align-items: baseline; gap: 10px;"><h2 style="margin: 0; font-family: {{t.fHead}}; font-size: {{t.h2}}px; font-weight: {{t.wHead}};">가구 소득 흐름</h2><span class="n" style="margin-left: auto; font-size: 12px; color: {{t.muted}}; white-space: nowrap;">은퇴 후 연 <b style="font-family: {{t.fNum}}; font-size: 20px; font-weight: {{t.wNum}}; color: {{t.ink}};">4,200만원</b></span></div>
+          <svg viewBox="0 0 520 190" role="img" aria-label="2026년부터 2060년까지 가구 소득 흐름. 2048년 은퇴 시점에 줄어든다" style="width: 100%; height: auto;">
+            <g stroke="{{t.line2}}"><line x1="40" y1="20" x2="510" y2="20"/><line x1="40" y1="80" x2="510" y2="80"/><line x1="40" y1="140" x2="510" y2="140"/></g>
+            <g font-size="11" fill="{{t.muted}}" font-family="Inter"><text x="32" y="24" text-anchor="end">6,000</text><text x="32" y="84" text-anchor="end">4,000</text><text x="32" y="144" text-anchor="end">2,000</text><text x="44" y="178">2026</text><text x="170" y="178">2035</text><text x="300" y="178">2045</text><text x="420" y="178">2055</text><text x="476" y="178">2060</text></g>
+            <path d="M44 110 L120 96 L200 86 L280 68 L340 58 L352 58 L366 112 L440 108 L510 104 L510 160 L44 160 Z" fill="{{t.acc}}" fill-opacity="0.1"/>
+            <path d="M44 110 L120 96 L200 86 L280 68 L340 58 L352 58 L366 112 L440 108 L510 104" fill="none" stroke="{{t.acc}}" stroke-width="2.4" stroke-linejoin="round"/>
+            <path d="M44 118 L120 108 L200 100 L280 86 L340 80 L352 80 L366 126 L440 124 L510 122" fill="none" stroke="{{t.p2Bar}}" stroke-width="2" stroke-dasharray="5 4"/>
+            <line x1="352" y1="20" x2="352" y2="160" stroke="{{t.faint}}" stroke-dasharray="3 3"/>
+            <circle cx="352" cy="58" r="5" fill="{{t.chip}}" stroke="{{t.acc}}" stroke-width="2"/>
+            <rect x="278" y="24" width="68" height="24" rx="12" fill="{{t.acc}}"/><text x="312" y="40" text-anchor="middle" font-size="11" fill="{{t.accInk}}" font-family="Noto Sans KR" font-weight="700">2048 은퇴</text>
+          </svg>
+          <div style="display: flex; gap: 16px; font-size: 12px; color: {{t.muted}};"><span style="display: flex; align-items: center; gap: 6px;"><span style="width: 16px; height: 2px; background: {{t.acc}};"></span>기준</span><span style="display: flex; align-items: center; gap: 6px;"><span style="width: 16px; height: 0; border-top: 2px dashed {{t.p2Bar}};"></span>보수적</span></div>
+        </section>
+      </div>
+
+      <section style="background: {{t.surface}}; border: 1px solid {{t.cardLine}}; border-radius: {{t.r}}px; padding: 18px 26px; display: flex; flex-direction: column; gap: 12px;">
+        <div style="display: flex; align-items: center;"><h2 style="margin: 0; font-family: {{t.fHead}}; font-size: {{t.h2}}px; font-weight: {{t.wHead}};">이번 달, 함께 챙겨요</h2><span class="n" style="margin-left: auto; font-size: 12px; color: {{t.muted}};"><b style="color: {{t.ink}};">1</b> / 3 완료</span></div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px;">
+          <label style="display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: {{t.rs}}px; background: {{t.surface2}}; cursor: pointer;"><input type="checkbox" checked style="width: 18px; height: 18px; accent-color: {{t.acc}};"><span style="font-size: 13px; text-decoration: line-through; color: {{t.muted}};">이번 달 연금 납입 확인</span></label>
+          <label style="display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: {{t.rs}}px; background: {{t.surface2}}; cursor: pointer;"><input type="checkbox" style="width: 18px; height: 18px; accent-color: {{t.acc}};"><span style="font-size: 13px; font-weight: 500;">자산 배분 점검</span></label>
+          <label style="display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: {{t.rs}}px; background: {{t.surface2}}; cursor: pointer;"><input type="checkbox" style="width: 18px; height: 18px; accent-color: {{t.acc}};"><span style="font-size: 13px; font-weight: 500;">대출 상환 내역 확인</span></label>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["D","A","C"],"default":"D"},"$preview":{"width":1440,"height":1280}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var T = {
+      A: { name: 'Mercury', acc: '#0F5C4A', accInk: '#FFFFFF',
+        bg: '#F6F6F3', top: '#FFFFFF', surface: '#FFFFFF', surfaceSolid: '#FFFFFF', surface2: '#F3F3EF', seg: '#ECECE8', line: '#E6E6E1', line2: '#EFEFEB', cardLine: '#E6E6E1',
+        ink: '#111316', muted: '#5F6670', faint: '#9AA0A8', link: '#0F5C4A',
+        side: '#0E1A17', sideStrong: '#FFFFFF', sideInk: '#DCE5E1', sideSub: '#B4C3BD', sideMuted: '#8FA39C', sideAmt: '#9FB2AA', sideLine: '#22342E', sideActiveBg: '#1B2C27', sideActiveInk: '#FFFFFF', sideBar: '#7FD1B4', sideCard: '#15241F',
+        btn: '#111316', btnInk: '#FFFFFF',
+        hero: '#0F5C4A', heroInk: '#FFFFFF', heroMuted: '#CFE5DC', chip: '#7FD1B4', chipInk: '#0E1A17', track: '#2D7663',
+        p2: '#8A5A2E', p2Soft: '#F4EADF', p2Bar: '#B9865A', up: '#D22030',
+        c1: '#4F6BD8', c2: '#2F9C8F', c3: '#8CCFC4', c4: '#D9A94E', c5: '#A9B0B8', c6: '#8C7BC8', c7: '#C98AA8',
+        r: 14, rs: 9, pill: 9, bar: 5, gap: 16, ring: 22,
+        fBody: "Inter, 'Noto Sans KR', system-ui, sans-serif", fHead: "Inter, 'Noto Sans KR', sans-serif", wHead: 700,
+        fNum: "Inter, 'Noto Sans KR', sans-serif", fNumSvg: 'Inter', wNum: 700, ls: '-0.03em',
+        h1: 26, h2: 16, heroNum: 32, bigNum: 36, donutNum: 24 },
+      C: { name: 'Robinhood', acc: '#5EE0A8', accInk: '#06130D',
+        bg: '#0B0D10', top: '#0B0D10', surface: '#14171C', surfaceSolid: '#222831', surface2: '#1A1E24', seg: '#12161C', line: '#262B33', line2: '#1F242B', cardLine: '#23272E',
+        ink: '#ECEEF1', muted: '#A3ACB8', faint: '#6E7783', link: '#5EE0A8',
+        side: '#0F1318', sideStrong: '#FFFFFF', sideInk: '#D6DBE1', sideSub: '#A9B1BC', sideMuted: '#7C8591', sideAmt: '#9AA3AE', sideLine: '#1E232B', sideActiveBg: '#1A2028', sideActiveInk: '#FFFFFF', sideBar: '#5EE0A8', sideCard: '#14181E',
+        btn: '#5EE0A8', btnInk: '#06130D',
+        hero: '#10221A', heroInk: '#ECEEF1', heroMuted: '#9FD9BE', chip: '#5EE0A8', chipInk: '#06130D', track: '#1F4A37',
+        p2: '#F5B85A', p2Soft: '#2A2112', p2Bar: '#F5B85A', up: '#FF7A7A',
+        c1: '#6E8BFF', c2: '#2FA898', c3: '#9BE3D6', c4: '#F5B85A', c5: '#6E7783', c6: '#B39CFF', c7: '#F29AC0',
+        r: 12, rs: 8, pill: 8, bar: 4, gap: 14, ring: 16,
+        fBody: "Geist, 'Noto Sans KR', system-ui, sans-serif", fHead: "Geist, 'Noto Sans KR', sans-serif", wHead: 600,
+        fNum: "'Geist Mono', 'Noto Sans KR', monospace", fNumSvg: 'Geist Mono', wNum: 600, ls: '-0.03em',
+        h1: 24, h2: 15, heroNum: 30, bigNum: 38, donutNum: 20 },
+      D: { name: 'Ramp', acc: '#0A0A0A', accInk: '#FFFFFF',
+        bg: '#FAFAF8', top: '#FFFFFF', surface: '#FFFFFF', surfaceSolid: '#FFFFFF', surface2: '#F3F3F0', seg: '#F0F0ED', line: '#E8E8E4', line2: '#EEEEEA', cardLine: '#ECECE8',
+        ink: '#0A0A0A', muted: '#55555A', faint: '#8C8C90', link: '#0A0A0A',
+        side: '#0B0B0C', sideStrong: '#FFFFFF', sideInk: '#E8E8E8', sideSub: '#B8B8BA', sideMuted: '#8C8C90', sideAmt: '#A6A6A9', sideLine: '#232325', sideActiveBg: '#1C1C1E', sideActiveInk: '#FFFFFF', sideBar: '#D4F04C', sideCard: '#161618',
+        btn: '#0A0A0A', btnInk: '#FFFFFF',
+        hero: '#0A0A0A', heroInk: '#FFFFFF', heroMuted: '#A6A6A9', chip: '#D4F04C', chipInk: '#0A0A0A', track: '#2A2A2C',
+        p2: '#B4461C', p2Soft: '#FDEEE6', p2Bar: '#F2784B', up: '#C81E2B',
+        c1: '#5B7CFA', c2: '#1FA38E', c3: '#9ADBCF', c4: '#E9B949', c5: '#C9C9C4', c6: '#2E2E30', c7: '#F2A7C6',
+        r: 20, rs: 12, pill: 99, bar: 7, gap: 16, ring: 24,
+        fBody: "'Inter Tight', 'Noto Sans KR', system-ui, sans-serif", fHead: "'Inter Tight', 'Noto Sans KR', sans-serif", wHead: 700,
+        fNum: "'Inter Tight', 'Noto Sans KR', sans-serif", fNumSvg: 'Inter Tight', wNum: 700, ls: '-0.035em',
+        h1: 30, h2: 17, heroNum: 38, bigNum: 50, donutNum: 26 }
+    };
+    var k = (this.state && this.state.theme) || this.props.theme || 'D';
+    var t = T[k] || T.D;
+    var self = this;
+    var opts = ['D', 'A', 'C'].map(function (id) {
+      var on = id === k;
+      return {
+        label: T[id].name,
+        swatch: T[id].hero,
+        ring: T[id].sideBar,
+        pressed: on ? 'true' : 'false',
+        bg: on ? t.surfaceSolid : 'transparent',
+        ink: on ? t.ink : t.muted,
+        shadow: on ? '0 1px 3px rgba(0,0,0,0.12)' : 'none',
+        pick: function () { self.setState({ theme: id }); }
+      };
+    });
+    var legend = [
+      { name: '부동산', pct: '47%', amt: '6.00억', color: t.c6 },
+      { name: '주식', pct: '25%', amt: '3.23억', color: t.c1 },
+      { name: '장기채', pct: '11%', amt: '1.41억', color: t.c2 },
+      { name: '현금', pct: '8%', amt: '1.04억', color: t.c5 },
+      { name: '중기채', pct: '5%', amt: '0.58억', color: t.c3 },
+      { name: '금', pct: '5%', amt: '0.58억', color: t.c4 }
+    ];
+    return { t: t, opts: opts, legend: legend };
+  }
+}
+</script>
+</body>
+</html>

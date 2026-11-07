@@ -15,10 +15,11 @@ export function ClassicHome(props: ComponentProps<typeof HomeDashboard>) {
   const stale = isDemo || !ready ? [] : ledger.filter(a => a.as_of && (Date.now() - new Date(`${a.as_of}T00:00:00`).getTime()) / 86_400_000 >= 30)
   const recent = isDemo || !ready ? [] : [...ledger].sort((a, b) => (b.updated_at ?? '').localeCompare(a.updated_at ?? '')).slice(0, 4)
   const status = !ready ? loading ? '불러오는 중' : '자료 확인 필요' : isDemo ? '예시 자료' : snapshot.as_of ? `${snapshot.as_of.replaceAll('-', '.')} 기준` : '등록된 자산 없음'
+  // 순서 (2026-11-07 사용자): 노후 주머니(메인) → 갈아타기 재원 → 두 주머니와 부동산을 더한 총자산
   const cards = [
+    { id: 'retirement', title: '노후 주머니', amount: snapshot.retirement, registered: populated && snapshot.assets.some(a => a.pocket === 'retirement'), note: '금융자산 중 · 연금·퇴직연금', color: 'var(--accent-hi)' },
+    { id: 'cash', title: '갈아타기 재원', amount: snapshot.cash, registered: populated && snapshot.assets.some(a => a.pocket === 'cash'), note: '현금 주머니 · 예금·주식', color: 'var(--cls-commodity)' },
     { id: 'all', title: '총자산', amount: snapshot.total, registered: populated, note: `순자산 ${populated ? display(snapshot.net) : '—'}`, color: 'var(--primary)' },
-    { id: 'retirement', title: '노후 주머니', amount: snapshot.retirement, registered: populated && snapshot.assets.some(a => a.pocket === 'retirement'), note: '금융자산 중 · 연금·퇴직연금', color: 'var(--cls-long-bond)' },
-    { id: 'cash', title: '현금 주머니', amount: snapshot.cash, registered: populated && snapshot.assets.some(a => a.pocket === 'cash'), note: '금융자산 중 · 예금·주식', color: 'var(--cls-commodity)' },
   ]
   return <div className="classic-home" aria-busy={!isDemo && loading}>
     <header className="classic-home-heading">
@@ -26,7 +27,7 @@ export function ClassicHome(props: ComponentProps<typeof HomeDashboard>) {
       <div className="classic-home-controls"><div className="owner-switch" role="group" aria-label="자산 소유자 선택">{(Object.keys(ownerLabels) as Owner[]).map(key => <button key={key} onClick={() => onOwner(key)} className={owner === key ? 'active' : ''} aria-pressed={owner === key}>{ownerLabels[key]}</button>)}</div><button className="register-shortcut" onClick={onAdd} disabled={!isDemo && loading}><CirclePlus size={15}/>자산 등록</button></div>
     </header>
     <section className="stats-grid" aria-label="자산 요약">
-      {cards.map(card => <article className={`stat-card ${card.id === 'all' ? 'total-stat' : ''}`} aria-label={card.title} key={card.id}>
+      {cards.map(card => <article className={`stat-card ${card.id === 'all' ? 'total-stat' : card.id === 'retirement' ? 'pocket-hero' : ''}`} aria-label={card.title} key={card.id}>
         <div className="stat-top"><h2>{card.title}</h2>{card.id === 'all' ? <button className="icon-button" onClick={onHide} aria-label={hidden ? '금액 표시' : '금액 숨기기'}>{hidden ? <EyeOff size={16}/> : <Eye size={16}/>}</button> : <ArrowUpRight size={16} className="muted"/>}</div>
         <button className="stat-body" onClick={() => onAssets(card.id)} disabled={!ready} aria-label={`${card.title} 상세 보기`}><strong className="stat-number">{hidden ? '••••••' : !ready ? '—' : card.registered ? money(card.amount) : '미등록'}</strong>{card.id !== 'all' && <Ring value={!hidden && card.registered && snapshot.financial > 0 ? card.amount / snapshot.financial * 100 : 0} color={card.color}>{hidden ? <strong>••</strong> : !ready || !card.registered || snapshot.financial <= 0 ? <strong>—</strong> : undefined}</Ring>}</button>
         <p className="stat-note">{card.note}</p>
