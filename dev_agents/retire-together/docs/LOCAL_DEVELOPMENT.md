@@ -96,9 +96,9 @@ Google 첫 로그인에서는 동의가 필요하다. 재방문 시 유효한 �
 - `GET /api/auth/google/callback`: Google 응답 검증 후 기존 세션을 회전하고 `/`로 이동. 요청자가 지정한 복귀 URL은 사용하지 않는다.
 - `GET /api/auth/session`: 로그인한 계정·가구·멤버·역할·만료와 `csrf_token`. 응답은 no-store, 토큰은 프론트 메모리에만 두고 저장소/로그에 넣지 않는다.
 - `POST /api/auth/logout`: 동일 출처 `Origin`과 세션에서 받은 `X-Retire-CSRF` 필요. 서버 세션과 브라우저 쿠키를 폐기하며 시트 연결이나 고정 오너는 지우지 않는다.
-- 나머지 개인/등록/설정/다운로드/문서 API도 공통 세션 검사 대상. 쓰기에는 동일한 CSRF 검사가 적용되며 `X-Retire-Local`은 웹 인증을 대신하지 않는다. SHARE-04/05의 권한/사람 매핑 전에는 기존 금융 API를 오너에게만 허용한다. 웹 모드의 `/api/google/*`는 기존 InstalledAppFlow/공용 토큰 사용 방지를 위해 409로 차단한다.
+- 나머지 개인/등록/설정/다운로드/문서 API도 공통 세션 검사 대상. 쓰기에는 동일한 CSRF 검사가 적용되며 `X-Retire-Local`은 웹 인증을 대신하지 않는다. SHARE-04/05의 권한/사람 매핑 전에는 기존 금융 API를 오너에게만 허용한다. 웹 모드의 구형 `/api/google/*`는 기존 InstalledAppFlow/공용 토큰 사용 방지를 위해 409로 차단한다. SHARE-03의 별도 `/api/google/shared/*`만 고정 오너에게 허용한다.
 
-세션은 무작위 불투명 쿠키·서버에는 해시만 저장하며 12시간 절대 만료다. HTTPS 쿠키는 `__Host-`·Secure·HttpOnly·SameSite=Lax·Path=/, 로컬 HTTP는 별도 이름과 명시적 허용을 쓴다. Google 로그인은 `openid email`만 요청하고 ID/access/refresh 토큰을 영구 저장하지 않는다. Drive/Sheets 자격 증명 분리는 SHARE-03 범위다. Uvicorn 접근 로그의 `/api/auth/*` 쿼리는 제거한다. 향후 외부 HTTPS 프록시를 붙일 때도 콜백 쿼리를 기록하지 않고, 정확한 Host/HTTPS 전달·신뢰할 프록시 범위를 운영 설정으로 확인해야 한다. 이번에는 배포/프록시 설정을 변경하지 않았다.
+세션은 무작위 불투명 쿠키·서버에는 해시만 저장하며 12시간 절대 만료다. HTTPS 쿠키는 `__Host-`·Secure·HttpOnly·SameSite=Lax·Path=/, 로컬 HTTP는 별도 이름과 명시적 허용을 쓴다. 기본 Google 로그인은 `openid email`만 요청하고 받은 Google 토큰을 영구 저장하지 않는다. SHARE-03의 별도 파일 동의에서만 계정별 access/refresh 토큰을 서버에 보관한다(아래 절). Uvicorn 접근 로그의 `/api/auth/*` 쿼리는 제거한다. 향후 외부 HTTPS 프록시를 붙일 때도 콜백 쿼리를 기록하지 않고, 정확한 Host/HTTPS 전달·신뢰할 프록시 범위를 운영 설정으로 확인해야 한다. 이번에는 배포/프록시 설정을 변경하지 않았다.
 
 검수 명령:
 
@@ -109,6 +109,47 @@ RETIRE_AUTH_BROWSER_TEST=1 RETIRE_E2E_PORT=8779 npm --prefix web run test:e2e --
 ```
 
 Python 인증 전용 51개, 전체 444개 통과. 합성 RSA 서명/가짜 Google HTTP·임시 DB로 서명/issuer/audience/만료/nonce·state 재사용·동시 초기화·고정 오너 변경·CSRF·재로그인·로그아웃·세션 만료/비활성화를 검사했다. 추가 저장 경로 테스트의 첫 실행은 빈 프로필 fixture 처리 오류 1건이었고 수정 후 전체 통과했다. 전용 브라우저 테스트는 Google 이동을 가짜 응답으로 대체하고 별도 임시 인증/금융 DB만 사용한다. 초기 Shrimp 실행에서 포트 제한으로 멈췄던 브라우저 검수는 후속 로컬 세션에서 완료했다. 기존 리디렉션 모킹을 별도 localhost 가짜 제공자로 교체해 외부 요청 없이 4개 검사(로그인·UI 저장·재로그인·로그아웃, 제3자/취소, 설정 실패/재시도, 업로드 CSRF/세션 만료)를 통과했다. 인증/API Python 105개와 빌드도 통과했다. 추가 기존 앱 회귀는 19개 중 17개 통과하며, 2개는 기존 계좌 선택자의 합계 셀 중복 매칭과 변경된 개인연금 입력창의 옛 필드 선택자 불일치로 실패했다. 관련 제품 UI는 이 작업에서 변경하지 않았다. 후속 팝업/메인 전환까지 인증/API Python 108개·인증 브라우저 6개·메인/표 전환 1개를 통과했다. 실제 최초 Google 로그인과 활성 오너 세션도 확인하여 SHARE-02를 완료했다. 실제 계정으로 새 팝업 재로그인은 자동 검수 결과와 구분한다. UI 디자인 검수·공통 시트 연결·두 계정 통합 완료를 이 결과로 대신하지 않는다.
+
+## SHARE-03 공통 시트 API와 검수
+
+2026-11-07: 서버 구현·합성 자동 검수 완료, 실제 Google 파일 연결 검증 대기. 이번 작업은 화면 변경이 없으며 Picker/재연결 화면은 SHARE-06에서 아래 API를 연결한다. 기존 5180/8010 한 서버를 유지하며 이번 실행에서 재시작/실제 Google 요청/금융 자료 변경을 하지 않았다.
+
+서버 구현은 `backend/shared_sheets.py`(흐름·API·가구 읽기), `shared_sheets_store.py`(별도 테이블·프로세스 잠금), `shared_sheets_google.py`(drive.file·권한/메타데이터·토큰 갱신)다. 인증 저장소의 기존 오너/세션을 그대로 사용하며 `household_sheets`·`sheet_grants`·`sheet_flows`를 추가한다. DB·저널은 금융 시트/브라우저 저장소/Git에 넣지 않는다. 로컬 파일 권한은 0600이며 이 구현은 단일 호스트의 SQLite + POSIX 파일 잠금을 기준으로 한다. 여러 호스트 배포는 이 검증에 포함되지 않는다.
+
+API는 모두 웹 오너 세션이 필요하다. POST/PUT/DELETE에는 기존 `Origin`과 `X-Retire-CSRF`를 보낸다. 응답은 `Cache-Control: no-store`다.
+
+| API | 계약 |
+|---|---|
+| `GET /api/google/shared/status` | 저장된 `spreadsheet`(ID·URL·ready), connected·active·health·read_only. 오류 시 ID를 유지하고 attention/detail 반환. 읽기로 생성/이전하지 않음 |
+| `POST /api/google/shared/connect` | 별도 파일 동의를 시작할 `authorization_url` 반환·전용 HttpOnly 흐름 쿠키 설정. 브라우저를 반환 URL로 이동시킴. 로그인과 같은 등록 콜백 `/api/auth/google/callback` 사용 |
+| `POST /api/google/shared/spreadsheet` | 새 공통 시트 생성 요청. 가구당 영구 생성 작업 기록, 다중 탭/프로세스 잠금, 재요청은 같은 파일 복원/초기화. 기존 연결이 있으면 그 파일 확인만 수행. `migrated=0`, `read_only=true` |
+| `POST /api/google/shared/picker` | Picker용 메모리 전용 access_token·expires_at·developer_key·app_id·origin 반환. refresh token은 반환하지 않음. 설정 누락 503, 파일 동의 누락 409 |
+| `PUT /api/google/shared/spreadsheet` | `{ "spreadsheet_id": "Picker가 선택한 ID" }`. 오너 소유/편집/시트/휴지통·자산/보유종목 양식 검사 후 가구에 저장. 기존 시트에 쓰기/이전 없음. 이미 다른 파일이 연결됐거나 생성 결과가 불확실하면 409 |
+| `DELETE /api/google/shared/connection` | 파일용 저장 토큰·진행 중 파일 동의만 제거. 가구/file ID/앱 세션/Google 파일은 유지. 다시 같은 오너가 동의하면 같은 파일 확인. Google 계정 전체 승인 취소는 수행하지 않음 |
+
+화면 구현 시 `/picker` 결과는 메모리에만 두고 Sheets MIME으로 Google Picker를 열어 선택한 ID를 PUT한다. ID를 직접 입력하는 API는 접근 승인 자체를 부여하지 않으므로 아직 앱에 선택되지 않은 파일은 거부된다. 별도 웹 OAuth 클라이언트 JSON을 사용자에게 요구하지 않는다. [Picker 공식 안내](https://developers.google.com/workspace/drive/picker/guides/overview) · [drive.file 범위](https://developers.google.com/workspace/drive/api/guides/api-specific-auth)
+
+설정/권한에 의존하는 다음 조치(이번 실행에서 외부 설정 변경 없음):
+
+1. 기존 웹 OAuth 프로젝트에서 **Google Drive API·Google Sheets API** 사용과 `drive.file` 동의 설정을 운영자가 확인한다. 기존 콜백 URI를 그대로 사용한다. 오너가 별도 파일 접근 동의를 직접 진행해야 한다.
+2. 기존 파일 선택 검수에는 **Google Picker API**와 같은 프로젝트의 브라우저용 API 키·숫자 프로젝트 번호가 필요하다. 서버 기동 환경에 `RETIRE_GOOGLE_PICKER_API_KEY`·`RETIRE_GOOGLE_PROJECT_NUMBER`를 전달한다. API 키는 Picker 및 사용 출처에 제한하고 OAuth client secret과 구분한다. 새 파일 생성 API에는 Picker 키가 필요하지 않다. 실제 환경 값·토큰을 문서/작업 기록에 출력하지 않는다.
+3. 실제 금융 시트 대신 별도 테스트 시트·합성 자료로 검수한다. 새 생성 1회→동시 탭 재요청/새로고침→로그아웃/재로그인 때 같은 file ID인지 확인한다. 기존 파일 선택은 별도의 임시 인증 저장소/검수 환경에서 수행한다. 고정된 운영 가구를 초기화하거나 기존 파일 연결을 테스트 목적으로 교체하지 않는다.
+4. 타인 소유 시트/공유 편집만 가능한 시트를 거절하는지, 휴지통/삭제/권한 철회/오너 변경 때 ID를 유지하고 새 파일·로컬 전환을 하지 않는지 확인한다. 재동의 뒤 같은 파일로 복구한다. 결과는 성공 여부만 비식별 기록한다. 실제 검수 전 SHARE-03 완료 처리 금지.
+
+생성 결과가 불확실한 경우: `appProperties.retire_operation`으로 만든 파일만 조회한다. 결과가 없거나 여러 개면 409를 유지한다. Google Workspace 파일은 사전 발급 ID 생성을 지원하지 않아 네트워크 오류 뒤 생성 POST를 안전하게 반복할 수 없다. 재시도는 조회만 하며 DB 행 삭제/새 작업 ID 발급으로 우회하지 않는다. 운영자가 별도 테스트 파일의 존재·접근 승인·메타데이터를 확인한 뒤 같은 요청을 재실행한다. 명시적 Google 생성 거부(400/401/403/404/429)는 `create_rejected` 상태로 남겨 설정 해결 후 같은 작업으로 다시 생성할 수 있다. [공식 생성 제약](https://developers.google.com/workspace/drive/api/guides/create-file)
+
+자료 경계: 설정 전에는 기존 오너 로컬 장부를 유지하며 공용 데스크톱 시트 설정은 무시한다. 설정 기록이 생긴 뒤에는 자산·보유종목의 조회를 공통 파일에 연결하고 오류를 전파한다. 자료 이전/공유 저장은 SHARE-05이므로 앱의 금융 저장·등록·설정 요청은 409로 차단한다(읽기 계산용 preview/rebalance는 허용). 이 차단은 생성과 같은 잠금 안에서 이루어져 기존 등록 API의 스냅샷/태그 부분 저장도 예방한다. 로컬 프로필·계획은 아직 공유 자료로 이전하지 않았으며 배우자 금융 접근도 열지 않는다.
+
+실행한 검수:
+
+```sh
+.venv/bin/python -m pytest -q tests/test_shared_sheets.py
+.venv/bin/python -m pytest -q
+RETIRE_AUTH_ALLOW_HTTP=1 .venv/bin/python -m backend.auth_config
+git diff --check
+```
+
+SHARE-03 전용 54개 포함 전체 Python **501 passed**. 합성 RSA 서명·가짜 Google HTTP·임시 DB로 오너/계정/세션/CSRF/nonce/권한, 생성 응답 유실·서버 실패/명시적 거부, 다중 탭/별도 프로세스 잠금, 기존 파일 무변경, 재로그인/재동의/갱신, 삭제·권한/소유권 변경, 저장 차단을 검사했다. 전체 검수에서 처음 발견된 프로세스 검사의 pytest 모듈 상속 충돌을 독립 Python 프로세스로 바꾼 뒤 통과했다. 자동 반영 중 먼저 생성된 연결 테이블의 추가 필드 이전에서도 기존 오너·생성 작업 보존을 검증했다. 현재 웹 OAuth JSON의 읽기 전용 설정 검사도 통과했다. **실제 파일 OAuth·Google Picker 브라우저·Drive/Sheets 실연결은 미검증**, 화면 디자인 검수/배우자 초대/자료 이전 검증도 이번 범위에 포함하지 않는다.
 
 ## Shrimp 작업 관리
 

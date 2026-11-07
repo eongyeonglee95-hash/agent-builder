@@ -8,11 +8,14 @@ from fastapi import APIRouter, HTTPException
 from pydantic import Field
 
 from backend import ledger, storage
+from backend.shared_sheets import router as shared_router
 from backend.storage import InputModel
 from tools import sheets as gsheets
 from tools.sheets import SheetsError
 
 router = APIRouter(prefix="/api/google", tags=["google"])
+
+router.include_router(shared_router)
 
 
 def _status() -> dict:

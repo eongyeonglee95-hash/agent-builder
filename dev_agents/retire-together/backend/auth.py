@@ -106,6 +106,9 @@ def login(request: Request):
 
 @router.get("/google/callback")
 def callback(request: Request):
+    if request.query_params.get("state", "").startswith("files."):
+        from backend.shared_sheets import callback as files_callback
+        return files_callback(request)
     config, store = web_context(request)
     flow = None
     try:
@@ -215,7 +218,7 @@ def check_boundary(request: Request):
         supplied = request.headers.get("x-retire-csrf", "")
         if origin != config.origin or not hmac.compare_digest(supplied.encode(), csrf_token(token).encode()):
             raise HTTPException(403, "요청 확인에 실패했습니다. 새로고침 후 다시 시도해 주세요.")
-    if path.startswith("/api/google/"):
+    if path.startswith("/api/google/") and not path.startswith("/api/google/shared/"):
         # InstalledAppFlow and the computer-wide token are never exposed in web mode.
         raise HTTPException(409, "웹 공통 시트 연결은 후속 작업에서 제공됩니다.")
     if not path.startswith("/api/auth/") and identity["role"] != "owner":
@@ -225,11 +228,27 @@ def check_boundary(request: Request):
 
 
 async def boundary(request: Request, call_next):
+    from backend.shared_sheets import request_context, financial_write_guard
+    context_token = None
+    write_guard = None
     try:
         await run_in_threadpool(check_boundary, request)
+        if getattr(request.state, "identity", None) is not None:
+            context_token = request_context.set((request.state.auth_config, request.state.identity))
+            path = request.url.path
+            if (request.method not in SAFE_METHODS and not path.startswith(("/api/auth/", "/api/google/"))
+                    and path not in {"/api/rebalance/preview", "/api/workbook/rebalance", "/api/retirement/preview"}):
+                guard = financial_write_guard(request.state.auth_config, request.state.identity)
+                await run_in_threadpool(guard.__enter__)
+                write_guard = guard
         response = await call_next(request)
     except HTTPException as exc:
         response = JSONResponse({"detail": exc.detail}, status_code=exc.status_code)
+    finally:
+        if write_guard is not None:
+            await run_in_threadpool(write_guard.__exit__, None, None, None)
+        if context_token is not None:
+            request_context.reset(context_token)
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "no-referrer"

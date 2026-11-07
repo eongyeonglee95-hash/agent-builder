@@ -21,6 +21,10 @@ CACHE_SECONDS = 5
 
 
 def open_sheets():
+    from backend import auth_config
+    if auth_config.mode() == "web":
+        from backend.shared_sheets import open_for_request
+        return open_for_request()
     if os.environ.get("RETIRE_SHEETS", "").lower() == "off":
         return None
     try:
