@@ -1,5 +1,10 @@
 # CHANGELOG
 
+
+- 2026-11-07 (부동산 생활 입지, Claude): CALCULATION_RULES §6-P(백화점·큰 공원·병원 직선거리, 근사 좌표 표시), DECISIONS에 카카오 제외·공공 자료 결정 기록.
+
+- 2026-11-07 (부동산 관심 단지 추적, Claude): CALCULATION_RULES §6-W 추가(차수 묶음 매칭·대형 135㎡ 기준 제외·평형별 중간값), DECISIONS에 관심 단지 24곳·묶음·대형 제외 결정 기록.
+- 2026-11-07 (부동산 리서치, Claude): `docs/research/real_estate/APPS_REFERENCE.md` 추가 — 아실·호갱노노·직방·디스코·아파트 갈아타기·리치고·부동산지인·부동산플래닛 기능 비교(근거 수준 표기), 가져올 것 A~C·안 가져올 것 D, 갈아타기 컨셉 시안 5종 기록. 결정 전, 코드 변경 없음.
 - 2026-11-07 (화면 테마 3종·사이드바·카드 순서, Claude): 주색 바를 테마 3개(라이트 기본·그린·다크)로 교체, 다크는 사이드바·상단·홈만(theme.css `--night-*` 토큰, 다른 페이지는 밝게+안내 한 줄). 사이드바를 ‘우리 자산’ 아래 연금(리밸런싱·수령·세금)·주식·부동산(갈아타기 계획)으로 묶고 금액·편차 배지, 12px 이상·말줄임. 홈 카드 노후→갈아타기 재원→총자산. 시안 `docs/assets/redesign-2026-11-07-claude/Theme-Switch.dc.html` 보관. 빌드·관련 e2e 통과, 기존 실패 8개는 변경 전과 동일(DEV_HANDOFF).
 
 - 2026-11-07 (SHARE-03 서버 구현·검증 대기, Codex): 별도 drive.file OAuth·계정별 서버 토큰/갱신·고정 오너 소유 확인, 공통 시트 생성/기존 선택 API·가구 file ID 복원 추가. 영구 생성 기록·appProperties 조회·프로세스 잠금으로 응답 유실/다중 탭 중복 생성 방지, 삭제·권한 오류에도 연결 유지·로컬 전환 차단. 기존 파일 무변경, SHARE-05 전 공유 쓰기/등록 부분 저장 차단. 전용 54 포함 전체 Python 501·현재 OAuth 설정 검사·diff 검사 통과. 실제 파일 OAuth/Picker/테스트 시트 검수는 대기, Shrimp in_progress·verify_task 미호출. GOOGLE_SHEETS·LOCAL_DEVELOPMENT에 API/설정/실검수 절차, 작업표·인계에 근거 기록. UI·실제 금융 자료·후속 작업·커밋/푸시/배포 변경 없음.

@@ -14,6 +14,7 @@ from backend import property as prop
 from backend.property import Address, list_homes
 from backend.storage import InputModel, Money
 from tools.property_move import asking_vs_trades, move_budget, price_gap
+from tools.property_watch import group_trades, load_watch_rules, summarize
 
 router = APIRouter(prefix="/api/property-move", tags=["property-move"])
 Owner = Literal["together", "me", "partner"]
@@ -27,8 +28,15 @@ class Living(InputModel):
     concerns: Annotated[str, Field(max_length=300)] = ""    # 단점·확인할 것
 
 
+class Member(InputModel):
+    """여러 차수로 나뉜 단지의 한 구성원(국토부 이름·지번). 이름이 비면 그 필지 전체."""
+    name: Annotated[str, Field(max_length=100)] = ""
+    jibun: Annotated[str, Field(min_length=1, max_length=200)]
+
+
 class Candidate(InputModel):
     id: UUID
+    members: Annotated[list[Member], Field(max_length=30)] = []
     name: Annotated[str, Field(min_length=1, max_length=100)]
     address: Address | None = None
     area_m2: Annotated[float, Field(gt=0, le=2000)] | None = None
@@ -64,7 +72,7 @@ class MoveInput(InputModel):
     monthly_saving: Money = 0
     target_month: Annotated[str, Field(pattern=r"^(20|21)\d{2}-(0[1-9]|1[0-2])$")] | None = None
     target_id: UUID | None = None
-    candidates: Annotated[list[Candidate], Field(max_length=20)] = []
+    candidates: Annotated[list[Candidate], Field(max_length=50)] = []
 
     @model_validator(mode="after")
     def unique(self):
@@ -212,6 +220,42 @@ def untrack(candidate_id: UUID, day: Annotated[str, Path(pattern=r"^\d{4}-\d{2}-
         _table(conn)
         conn.execute("DELETE FROM property_track WHERE owner=? AND candidate_id=? AND day=?", (owner, str(candidate_id), day))
     return result(read_plan(owner), owner)
+
+
+@router.get("/watch")
+def watch(owner: Owner = "together"):
+    """관심 단지별 최근 실거래 요약(평형별). 묶음 단지는 members 전체, 아니면 주소의 지번 하나. 판단 없이 숫자만."""
+    if not prop.market_key():   # 모듈 경유: 테스트가 키를 비운다
+        return {"configured": False, "watch": []}
+    rules = load_watch_rules()
+    today = dt.date.today()
+    yms = [f"{(today.year * 12 + today.month - 1 - i) // 12}{(today.month - 1 - i) % 12 + 1:02d}" for i in range(rules["months"])]
+    out = []
+    for c in read_plan(owner)["candidates"]:
+        a = c.get("address") or {}
+        members = c.get("members") or ([{"name": "", "jibun": a["jibun"]}] if a.get("jibun") else [])
+        if not a.get("sigungu_code") or not members:
+            out.append({"id": c["id"], "name": c["name"], "names": [], "summary": None, "missing": "주소(지번) 확인 필요"})
+            continue
+        rows = group_trades([r for ym in yms for r in prop._month_trades(a["sigungu_code"], ym, prop.market_key())], members)
+        out.append({"id": c["id"], "name": c["name"], "names": sorted({r["name"] for r in rows}),
+                    "summary": summarize(rows, large_area_m2=rules["large_area_m2"])})
+    return {"configured": True, "months": rules["months"], "large_area_m2": rules["large_area_m2"], "watch": out}
+
+
+@router.get("/places")
+def places(owner: Owner = "together"):
+    """관심 단지별 가장 가까운 백화점·큰 공원·상급종합/종합병원(직선거리)과 반경 내 공원 수. 저장된 시설 자료로 계산."""
+    from backend import property_place
+    return property_place.summaries(read_plan(owner)["candidates"])
+
+
+@router.post("/places/refresh")
+def refresh_places(owner: Owner = "together"):
+    """시설 자료(백화점 좌표·도시공원·병원)를 다시 받아 저장. 출처별 성공/실패를 돌려준다."""
+    from backend import property_place
+    points = [i["point"] for i in property_place.summaries(read_plan(owner)["candidates"])["items"]]
+    return property_place.refresh(points)
 
 
 @router.get("/price-check")
