@@ -97,4 +97,40 @@ html[data-theme=dark] main.ux-home .purple { background: var(--night-purple-bg);
 html[data-theme=dark] main.ux-home .footer, html[data-theme=dark] main.ux-home .footer > button { color: var(--night-faint); }
 
 /* 다크를 아직 입히지 않은 다른 페이지: 밝은 화면 그대로 + 위에 한 줄 안내 */
-html[data-theme=dark] main:not(.ux-home)::before { content: '이 화면은 아직 밝게 보여요 · 다크 모드는 홈부터 적용 중'; display: block; margin-bottom: 16px; padding: 10px 14px; border-radius: 8px; background: var(--night-surface); color: var(--night-ink-2); font-size: 12px; }
+html[data-theme=dark] .workspace > main:not(.ux-home)::before { content: '이 화면은 아직 밝게 보여요 · 다크 모드는 홈부터 적용 중'; display: block; margin-bottom: 16px; padding: 10px 14px; border-radius: 8px; background: var(--night-surface); color: var(--night-ink-2); font-size: 12px; }
+
+/* ── 큰 글씨 (2026-11-09 사용자: "글씨 크기는 키워줘. 많이 키워줘") — 예전 화면 CSS가 px로 박혀 있어 rem 기본값만으로는 안 커진다. 사이드바·상단·홈을 px로 직접 키운다 ── */
+.sidebar .brand small { font-size: 10px; }
+.sidebar-slogan { font-size: 13px; }
+.sidebar .nav-item, .nav-group-link { min-height: 44px; font-size: 15px; }
+.sidebar .nav-item small, .nav-sub small, .nav-sheet { font-size: 13px; }
+.nav-sub { min-height: 38px; font-size: 14px; }
+.sidebar .settings-link { font-size: 15px; }
+.family-profile strong { font-size: 14px; }
+.family-profile small { font-size: 13px; }
+.topbar .desktop-breadcrumb { font-size: 14px; }
+.topbar .header-date, .topbar .data-mode-switch button { font-size: 13px; }
+main.ux-home .classic-home-heading h1 { font-size: 26px; }
+main.ux-home .classic-home-heading p { font-size: 14px; }
+main.ux-home .owner-switch button, main.ux-home .register-shortcut { font-size: 14px; }
+main.ux-home .stat-top h2 { font-size: 15px; }
+main.ux-home .stat-number { font-size: clamp(26px, 2.3vw, 34px); }
+main.ux-home .stat-card:not(.total-stat) .stat-number { font-size: clamp(22px, 2vw, 28px); }
+main.ux-home .stat-note { font-size: 13px; }
+main.ux-home .ring strong { font-size: 13px; }
+main.ux-home .panel-heading h2 { font-size: 17px; }
+main.ux-home .panel-heading p, main.ux-home .text-link { font-size: 13px; }
+main.ux-home .small-tag, main.ux-home .outline-tag { font-size: 12px; }
+main.ux-home .donut span { font-size: 13px; }
+main.ux-home .donut small { font-size: 12px; }
+main.ux-home .donut-legend li, main.ux-home .donut-legend b, main.ux-home .legend-amount, main.ux-home .asset-summary { font-size: 14px; }
+main.ux-home .retirement-value > span:first-child, main.ux-home .year-tag, main.ux-home .goal-caption, main.ux-home .goal-caption b { font-size: 13px; }
+main.ux-home .alert-row strong, main.ux-home .check-item strong, main.ux-home .strategy-row-head strong { font-size: 15px; }
+main.ux-home .alert-row small, main.ux-home .check-item small, main.ux-home .check-status, main.ux-home .check-count span, main.ux-home .strategy-row-head span, main.ux-home .strategy-legend, main.ux-home .footer > button { font-size: 13px; }
+main.ux-home .strategy-bar > span > span { font-size: 13px; }
+main.ux-home .strategy-bar small { font-size: 11px; }
+main.ux-home .income-svg text { font-size: 12px; }
+main.ux-home .check-count { font-size: 15px; }
+.nav-sheet { padding: 0 11px; }
+.nav-sub { padding-left: 24px; }
+@media (max-width: 1200px) and (min-width: 901px) { .nav-sub small:not(.nav-badge) { display: none; } .sidebar .nav-sub .nav-badge { padding: 1px 5px; font-size: 12px; } }
