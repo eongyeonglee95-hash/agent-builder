@@ -1,5 +1,7 @@
 # Codex → 기존 Claude 인계 메모
 
+- 2026-11-09 Claude 화면 원복·큰 글씨: 사용자 “구려졌어. 원복이 필요해” → 11-07 커밋 화면으로. 미커밋이던 Claude 메뉴 4개·연금 탭(`.page-tabs`)은 제거, 부동산 ‘트래킹·갈아타기’ 탭 인계는 취소. `shell-theme.css`는 커밋본으로 되돌린 뒤 큰 글씨 블록만 추가 — Codex 11-09 사이드바 글자 조정(16px·44px·두 줄 배치)은 이 블록으로 대체됨. `theme.css`의 기본 글자 16px·토큰 변경(Codex, 미커밋)은 보존. `App.tsx`의 시트 연결 창 초기화·SheetBadge 위치(Codex)와 로고→홈(Claude) 보존.
+
 - 2026-11-07 Claude 화면 테마·메뉴 적용 완료(커밋 전): 빌드 통과. 관련 e2e—home-classic·savings-plan·web-auth(6)·app의 메인/표 전환·지분 합산·sheet-delete/total 통과. 전체 실행 11 실패 중 8개(app 엑셀 붙여넣기 선택자 중복·은퇴 저장 타임아웃, insurance, overview, pension-tax-notice 3, spending-budget)는 제 web 변경을 되돌린 기준 실행에서도 똑같이 실패(백엔드 저장 경계·기존 선택자), 나머지 sheet 3개는 단독 실행 통과(앞 실패의 테스트 서버 잔여 자료로 인한 순서 의존). 테마 키 `rt-brand`에 `theme`·`dark` 저장, 예전 주색 저장은 라이트로 시작(로고 선택 유지). 홈 요약 카드 이름 ‘현금 주머니’→‘갈아타기 재원’(설명에 현금 주머니), e2e는 `.total-stat .stat-number`·‘테마 변경’·‘우리 자산 표 열기’로 정정. 다크 색은 theme.css `--night-*` 토큰. 남은 일: 화면 왼쪽 아래 떠 있는 ‘표로 보기’(wb-back)가 사이드바 가족 카드와 겹침(기존), 다른 페이지 다크화.
 - 2026-11-07 Claude 화면 테마·메뉴 적용 착수 (사용자 “적용해줘”, 이번 건만 Claude가 web/ 직접 수정): 시안 `docs/assets/redesign-2026-11-07-claude/Theme-Switch.dc.html` 기준. 담당 파일—`web/src/brand-mode.ts`·`brand-mode.css`(주색 바 → 테마 3개: 라이트(Ramp 결, 기본)·그린(Mercury 결)·다크(Robinhood 결)), `web/index.html` 첫 그리기 스크립트, 신규 `web/src/shell-theme.css`(사이드바 다듬기·다크), `web/src/App.tsx` 사이드바 nav만(‘우리 자산’ 아래 연금(리밸런싱·수령·세금)·주식·부동산(갈아타기 계획)), `web/src/home/ClassicHome.tsx` 요약 카드 순서(노후→갈아타기 재원→총자산), 해당 e2e 선택자. 다크는 사용자 결정으로 사이드바·상단·홈까지만, 다른 페이지는 밝게 유지. 연금·부동산·리밸런싱·로그인 화면과 backend는 건드리지 않는다.
 
