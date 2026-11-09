@@ -100,7 +100,7 @@ export function Workbook({ onClassic }: { onClassic: () => void }) {
 
   return <div className="wb flex h-dvh flex-col bg-grey-100 text-grey-900">
     <header className="flex h-12 shrink-0 items-center gap-2 border-b border-grey-200 bg-white px-3 sm:gap-3 sm:px-4">
-      <span className="shrink-0 whitespace-nowrap text-base font-semibold tracking-tight">둘이서은퇴</span>
+      <a href="#home" aria-label="둘이서은퇴 홈으로" className="inline-flex min-h-10 shrink-0 items-center whitespace-nowrap rounded-sm text-base font-semibold tracking-tight focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">둘이서은퇴</a>
       <span className="hidden text-xs text-grey-600 sm:inline">우리 자산.xlsx</span>
       <div className="ml-auto flex min-w-0 items-center gap-1.5 sm:gap-2"><AccountMenu/>
         <Select value={owner} onValueChange={v => setOwner(v as Owner)}>

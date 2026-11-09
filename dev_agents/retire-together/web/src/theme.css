@@ -21,6 +21,8 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
+  /* Respect the browser/user default; legacy 13px also shrank every rem-based label. */
+  font-size: 100%;
   --radius: 0.875rem;   /* 14px (2026-11-06 시안 이식 2: 큰 둥근 모서리), 엑셀 격자 안은 0 */
   /* 브랜드 주색 — 화면 오른쪽 아래 '테마' 버튼으로 바꾼다 (2026-11-06 사용자: 사이트 안에서 색을 고르는 모드 전환). 기본은 소나무.
      src/brand-mode.ts 가 고른 색에서 틴트·어두운 면을 계산해 :root 인라인 스타일로 덮어쓴다. 상승 빨강·하락 파랑·자산군 색은 건드리지 않는다 */
@@ -62,7 +64,7 @@
   --home-tile-title: 38px; --home-tile-title-small: 32px;
   --home-pocket-amount: 34px; --home-pocket-amount-small: 30px;
   --home-section-title: 24px; --home-subamount: 20px;
-  --home-body: 15px; --home-caption: 13px; --home-small: 12px;
+  --home-body: var(--text-base); --home-caption: var(--text-sm); --home-small: var(--text-xs);
   --home-radius: 24px; --home-card-radius: 20px;
   --home-photo-shade: color-mix(in srgb, var(--grey-900) 65%, transparent);
   --home-photo-border: color-mix(in srgb, var(--primary-foreground) 65%, transparent);
@@ -84,13 +86,13 @@
   --color-white: #ffffff;
   --color-black: #000000;
   --color-transparent: transparent;
-  /* 글자 7단계 — TDS 12/13/15/17/20/22/30, 줄 높이 약 1.5배 */
-  --text-xs: 0.75rem;     --text-xs--line-height: 1.125rem;
-  --text-sm: 0.8125rem;   --text-sm--line-height: 1.21875rem;
-  --text-base: 0.9375rem; --text-base--line-height: 1.40625rem;
-  --text-lg: 1.0625rem;   --text-lg--line-height: 1.59375rem;
-  --text-xl: 1.25rem;     --text-xl--line-height: 1.8125rem;
-  --text-2xl: 1.375rem;   --text-2xl--line-height: 1.9375rem;
+  /* 글자 7단계 — 기본 16px에서 13/14/16/18/20/24/30, 브라우저 글자 설정도 반영. */
+  --text-xs: 0.8125rem; --text-xs--line-height: 1.25rem;
+  --text-sm: 0.875rem;  --text-sm--line-height: 1.375rem;
+  --text-base: 1rem;   --text-base--line-height: 1.5rem;
+  --text-lg: 1.125rem; --text-lg--line-height: 1.75rem;
+  --text-xl: 1.25rem;  --text-xl--line-height: 1.875rem;
+  --text-2xl: 1.5rem;  --text-2xl--line-height: 2rem;
   --text-3xl: 1.875rem;   --text-3xl--line-height: 2.5rem;
 }
 

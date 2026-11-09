@@ -19,7 +19,7 @@ const patchOnce = (source, before, after) => {
   if (!source.includes(before) || source.indexOf(before) !== source.lastIndexOf(before)) throw new Error(`확장 위치가 달라졌습니다: ${before.slice(0, 70)}`)
   return source.replace(before, after)
 }
-const files = ['server.js', 'src/components/TaskTable.jsx']
+const files = ['server.js', 'src/components/TaskTable.jsx', 'src/App.jsx', 'src/components/TaskDetailView.jsx']
 const pending = []
 for (const file of files) {
   const original = execFileSync('git', ['show', `HEAD:tools/task-viewer/${file}`], { cwd: upstream, encoding: 'utf8' })
@@ -30,12 +30,28 @@ for (const file of files) {
     updated = patchOnce(updated, "import http from 'http';", "import http from 'http';\nimport { createCodexHandler } from '../../../../scripts/shrimp-codex/http.mjs';")
     updated = patchOnce(updated, '    const server = http.createServer(async (req, res) => {',
       `    const codexHandler = await createCodexHandler();\n    for (const signal of ['SIGINT', 'SIGTERM']) {\n        process.once(signal, async () => {\n            await codexHandler.runner.cancel();\n            if (codexHandler.runner.worker) await codexHandler.runner.worker;\n            process.exit(0);\n        });\n    }\n    const server = http.createServer(async (req, res) => {\n        if (await codexHandler(req, res)) return;`)
+  } else if (file === 'src/App.jsx') {
+    updated = patchOnce(updated, '  const [tasks, setTasks] = useState([]);', '  const [tasks, setTasks] = useState([]);\n  const [codexTaskStatuses, setCodexTaskStatuses] = useState({});')
+    updated = patchOnce(updated, '    const inProgress = tasks.filter(t => t.status === \'in_progress\').length;', `    const waiting = selectedProfile === 'retire-together' ? tasks.filter(t => t.status === 'in_progress' && codexTaskStatuses[t.id] === 'awaiting_confirmation').length : 0;\n    const retry = selectedProfile === 'retire-together' ? tasks.filter(t => t.status === 'in_progress' && codexTaskStatuses[t.id] === 'retry_required').length : 0;\n    const inProgress = tasks.filter(t => t.status === 'in_progress').length - waiting - retry;`)
+    updated = patchOnce(updated, '    return { total, completed, inProgress, pending };\n  }, [tasks]);', '    return { total, completed, inProgress, pending, waiting, retry };\n  }, [tasks, selectedProfile, codexTaskStatuses]);')
+    updated = patchOnce(updated, '                    <div className="stat-card" name="pending-tasks-counter"', `                    {selectedProfile === 'retire-together' && <div className="stat-card" name="waiting-tasks-counter" title="실행 종료 후 추가 확인이 필요한 작업"><h3>확인 대기</h3><div className="value">{stats.waiting}</div></div>}\n                    <div className="stat-card" name="pending-tasks-counter"`)
+    updated = patchOnce(updated, '                <TaskTable ', '                <TaskTable codexTaskStatuses={codexTaskStatuses} onTaskStatusesChange={setCodexTaskStatuses} ')
+    updated = patchOnce(updated, '                    <div className="stat-card" name="pending-tasks-counter"', `                    {selectedProfile === 'retire-together' && <div className="stat-card" name="retry-tasks-counter" title="실행 오류 또는 중단 후 다시 실행할 작업"><h3>재실행 필요</h3><div className="value">{stats.retry}</div></div>}\n                    <div className="stat-card" name="pending-tasks-counter"`)
+  } else if (file === 'src/components/TaskDetailView.jsx') {
+    updated = patchOnce(updated, 'function TaskDetailView({ task,', 'function TaskDetailView({ displayStatus, task,')
+    updated = patchOnce(updated, '<span className={`status-badge status-${task.status}`} style={{ backgroundColor: getStatusColor(task.status) }}>\n              {task.status?.replace(\'_\', \' \')}', '<span className={`status-badge status-${displayStatus || task.status}`} style={["awaiting_confirmation", "retry_required"].includes(displayStatus) ? undefined : { backgroundColor: getStatusColor(task.status) }}>\n              {{ awaiting_confirmation: "확인 대기", retry_required: "재실행 필요" }[displayStatus] || task.status?.replace("_", " ")}')
   } else {
+    updated = patchOnce(updated, 'function TaskTable({ data,', 'function TaskTable({ codexTaskStatuses = {}, onTaskStatusesChange, data,')
     updated = patchOnce(updated, "import Tooltip from './Tooltip';", "import Tooltip from './Tooltip';\nimport CodexPanel from './CodexPanel';")
     updated = patchOnce(updated, '  const [loading, setLoading] = useState(false);', '  const [loading, setLoading] = useState(false);\n  const [codexAssignments, setCodexAssignments] = useState({});')
     updated = patchOnce(updated, "        const currentAgent = row.original.agent || '';", `        if (profileId === 'retire-together' && codexAssignments[row.original.id]) return <span className="codex-assigned">Codex · 구독</span>;\n        const currentAgent = row.original.agent || '';`)
-    updated = patchOnce(updated, 'onTaskSaved, selectedRows]);', 'onTaskSaved, selectedRows, codexAssignments]);')
-    updated = patchOnce(updated, '      {showBulkActions && (', `      {profileId === 'retire-together' && <CodexPanel selectedRows={selectedRows} onAssignmentsChange={setCodexAssignments} onTaskSaved={onTaskSaved} />}\n      {showBulkActions && profileId !== 'retire-together' && (`)
+    updated = patchOnce(updated, 'onTaskSaved, selectedRows]);', 'onTaskSaved, selectedRows, codexAssignments, codexTaskStatuses]);')
+    updated = patchOnce(updated, '      {showBulkActions && (', `      {profileId === 'retire-together' && <CodexPanel selectedRows={selectedRows} onAssignmentsChange={setCodexAssignments} onTaskStatusesChange={onTaskStatusesChange} onTaskSaved={onTaskSaved} />}\n      {showBulkActions && profileId !== 'retire-together' && (`)
+    updated = patchOnce(updated, `      cell: ({ getValue }) => (\n        <span className={\`status-badge status-\${getValue()}\`}>\n          {getValue()?.replace('_', ' ')}\n        </span>\n      ),`, `      cell: ({ getValue, row }) => {\n        const status = profileId === 'retire-together' ? codexTaskStatuses[row.original.id] || getValue() : getValue();\n        return <span className={\`status-badge status-\${status}\`}>{{ awaiting_confirmation: '확인 대기', retry_required: '재실행 필요' }[status] || status?.replace('_', ' ')}</span>;\n      },`)
+    updated = patchOnce(updated, "row.original.status === 'in_progress' ? 'task-in-progress' : ''", "row.original.status === 'in_progress' && !(profileId === 'retire-together' && ['awaiting_confirmation', 'retry_required'].includes(codexTaskStatuses[row.original.id])) ? 'task-in-progress' : ''")
+    updated = patchOnce(updated, '        <TaskDetailView ', `        <TaskDetailView displayStatus={profileId === 'retire-together' ? codexTaskStatuses[selectedTask.id] : undefined} `)
+    // The panel unmounts in detail view; keep status polling there, including direct links.
+    updated = patchOnce(updated, '  // Generate task number mapping', `  useEffect(() => {\n    if (profileId !== 'retire-together' || !selectedTask) return;\n    let mounted = true, timer;\n    const poll = async () => {\n      try { const response = await fetch('/api/codex/status', { cache: 'no-store' }); const result = await response.json(); if (mounted && response.ok) onTaskStatusesChange?.(result.taskDisplayStatuses ?? {}); } catch { /* Keep the last known task display during a transient outage. */ }\n      if (mounted) timer = setTimeout(poll, 2000);\n    };\n    poll(); return () => { mounted = false; clearTimeout(timer); };\n  }, [profileId, selectedTask?.id, onTaskStatusesChange]);\n\n  // Generate task number mapping`)
   }
   pending.push({ file, updated })
 }

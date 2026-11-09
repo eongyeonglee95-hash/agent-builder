@@ -94,8 +94,35 @@ export class CodexRunner {
     return this.auth
   }
   async snapshot() {
+    let tasks = [], taskStateError = ''
+    try { const loaded = await this.tasks(); if (!Array.isArray(loaded)) throw new Error('Invalid task list'); tasks = loaded }
+    catch { taskStateError = '현재 작업 상태를 읽지 못했습니다. 실행 기록의 상태만 표시합니다.' }
+    const byId = new Map(tasks.map(task => [task.id, task]))
+    const latestJobs = new Map(this.state.jobs.filter(job => job.taskId).map(job => [job.taskId, job]))
+    const taskDisplayStatuses = Object.fromEntries(tasks.map(task => {
+      const job = latestJobs.get(task.id)
+      if (task.status !== 'in_progress' || !job) return [task.id, task.status]
+      if (job.status === 'blocked') return [task.id, 'awaiting_confirmation']
+      if (['failed', 'cancelled', 'interrupted'].includes(job.status)) return [task.id, 'retry_required']
+      return [task.id, task.status]
+    }))
     return { ...this.state, auth: await this.authentication(), busy: this.busy,
-      orphan: !!this.orphan, jobs: this.state.jobs.map(({ pid, ...job }) => job) }
+      orphan: !!this.orphan, taskStateError, taskDisplayStatuses, jobs: this.state.jobs.map(({ pid, ...job }) => {
+        const task = byId.get(job.taskId)
+        return { ...job, currentTask: task ? { status: task.status, displayStatus: taskDisplayStatuses[task.id], summary: task.summary ?? '', updatedAt: task.updatedAt } : null }
+      }) }
+  }
+  async acknowledge(jobId) {
+    return this.reserve(async () => {
+      const job = typeof jobId === 'string' && this.state.jobs.find(item => item.id === jobId)
+      if (!job) throw new Error('실행 기록을 찾을 수 없습니다. 새로고침해 주세요.')
+      if (live(job)) throw new Error('진행 중인 실행은 정리할 수 없습니다.')
+      if (!job.acknowledgedAt) {
+        job.acknowledgedAt = new Date().toISOString()
+        await this.save()
+      }
+      return { message: '알림을 정리했습니다. 작업 상태와 실행 내용은 그대로 보존됩니다.' }
+    })
   }
   async reserve(fn) {
     if (this.busy || this.orphan) throw new Error(this.orphan ? '이전 Codex 프로세스가 남아 있습니다. 종료 여부를 확인한 뒤 뷰어를 다시 시작해 주세요.' : '현재 실행 중입니다. 완료하거나 중지한 뒤 다시 시도해 주세요.')

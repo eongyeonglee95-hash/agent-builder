@@ -20,5 +20,16 @@
 .codex-panel summary { cursor: pointer; font-size: 13px; color: #a8d5eb; }
 .codex-panel pre { max-height: 250px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; padding: 12px; background: #0b1725; border-radius: 5px; color: #cddce9; font-size: 12px; }
 .codex-answer { white-space: pre-wrap; overflow-wrap: anywhere; }
+.codex-panel .codex-job-meta { color: #b4c5d4; font-size: 12px; }
+.codex-panel .codex-history-help { margin-top: 18px; color: #b4c5d4; font-size: 13px; }
+.codex-panel .codex-acknowledge { margin: 12px 0 2px; }
+.codex-archive { margin-top: 18px; padding: 14px; border: 1px solid #3c5269; border-radius: 6px; }
+.codex-verification { margin-bottom: 8px; }
+.codex-job > small { display: block; margin-top: 10px; }
+.codex-job-state.awaiting_confirmation, .status-badge.status-awaiting_confirmation { background: #765a25; color: #fff0c6; }
+.codex-waiting-note { color: #f3d696; }
+.codex-job-state.retry_required, .status-badge.status-retry_required { background: #7a453c; color: #fff; }
+.codex-retry { margin-top: 18px; padding: 16px; border: 1px solid #bc8b68; border-radius: 6px; background: #253548; }
+.codex-retry article + article { margin-top: 16px; padding-top: 16px; border-top: 1px solid #5f7b91; }
 .codex-assigned { font-size: 13px; font-weight: 600; }
 @media (max-width: 600px) { .codex-panel { padding: 14px; } .codex-connection { display: block; margin: 6px 0 0; } .codex-panel-actions > span { flex-basis: 100%; } }
