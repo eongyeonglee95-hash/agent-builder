@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse, RedirectResponse
 from pydantic import Field
 
 from backend import auth_google
+from backend.auth_config import ConfigurationError, load_picker_config
 from backend.auth_store import FLOW_SECONDS
 from backend.shared_sheets_google import CreateRejected, GoogleFiles, file_id, token_values
 from backend.shared_sheets_store import SheetStore
@@ -19,13 +20,13 @@ router = APIRouter(prefix="/shared", tags=["shared-sheets"])
 request_context: ContextVar[tuple | None] = ContextVar("shared_sheet_context", default=None)
 
 
-def context(request: Request):
+def context(request: Request, *, member: bool = False):
     config = getattr(request.state, "auth_config", None)
     identity = getattr(request.state, "identity", None)
     if config is None or identity is None:
         raise HTTPException(409, "웹 로그인이 필요합니다.")
     store = SheetStore(config.db_path)
-    store.owner(identity)
+    store.member(identity) if member else store.owner(identity)
     return config, identity, store
 
 
@@ -49,16 +50,24 @@ def public_binding(binding):
 
 @router.get("/status")
 def status(request: Request):
-    config, identity, store = context(request)
+    config, identity, store = context(request, member=True)
     binding = store.binding(identity["household_id"])
     result = {"spreadsheet": public_binding(binding), "connected": store.grant(identity["user_id"]) is not None,
               "health": "unlinked", "active": False, "read_only": True}
+    from backend.shared_data_store import DataStore
+    result["data_started"] = DataStore(config.db_path).started(identity["household_id"])
     if binding:
         result["health"] = "create_rejected" if binding["retryable"] else "setup_pending"
         if binding["spreadsheet_id"]:
             try:
-                client(config, store, identity).owned(binding["spreadsheet_id"])
+                api = client(config, store, identity)
+                if identity["role"] == "owner":
+                    api.owned(binding["spreadsheet_id"])
+                else:
+                    from backend.household_invites_google import SharingGoogle
+                    SharingGoogle(config, store, identity["user_id"]).accessible(binding["spreadsheet_id"])
                 if binding["ready"]:
+                    api.validate(binding["spreadsheet_id"])
                     result.update(health="ok", active=True)
             except HTTPException as exc:
                 result.update(health="attention", detail=exc.detail)
@@ -68,7 +77,7 @@ def status(request: Request):
 @router.post("/connect")
 def connect(request: Request):
     from backend.auth import cookie
-    config, identity, store = context(request)
+    config, identity, store = context(request, member=True)
     enabled()
     state, browser, nonce, verifier = store.new_sheet_flow(identity["user_id"], request.cookies[config.session_cookie])
     response = JSONResponse({"authorization_url": auth_google.authorization_url(config, state, nonce, verifier, files=True)})
@@ -93,10 +102,10 @@ def callback(request: Request):
         identity = store.session(session)
         if identity is None or identity["user_id"] != flow["user_id"]:
             raise HTTPException(401, "로그인 후 시트 연결을 다시 시작해 주세요.")
-        owner = store.owner(identity)
+        member = store.member(identity)
         sub, _, tokens = auth_google.exchange_verified(config, params["code"], flow["nonce"], flow["verifier"])
-        if sub != owner["google_sub"]:
-            raise HTTPException(403, "고정 오너의 Google 계정으로 동의해 주세요.")
+        if sub != member["google_sub"]:
+            raise HTTPException(403, "로그인한 가구 구성원의 Google 계정으로 동의해 주세요.")
         with store.operation():
             # Recheck logout/revocation after the remote code exchange.
             if store.session(session) is None:
@@ -104,7 +113,12 @@ def callback(request: Request):
             store.save_grant(identity["user_id"], *token_values(tokens))
         response = RedirectResponse(config.origin + "/?sheet_connection=ready", status_code=303)
     except HTTPException as exc:
-        response = JSONResponse({"detail": exc.detail}, status_code=exc.status_code)
+        if "text/html" in request.headers.get("accept", ""):
+            reason = ("cancelled" if request.query_params.get("error") == "access_denied" else
+                      "owner" if exc.status_code == 403 else "expired" if exc.status_code == 401 else "failed")
+            response = RedirectResponse(config.origin + "/?sheet_connection=" + reason, status_code=303)
+        else:
+            response = JSONResponse({"detail": exc.detail}, status_code=exc.status_code)
     clear_cookie(response, config, config.flow_cookie + "_files")
     return response
 
@@ -112,7 +126,11 @@ def callback(request: Request):
 def finish(store, identity, api, binding):
     sid = binding["spreadsheet_id"]
     api.owned(sid)
-    if not binding["ready"]:
+    if binding["ready"]:
+        # A previously initialized file may have been edited directly in Drive.
+        # Recheck only; retries must not repair or overwrite an existing file.
+        api.validate(sid)
+    else:
         if binding["kind"] == "create":
             api.prepare(sid)
         else:
@@ -170,7 +188,7 @@ def select(data: Selection, request: Request):
 
 @router.delete("/connection")
 def disconnect(request: Request):
-    config, identity, store = context(request)
+    config, identity, store = context(request, member=True)
     with store.operation():
         store.disconnect(identity["user_id"])
     # File binding and application session remain; no local fallback or Google
@@ -180,16 +198,27 @@ def disconnect(request: Request):
 
 @router.post("/picker")
 def picker(request: Request):
-    config, identity, store = context(request)
-    key = os.environ.get("RETIRE_GOOGLE_PICKER_API_KEY", "")
-    app_id = os.environ.get("RETIRE_GOOGLE_PROJECT_NUMBER", "")
-    if not key or not app_id.isdigit():
-        raise HTTPException(503, "서버의 Google Picker API 키와 프로젝트 번호 설정이 필요합니다.")
-    api = client(config, store, identity)
+    config, identity, store = context(request, member=True)
+    result = picker_credentials(config, store, identity["user_id"])
+    if identity["role"] == "partner":
+        binding = store.binding(identity["household_id"])
+        if not binding or not binding["ready"]:
+            raise HTTPException(409, "가구의 공통 파일 연결을 확인해 주세요.")
+        result["spreadsheet_id"] = binding["spreadsheet_id"]
+    return result
+
+
+def picker_credentials(config, store, user_id):
+    try:
+        key, app_id = load_picker_config()
+    except ConfigurationError:
+        raise HTTPException(503, "서버의 Google Picker API 키와 프로젝트 번호 설정이 필요합니다.") from None
+    enabled()
+    api = GoogleFiles(config, store, user_id)
     token = api._token()
     # Picker requires an ephemeral browser access token. Refresh tokens never
     # leave the server. SHARE-06 must keep this response in memory only.
-    return {"access_token": token, "expires_at": store.grant(identity["user_id"])["expires_at"],
+    return {"access_token": token, "expires_at": store.grant(user_id)["expires_at"],
             "developer_key": key, "app_id": app_id, "origin": config.origin}
 
 

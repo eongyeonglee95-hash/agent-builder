@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { classInfo, type Family, type Owner, type Snapshot } from './model'
 import { apiFetch } from './auth/session'
+import { useAuth } from './auth/AuthGate'
 
 export const emptySnapshot: Snapshot = { assets: [], debts: [], total: 0, retirement: 0, cash: 0, property: 0, debt: 0, net: 0, financial: 0, classes: [], count: 0, unclassified: 0, as_of: null }
 export async function api<T>(path: string, method = 'GET', body?: unknown, signal?: AbortSignal): Promise<T> {
@@ -16,6 +17,8 @@ export async function api<T>(path: string, method = 'GET', body?: unknown, signa
   return response.status === 204 ? undefined as T : response.json()
 }
 export function useLocalData(owner: Owner) {
+  const { mode, session } = useAuth()
+  const [shared, setShared] = useState(false)
   const [family, setFamily] = useState<Family | null>(null)
   const [snapshot, setSnapshot] = useState<Snapshot>(emptySnapshot)
   const [loading, setLoading] = useState(true)
@@ -30,16 +33,26 @@ export function useLocalData(owner: Owner) {
     if (loadedOwner.current !== owner) setSnapshot(emptySnapshot)
     loadedOwner.current = owner
     const timeout = setTimeout(() => controller.abort(new Error('요청 시간이 초과되었습니다. 다시 시도해 주세요.')), 8000)
-    Promise.all([api<Family | null>('/family', 'GET', undefined, controller.signal), api<Snapshot>(`/dashboard?owner=${owner}`, 'GET', undefined, controller.signal)])
+    async function load(): Promise<[Family | null, Snapshot]> {
+      const status = mode === 'web' ? await api<{ data_started: boolean }>('/google/shared/status', 'GET', undefined, controller.signal) : null
+      const useShared = !!status?.data_started || (mode === 'web' && session?.role === 'partner')
+      if (!controller.signal.aborted) setShared(useShared)
+      if (useShared) {
+        const result = await api<{ family: Family | null; snapshot: Snapshot }>(`/shared-data/dashboard?owner=${owner}`, 'GET', undefined, controller.signal)
+        return [result.family, result.snapshot]
+      }
+      return Promise.all([api<Family | null>('/family', 'GET', undefined, controller.signal), api<Snapshot>(`/dashboard?owner=${owner}`, 'GET', undefined, controller.signal)])
+    }
+    load()
       .then(([nextFamily, data]) => {
         if (controller.signal.aborted) return
         setFamily(nextFamily)
         const classes = Object.entries(classInfo).filter(([key]) => key !== 'debt').map(([key, info]) => ({ key, ...info, amount: data.assets.filter(a => a.assetClass === key).reduce((n, a) => n + a.amount, 0) })).filter(a => a.amount > 0)
         setSnapshot({ ...data, classes })
       })
-      .catch(e => { if (!controller.signal.aborted || controller.signal.reason instanceof Error) setError(e instanceof Error ? e.message : '자료를 불러오지 못했습니다.') })
+      .catch(e => { if (!controller.signal.aborted || controller.signal.reason instanceof Error) { setFamily(null); setSnapshot(emptySnapshot); setError(e instanceof Error ? e.message : '자료를 불러오지 못했습니다.') } })
       .finally(() => { clearTimeout(timeout); if (!controller.signal.aborted || controller.signal.reason instanceof Error) setLoading(false) })
     return () => { clearTimeout(timeout); controller.abort('navigation') }
-  }, [owner, revision])
-  return { family, snapshot, loading, error, refresh }
+  }, [owner, revision, mode, session?.role])
+  return { family, snapshot, loading, error, refresh, shared }
 }

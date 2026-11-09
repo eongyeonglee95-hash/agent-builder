@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 import json
 import os
 from pathlib import Path
+import re
 from urllib.parse import urlsplit
 
 
@@ -13,6 +14,15 @@ CALLBACK = "/api/auth/google/callback"
 
 class ConfigurationError(ValueError):
     """Messages contain field names only, never configuration values."""
+
+
+def load_picker_config() -> tuple[str, str]:
+    """Syntax only; Google project matching/API restrictions require live checks."""
+    key = os.environ.get("RETIRE_GOOGLE_PICKER_API_KEY", "")
+    project = os.environ.get("RETIRE_GOOGLE_PROJECT_NUMBER", "")
+    if not re.fullmatch(r"[A-Za-z0-9_-]+", key) or not re.fullmatch(r"[1-9][0-9]*", project):
+        raise ConfigurationError("RETIRE_GOOGLE_PICKER_API_KEY and a positive ASCII RETIRE_GOOGLE_PROJECT_NUMBER are required")
+    return key, project
 
 
 def mode() -> str:

@@ -3,6 +3,7 @@ import { ArrowRight, LogOut, UserRound } from 'lucide-react'
 import { Brand, Modal } from '../components'
 import { apiFetch, expiredEvent, setAuthSession } from './session'
 import { loginErrorText, usePopupLogin } from './usePopupLogin'
+import InvitationEntry, { invitationRoute } from './InvitationEntry'
 import './auth.css'
 
 type Session = { email: string; role: string; csrf_token: string }
@@ -11,6 +12,17 @@ const AuthContext = createContext<{ mode: 'local' | 'web'; session: Session | nu
 export const useAuth = () => useContext(AuthContext)
 
 export function AuthGate({ children }: { children: ReactNode }) {
+  const [invitation, setInvitation] = useState(invitationRoute)
+  const [invitationVisit, setInvitationVisit] = useState(0)
+  useEffect(() => {
+    const update = () => {
+      setInvitation(invitationRoute())
+      // A new link in the same tab must consume its code, even on the invite page.
+      if (location.hash.startsWith('#invite=')) setInvitationVisit(visit => visit + 1)
+    }
+    window.addEventListener('hashchange', update)
+    return () => window.removeEventListener('hashchange', update)
+  }, [])
   const [welcomePreview, setWelcomePreview] = useState(() => new URL(location.href).searchParams.get('view') === 'welcome')
   function leaveWelcome() {
     const url = new URL(location.href)
@@ -74,6 +86,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
     return () => window.removeEventListener(expiredEvent, expired)
   }, [])
   const canEnter = ready && status && (status.mode === 'local' || session)
+  if (ready && status?.mode === 'web' && invitation) return <InvitationEntry key={invitationVisit}/>
   if (canEnter && !welcomePreview) {
     return <AuthContext.Provider value={{ mode: status.mode, session }}>{children}</AuthContext.Provider>
   }
@@ -99,7 +112,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
       }}>Google로 로그인<ArrowRight size={18} aria-hidden="true"/></a>
         {popup.waiting && <p className="auth-help" role="status">{popup.notice || '열린 구글 창에서 로그인을 마치면 이 화면이 바로 열립니다.'}</p>}
         {loginError && <a className="auth-help" href="/api/auth/google/login?choose=1" onClick={event => { event.preventDefault(); popup.start('/api/auth/google/login?choose=1') }}>다른 Google 계정 선택</a>}
-        <p className="auth-help">{status?.initialized === false ? '처음 로그인하는 본인 계정이 이 가계 노트의 오너가 됩니다. 오너는 나중에 바꿀 수 없어요.' : '처음 등록한 오너의 구글 계정으로 로그인해 주세요.'}</p></>}
+        <p className="auth-help">{status?.initialized === false ? '처음 로그인하는 본인 계정이 이 가계 노트의 오너가 됩니다. 오너는 나중에 바꿀 수 없어요.' : '오너 또는 초대를 수락한 배우자의 구글 계정으로 로그인해 주세요.'}</p><a className="auth-help" href="#invite">초대 코드로 합류</a></>}
       </section>
     </div>
     <footer className="auth-footer"><span>우리의 속도로, 함께.</span><span>RETIRE TOGETHER</span></footer>
@@ -123,6 +136,6 @@ export function AccountMenu() {
     finally { setBusy(false) }
   }
   return <><button className="auth-account" aria-label="로그인 계정" onClick={() => setOpen(true)}><UserRound size={19}/></button>
-    {open && <Modal title="로그인 계정" onClose={() => setOpen(false)}><div className="auth-account-details"><span>오너</span><p>{session.email}</p><button className="auth-login" disabled={busy} onClick={logout}><LogOut size={17}/>{busy ? '로그아웃 중…' : '로그아웃'}</button>{error && <p role="alert">{error}</p>}</div></Modal>}
+    {open && <Modal title="로그인 계정" onClose={() => setOpen(false)}><div className="auth-account-details"><span>{session.role === 'owner' ? '고정 오너' : '배우자'}</span><p>{session.email}</p><button className="auth-login" disabled={busy} onClick={logout}><LogOut size={17}/>{busy ? '로그아웃 중…' : '로그아웃'}</button>{error && <p role="alert">{error}</p>}</div></Modal>}
   </>
 }

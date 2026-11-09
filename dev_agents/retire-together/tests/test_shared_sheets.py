@@ -108,7 +108,10 @@ class FakeGoogle:
             tabs[tab] = json["values"]
             return response()
         assert method == "GET", "unexpected financial write"
-        return response({"values": tabs[tab]})
+        values = tabs[tab]
+        if tail.rsplit(":", 1)[-1].endswith("1"):
+            values = values[:1]
+        return response({"values": values})
 
     @property
     def creates(self):
@@ -218,6 +221,21 @@ def test_missing_scope_cannot_authorize_files(client, setup, shared):
     assert shared.store.grant(shared.identity["user_id"]) is None
 
 
+@pytest.mark.parametrize("case,reason", [("cancel", "cancelled"), ("stranger", "owner"), ("scope", "failed")])
+def test_browser_file_consent_failure_returns_to_app_without_grant(client, setup, shared, case, reason):
+    params = consent(client, setup, shared, sub="stranger-sub" if case == "stranger" else "owner-sub")
+    if case == "cancel":
+        params = {"state": params["state"], "error": "access_denied"}
+    if case == "scope":
+        shared.grant_data["scope"] = "openid email"
+    result = client.get(auth_config.CALLBACK, params=params, headers={"Accept": "text/html"})
+    assert result.status_code == 303
+    assert result.headers["location"] == shared.config.origin + "/?sheet_connection=" + reason
+    assert shared.store.grant(shared.identity["user_id"]) is None
+    assert shared.store.binding(shared.identity["household_id"]) is None
+    assert client.get("/api/auth/session").status_code == 200
+
+
 def test_create_once_restore_after_login_and_new_store(client, setup, shared):
     authorize(client, setup, shared)
     first = create(client, shared)
@@ -319,6 +337,8 @@ def test_select_existing_reads_only_and_preserves_financial_db(client, setup, sh
     financial_before = storage.DB_PATH.read_bytes() if storage.DB_PATH.exists() else None
     selected = client.put(ROOT + "/spreadsheet", json={"spreadsheet_id": SID}, headers=shared.headers)
     assert selected.status_code == 200, selected.text
+    # Connection checks only need headers; don't download financial rows.
+    assert all(url.endswith("1") for _, url, _, _ in shared.fake.calls if "/values/" in url)
     assert client.get("/api/assets").json()[0]["amount"] == 1234
     assert json.dumps(source, sort_keys=True) == before
     assert all(method == "GET" for method, _, _, _ in shared.fake.calls)
@@ -327,6 +347,23 @@ def test_select_existing_reads_only_and_preserves_financial_db(client, setup, sh
     with pytest.raises(sqlite3.IntegrityError):
         with shared.store.connection() as db:
             db.execute("UPDATE household_sheets SET spreadsheet_id=?", (OTHER,))
+
+
+def test_supported_shorter_headers_keep_existing_rows(client, setup, shared):
+    authorize(client, setup, shared)
+    source = shared.fake.add()
+    asset_cols = sheets.ASSET_COLUMNS[:13]
+    holding_cols = sheets.HOLDING_COLUMNS[:7]
+    row = {"id": "synthetic-legacy-row", "owner": "me", "pocket": "cash", "assetClass": "cash",
+           "amount": 1234, "name": "합성 이전 양식", "version": 1}
+    source["tabs"][sheets.ASSET_TAB] = [asset_cols, [row.get(c, "") for c in asset_cols]]
+    source["tabs"][sheets.HOLDING_TAB] = [holding_cols]
+    before = json.dumps(source)
+    assert client.put(ROOT + "/spreadsheet", json={"spreadsheet_id": SID}, headers=shared.headers).status_code == 200
+    assert client.get(ROOT + "/status").json()["active"] is True
+    assert client.get("/api/assets").json()[0]["amount"] == 1234
+    assert json.dumps(source) == before
+    assert all(method == "GET" for method, _, _, _ in shared.fake.calls)
 
 
 @pytest.mark.parametrize("patch", [{"ownedByMe": False}, {"trashed": True}, {"mimeType": "text/plain"},
@@ -340,17 +377,64 @@ def test_only_owner_owned_editable_sheet_accepted(client, setup, shared, patch):
     assert all(m == "GET" for m, _, _, _ in shared.fake.calls)
 
 
-@pytest.mark.parametrize("change", ["missing_tab", "wrong_header"])
+@pytest.mark.parametrize("change", ["missing_tab", "wrong_header", "empty_tab", "empty_header", "blank_header"])
 def test_existing_bad_schema_never_rewritten(client, setup, shared, change):
     authorize(client, setup, shared)
     tabs = shared.fake.add()["tabs"]
     if change == "missing_tab":
         tabs.pop(sheets.HOLDING_TAB)
+    elif change == "empty_tab":
+        tabs[sheets.ASSET_TAB] = []
+    elif change == "empty_header":
+        tabs[sheets.ASSET_TAB] = [[], ["synthetic-existing-row"]]
+    elif change == "blank_header":
+        tabs[sheets.ASSET_TAB] = [["", "  "]]
     else:
         tabs[sheets.ASSET_TAB] = [["important user's data"]]
     before = json.dumps(tabs)
     assert client.put(ROOT + "/spreadsheet", json={"spreadsheet_id": SID}, headers=shared.headers).status_code == 409
     assert shared.store.binding(1) is None and json.dumps(tabs) == before
+    assert all(method == "GET" for method, _, _, _ in shared.fake.calls)
+
+
+@pytest.mark.parametrize("tab", list(sheets.TABS))
+@pytest.mark.parametrize("change", ["missing_tab", "wrong_header", "empty_tab"])
+def test_restore_rechecks_schema_without_rewriting_or_unbinding(client, setup, shared, tab, change):
+    authorize(client, setup, shared)
+    assert create(client, shared).status_code == 200
+    binding = shared.store.binding(1)
+    tabs = shared.fake.files[SID]["tabs"]
+    original = tabs[tab]
+    if change == "missing_tab":
+        del tabs[tab]
+    else:
+        tabs[tab] = [["synthetic-unrelated-header"]] if change == "wrong_header" else []
+    before = json.dumps(tabs)
+    call_count = len(shared.fake.calls)
+    assert client.post("/api/auth/logout", headers=shared.headers).status_code == 204
+    login(client, setup)
+    shared.headers["X-Retire-CSRF"] = client.get("/api/auth/session").json()["csrf_token"]
+    result = client.get(ROOT + "/status").json()
+    assert result["health"] == "attention" and result["active"] is False
+    assert result["spreadsheet"]["spreadsheet_id"] == SID
+    assert create(client, shared).status_code == 409
+    assert client.put(ROOT + "/spreadsheet", json={"spreadsheet_id": SID}, headers=shared.headers).status_code == 409
+    assert json.dumps(tabs) == before and shared.store.binding(1) == binding
+    assert all(method == "GET" for method, _, _, _ in shared.fake.calls[call_count:])
+    # Repair belongs to the file owner; the app only rechecks the same binding.
+    tabs[tab] = original
+    assert client.get(ROOT + "/status").json()["active"] is True
+    assert create(client, shared).status_code == 200
+    assert shared.fake.creates == 1 and shared.store.binding(1) == binding
+
+
+def test_blank_header_after_binding_is_not_an_empty_ledger(client, setup, shared):
+    authorize(client, setup, shared)
+    assert create(client, shared).status_code == 200
+    shared.fake.files[SID]["tabs"][sheets.ASSET_TAB] = []
+    assert client.get("/api/assets").status_code in (409, 503)
+    assert shared.store.binding(1)["spreadsheet_id"] == SID
+    assert shared.fake.creates == 1
 
 
 @pytest.mark.parametrize("code", [401, 403, 404, 429, 500])
@@ -416,7 +500,7 @@ def test_unbound_web_ignores_legacy_and_bound_writes_disabled(client, setup, sha
         ledger.open_sheets()  # no authenticated request context
 
 
-def test_csrf_third_party_and_partner_cannot_manage_connection(client, setup, shared):
+def test_csrf_third_party_and_partner_cannot_create_household_file(client, setup, shared):
     assert client.post(ROOT + "/connect").status_code == 403
     assert client.post(ROOT + "/spreadsheet", headers={**shared.headers, "Origin": "https://other.test"}).status_code == 403
     with TestClient(app, base_url=ORIGIN) as outsider:
@@ -426,7 +510,9 @@ def test_csrf_third_party_and_partner_cannot_manage_connection(client, setup, sh
         db.execute("INSERT INTO memberships VALUES ('partner-member',1,'synthetic-partner','partner',1)")
     token = shared.store.login("partner-sub", "partner@example.test", False, "")
     with TestClient(app, base_url=ORIGIN, cookies={shared.config.session_cookie: token}) as partner:
-        assert partner.get(ROOT + "/status").status_code == 403
+        # SHARE-04 permits members to inspect their own grant/common file, while
+        # only the fixed owner can create or replace the household binding.
+        assert partner.get(ROOT + "/status").status_code == 200
         headers = {"Origin": ORIGIN, "X-Retire-CSRF": auth.csrf_token(token)}
         assert partner.post(ROOT + "/spreadsheet", headers=headers).status_code == 403
     assert shared.fake.creates == 0

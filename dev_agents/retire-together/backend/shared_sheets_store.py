@@ -82,6 +82,15 @@ class SheetStore(AuthStore):
             raise HTTPException(403, "고정 오너만 공통 시트를 연결할 수 있습니다.")
         return dict(row)
 
+    def member(self, identity: dict) -> dict:
+        with self.connection() as db:
+            row = db.execute("""SELECT u.* FROM users u JOIN memberships m ON m.user_id=u.id
+                WHERE u.id=? AND m.id=? AND m.household_id=? AND m.active=1""",
+                (identity["user_id"], identity["member_id"], identity["household_id"])).fetchone()
+        if row is None:
+            raise HTTPException(403, "활성 가구 구성원만 공통 파일에 접근할 수 있습니다.")
+        return dict(row)
+
     def new_sheet_flow(self, user_id: str, session: str):
         state = "files." + secrets.token_urlsafe(32)
         browser, nonce, verifier = [secrets.token_urlsafe(32) for _ in range(3)]

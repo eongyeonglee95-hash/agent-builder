@@ -1,0 +1,34 @@
+.shared-sheet-access { font-size: var(--home-body); line-height: 1.8; }
+.shared-sheet-access h3 { margin: 0 0 14px; font-size: var(--home-subamount); line-height: 1.5; }
+.shared-sheet-access > p { margin: 14px 0 22px; }
+.shared-sheet-access > button { width: 100%; justify-content: center; gap: 8px; margin-top: 12px; min-height: 46px; font-size: var(--home-body); }
+.shared-sheet-access .shared-access-note { color: var(--muted-foreground); font-size: var(--home-caption); margin-top: 24px; }
+.shared-access-success { display: flex; align-items: flex-start; gap: 10px; color: var(--brand); }
+.shared-access-success svg { flex-shrink: 0; margin-top: 4px; }
+.shared-sheet-access a { display: inline-flex; align-items: center; gap: 6px; color: var(--brand); text-decoration: underline; }
+.sheet-badge.web-sheet-badge { min-height: 36px; color: var(--brand); background: var(--card); border-color: var(--border); font-size: var(--home-caption); }
+@media (max-width: 650px) { .sheet-badge.web-sheet-badge { width: 36px; justify-content: center; padding: 0; flex-shrink: 0; }.web-sheet-badge span { display: none; } }
+.share-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 24px; }
+.share-tabs button { flex: 1; justify-content: center; min-height: 44px; }
+.share-tabs button[aria-pressed=true] { border-color: var(--primary); color: var(--primary); font-weight: 700; }
+.share-section { margin-top: 16px; }
+.share-form, .share-copy { display: grid; gap: 12px; margin: 16px 0; }
+.shared-sheet-access label { display: grid; gap: 6px; min-width: 0; }
+.shared-sheet-access input:not([type=checkbox]):not([type=radio]), .shared-sheet-access select { width: 100%; min-width: 0; padding: 10px 12px; min-height: 44px; border: 1px solid var(--border); border-radius: var(--radius); color: var(--foreground); background: var(--card); font: inherit; }
+.shared-sheet-access button { min-height: 44px; white-space: normal; }
+.shared-sheet-access :focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
+.share-invite-row, .share-preview, .share-confirm { border: 1px solid var(--border); padding: 16px; margin: 16px 0; border-radius: var(--radius); overflow-wrap: anywhere; }
+.share-invite-row { display: grid; gap: 8px; }
+.share-confirm button { margin: 8px 8px 0 0; }
+.shared-sheet-access .share-choice { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 12px 0; }
+.share-choice input { width: 20px; height: 20px; flex: 0 0 20px; }
+.share-choice dl { flex-basis: 100%; }
+.share-counts { display: grid; gap: 6px; margin: 12px 0; }
+.share-counts > div { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; border-bottom: 1px solid var(--border); }
+.share-counts dd { margin: 0; overflow-wrap: anywhere; }
+.share-totals { padding-left: 20px; }
+.shared-sheet-access details { margin: 16px 0; }
+.shared-sheet-access summary { cursor: pointer; padding: 12px 0; }
+.share-invitation-page { min-height: 100dvh; background: var(--background); color: var(--foreground); padding: clamp(16px, 4vw, 48px); }
+.share-invitation-card { width: min(100%, 560px); margin: 32px auto; padding: clamp(16px, 4vw, 32px); background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); }
+.share-invitation-card h1 { font-size: var(--text-2xl); line-height: 1.4; }

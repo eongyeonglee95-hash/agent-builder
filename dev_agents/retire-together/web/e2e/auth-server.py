@@ -15,7 +15,7 @@ import sys
 from tempfile import TemporaryDirectory
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from backend import auth_google, storage
+from backend import auth_google, storage, shared_sheets_google
 from fastapi import HTTPException
 import uvicorn
 
@@ -24,6 +24,13 @@ def synthetic_identity(config, code, nonce, verifier):
     if code not in {"owner", "stranger"}:
         raise HTTPException(400, "Synthetic login rejected")
     return f"{code}-sub", f"{code}@example.test"
+
+
+def synthetic_file_identity(config, code, nonce, verifier):
+    sub, email = synthetic_identity(config, code, nonce, verifier)
+    return sub, email, {"access_token": "synthetic-file-access", "refresh_token": "synthetic-file-refresh",
+                        "expires_in": 3600, "token_type": "Bearer",
+                        "scope": "openid email " + shared_sheets_google.FILE_SCOPE}
 
 
 if __name__ == "__main__":
@@ -35,7 +42,8 @@ if __name__ == "__main__":
 
         def do_GET(self):
             query = parse_qs(urlsplit(self.path).query)
-            if query.get("redirect_uri") != [origin + "/api/auth/google/callback"] or query.get("scope") != ["openid email"]:
+            allowed_scopes = ["openid email", "openid email " + shared_sheets_google.FILE_SCOPE]
+            if query.get("redirect_uri") != [origin + "/api/auth/google/callback"] or query.get("scope", [None])[0] not in allowed_scopes:
                 self.send_error(400)
                 return
             state = query["state"][0]
@@ -72,7 +80,7 @@ if __name__ == "__main__":
             "RETIRE_AUTH_MODE": "web", "RETIRE_AUTH_ORIGIN": origin,
             "RETIRE_AUTH_BOOTSTRAP": "1", "RETIRE_AUTH_ALLOW_HTTP": "1",
             "RETIRE_GOOGLE_WEB_CLIENT": str(credentials), "RETIRE_AUTH_DB": str(root / "auth.sqlite3"),
-            "RETIRE_SHEETS": "off", "RETIRE_UPLOAD_DIR": str(root / "uploads"),
+            "RETIRE_SHEETS": "on", "RETIRE_UPLOAD_DIR": str(root / "uploads"),
             "RETIRE_SNAPSHOT_DIR": str(root / "snapshots"),
             "RETIRE_ACCOUNTS_PATH": str(root / "accounts.yaml"),
             "RETIRE_ASSET_MAP_PATH": str(root / "asset_map.yaml"),
@@ -84,6 +92,11 @@ if __name__ == "__main__":
         shutil.copy(Path(__file__).resolve().parents[2] / "rules/strategies.yaml", root / "strategies.yaml")
         storage.DB_PATH = root / "financial.sqlite3"
         auth_google.exchange_identity = synthetic_identity
+        auth_google.exchange_verified = synthetic_file_identity
+        # Browser fixtures exercise consent only. Any Drive/Sheets transport is forbidden.
+        def reject_google_request(*args, **kwargs):
+            raise AssertionError("Real Google file requests are forbidden in the browser fixture")
+        shared_sheets_google.GoogleFiles.request = reject_google_request
         try:
             uvicorn.run("backend.main:app", host="127.0.0.1", port=port, log_level="warning")
         finally:

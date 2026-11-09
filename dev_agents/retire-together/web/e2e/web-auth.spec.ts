@@ -167,3 +167,52 @@ test('팝업 닫기·재시도와 opener 단절을 처리하고 위조 완료 �
   await popup.getByRole('link', { name: '테스트 오너', exact: true }).click()
   await expect(page.getByRole('button', { name: '로그인 계정' })).toBeVisible()
 })
+
+test('시트 파일 동의 진입·취소·다른 계정 거부·권한 저장·복귀, 가계 자료 보존', async ({ page }) => {
+  await page.goto('/')
+  await login(page)
+  const originalSession = await identity(page)
+  const familyBefore = await page.evaluate(async () => (await fetch('/api/family')).text())
+  const mutations: string[] = []
+  page.on('request', request => {
+    if (request.method() !== 'GET' && new URL(request.url()).pathname.startsWith('/api/')) mutations.push(new URL(request.url()).pathname)
+  })
+  // A success-looking query is only navigation; status comes from the server.
+  await page.goto('/?sheet_connection=ready#home')
+  const dialog = page.getByRole('dialog', { name: '구글 시트 연결' })
+  await expect(dialog.getByText('Google에서 파일 접근을 허용해 주세요.')).toBeVisible()
+  await expect(dialog.getByText('Google 파일 접근 동의가 완료됐어요.')).toHaveCount(0)
+  const start = async (account: string) => {
+    const responsePromise = page.waitForResponse(response => response.url().endsWith('/api/google/shared/connect'))
+    await dialog.getByRole('button', { name: 'Google에서 접근 허용', exact: true }).click()
+    const response = await responsePromise
+    expect(response.status()).toBe(200)
+    expect(response.request().headers()['x-retire-csrf']).toBe(originalSession.csrf_token)
+    await expect(page).toHaveURL(/^http:\/\/localhost:\d+\//)
+    await page.getByRole('link', { name: account, exact: true }).click()
+    await expect(dialog).toBeVisible()
+  }
+  await start('취소')
+  await expect(dialog.getByRole('alert')).toContainText('접근 동의를 취소')
+  await start('테스트 외부 계정')
+  await expect(dialog.getByRole('alert')).toContainText('오너의 Google 계정')
+  expect(await page.evaluate(async () => (await (await fetch('/api/google/shared/status')).json()).connected)).toBe(false)
+  await start('테스트 오너')
+  await expect(dialog.getByRole('status')).toContainText('Google 파일 접근 동의가 완료됐어요.')
+  const fileStatus = await page.evaluate(async () => (await fetch('/api/google/shared/status')).json())
+  expect(fileStatus.connected).toBe(true)
+  expect(fileStatus.spreadsheet).toBeNull()
+  expect(fileStatus.active).toBe(false)
+  expect((await identity(page)).user_id).toBe(originalSession.user_id)
+  expect(await page.evaluate(async () => (await fetch('/api/family')).text())).toBe(familyBefore)
+  expect(mutations).toEqual(Array(3).fill('/api/google/shared/connect'))
+  await page.reload()
+  await page.getByRole('button', { name: '구글 시트 연결 설정' }).click()
+  await expect(dialog.getByRole('status')).toContainText('Google 파일 접근 동의가 완료됐어요.')
+  for (const width of [1440, 390, 360]) {
+    await page.setViewportSize({ width, height: 900 })
+    await expect(dialog).toBeVisible()
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    await page.screenshot({ path: test.info().outputPath(`sheet-access-${width}.png`), animations: 'disabled' })
+  }
+})
