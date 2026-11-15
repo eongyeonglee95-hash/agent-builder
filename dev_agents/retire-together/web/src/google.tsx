@@ -1,6 +1,6 @@
 import { useAuth } from './auth/AuthGate'
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import { Check, ExternalLink, Info, RefreshCw, Sheet, Unplug } from 'lucide-react'
+import { ArrowRight, Check, ExternalLink, FileSpreadsheet, Info, RefreshCw, Sheet, Unplug } from 'lucide-react'
 import { api } from './local-data'
 import SharedSheetAccess from './auth/SharedSheetAccess'
 
@@ -27,12 +27,10 @@ export function useSheetStatus(poll = false) {
   return { status, error, refresh, setStatus }
 }
 
-export function SheetBadge({ onClick }: { onClick: () => void }) {
-  const { mode } = useAuth()
-  const { status } = useSheetStatus()
-  if (mode === 'web') return <button className="sheet-badge web-sheet-badge" onClick={onClick} aria-label="구글 시트 연결 설정" title="구글 시트 연결"><Sheet size={16}/><span>시트 연결</span></button>
-  if (!status || status.disabled) return null
-  return <button className={`sheet-badge ${status.active ? 'on' : ''}`} onClick={onClick} aria-label="구글 시트 연결 설정"><Sheet size={13}/>{status.active ? '구글 시트' : '로컬 저장'}</button>
+export function AssetConnectionButton({ onClick }: { onClick: () => void }) {
+  return <button className="asset-connect" onClick={onClick} aria-haspopup="dialog">
+    <FileSpreadsheet size={25} aria-hidden="true"/><span><strong>내 자산 연결</strong><small>Google 시트</small></span><ArrowRight size={20} aria-hidden="true"/>
+  </button>
 }
 
 export function GoogleSheetPanel(props: { onChanged: () => void; initialTab?: string }) {

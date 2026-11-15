@@ -1,6 +1,6 @@
 import { AccountMenu, useAuth } from './auth/AuthGate'
 import { useEffect, useState } from 'react'
-import { ArrowDownToLine, ArrowRight, Bell, CalendarDays, Check, ChevronDown, ChevronRight, CircleHelp, CirclePlus, FileText, House, Info, Landmark, LayoutDashboard, Menu, Pencil, PiggyBank, RefreshCw, Settings, ShieldCheck, Sprout, Target, Trash2, TrendingUp, Users, Wallet, X } from 'lucide-react'
+import { ArrowDownToLine, ArrowRight, CalendarDays, Check, ChevronDown, ChevronRight, CircleHelp, CirclePlus, FileText, House, Info, Landmark, LayoutDashboard, Menu, Pencil, PiggyBank, RefreshCw, Settings, ShieldCheck, Sprout, Target, Trash2, TrendingUp, Users, Wallet, X } from 'lucide-react'
 import strategies from 'virtual:retire-strategies'
 import { AS_OF, classInfo, downloadDemoCsv, getSnapshot, money, ownerLabels, assetOwnerLabel, assetSourceLabel, type Asset, type Owner, type Page } from './model'
 import { Brand, CheckItem, IncomeChart, Modal, PanelHeading, StatCard, StrategyStack } from './components'
@@ -13,7 +13,7 @@ import { ClassicHome } from './home/ClassicHome'
 import { AccountManager } from './accounts'
 import { AssetForm, DeleteAsset, ProfileForm, personRole } from './forms'
 import { RegisterModal } from './register'   // REG-01 자산 등록 한 곳 (Claude 담당)
-import { GoogleSheetPanel, SheetBadge } from './google'   // SHEET-01 구글 시트 (Claude 담당)
+import { GoogleSheetPanel, AssetConnectionButton } from './google'   // SHEET-01 구글 시트 (Claude 담당)
 import { HoldingsPanel } from './holdings'   // 종목 잔고·손익 (Claude 담당)
 import { PensionLayers } from './workbook/retirement'
 import { RetirementPage } from './retirement/RetirementTower'
@@ -113,7 +113,10 @@ export default function App() {
       <div className="sidebar-bottom"><button className="nav-item settings-link" onClick={() => { setModal('profile'); setMenuOpen(false) }}><Settings size={18}/><span>내 정보 · 설정</span></button><button className="family-profile" onClick={() => { setModal('family'); setMenuOpen(false) }}><span className="avatar-pair"><span>나</span><span>짝</span></span><span><strong>우리 가족</strong><small>함께 만드는 은퇴 계획</small></span><ChevronRight size={16}/></button></div>
     </aside>
     <div className={`workspace${page === 'pension' && !isDemo ? ' tower-shell' : page === 'home' && photoPreview ? ' home-shell' : ''}`}>
-      <header className="topbar"><div className="topbar-left"><button className="icon-button menu-toggle" aria-label="메뉴 열기" aria-expanded={menuOpen} onClick={() => setMenuOpen(true)}><Menu size={22}/></button><span className="desktop-breadcrumb">{(page !== 'pension' || isDemo) && <>우리의 공간 <ChevronRight size={13}/></>} <b>{pageNames[page]}</b></span><a href="#home" className="mobile-brand" aria-label="둘이서은퇴 홈으로" onClick={e => { e.preventDefault(); go('home') }}><Brand compact/></a></div><div className="topbar-right"><AccountMenu/><SheetBadge onClick={() => setModal('sheets')}/><div className="data-mode-switch" role="group" aria-label="데이터 보기"><button className={!isDemo ? 'active' : ''} aria-pressed={!isDemo} onClick={() => setIsDemo(false)}>내 자산</button><button className={isDemo ? 'active' : ''} aria-pressed={isDemo} onClick={() => setIsDemo(true)}>예시 보기</button></div>{(page !== 'pension' || isDemo) && <><span className="header-date">{asOf} 기준</span><button className="icon-button notification-button" aria-label="알림 2개 보기" onClick={() => setModal('notifications')}><Bell size={18}/><i/></button><button className="header-avatar" aria-label="가족 계정 보기" onClick={() => setModal('family')}>우리</button></>}</div></header>
+      <header className="topbar account-topbar"><div className="topbar-left"><button className="icon-button menu-toggle" aria-label="메뉴 열기" aria-expanded={menuOpen} onClick={() => setMenuOpen(true)}><Menu size={22}/></button><span className="desktop-breadcrumb">{(page !== 'pension' || isDemo) && <>우리의 공간 <ChevronRight size={13}/></>} <b>{pageNames[page]}</b></span><a href="#home" className="mobile-brand" aria-label="둘이서은퇴 홈으로" onClick={e => { e.preventDefault(); go('home') }}><Brand compact/></a></div><div className="topbar-right">
+        <AccountMenu onProfile={() => setModal('profile')} onFamily={() => setModal('family')} onNotifications={() => setModal('notifications')} dataMode={{ isDemo, asOf, onChange: setIsDemo }}/>
+        <AssetConnectionButton onClick={() => setModal('sheets')}/>
+      </div></header>
       <main id="main-content" className={page === 'home' ? 'ux-home' : undefined} tabIndex={-1}>
         {!isDemo && local.loading && <div className="loading-strip" role="status">저장된 정보를 불러오고 있어요…</div>}
         {!isDemo && local.error && <div className="form-error" role="alert"><Info size={17}/><span>{local.error}</span><button onClick={local.refresh}>다시 시도</button></div>}

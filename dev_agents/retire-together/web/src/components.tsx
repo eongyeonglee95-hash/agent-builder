@@ -79,7 +79,18 @@ export function IncomeChart({ large = false, hidden = false }: { large?: boolean
 export function Modal({ title, children, onClose }: { title: string; children: ReactNode; onClose: () => void }) {
   const ref = useRef<HTMLDialogElement>(null)
   const titleId = useId()
-  useEffect(() => { const dialog = ref.current!; dialog.showModal(); const old = document.body.style.overflow; document.body.style.overflow = 'hidden'; return () => { dialog.close(); document.body.style.overflow = old } }, [])
+  useEffect(() => {
+    const dialog = ref.current!
+    const trigger = document.activeElement
+    dialog.showModal()
+    const old = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      dialog.close()
+      document.body.style.overflow = old
+      if (trigger instanceof HTMLElement && trigger.isConnected && !document.querySelector('dialog[open]')) trigger.focus()
+    }
+  }, [])
   return <dialog ref={ref} className="modal" aria-labelledby={titleId} onCancel={onClose} onClick={event => { if (event.target === ref.current) { const r = ref.current.getBoundingClientRect(); if (event.clientX < r.left || event.clientX > r.right || event.clientY < r.top || event.clientY > r.bottom) onClose() } }}><div className="modal-header"><div><span className="eyebrow">RETIRE TOGETHER</span><h2 id={titleId}>{title}</h2></div><button className="icon-button" onClick={onClose} aria-label="닫기"><X size={21}/></button></div><div className="modal-body">{children}</div></dialog>
 }
 export function TextLink({ children, onClick }: { children: ReactNode; onClick: () => void }) { return <button className="text-link" onClick={onClick}>{children}<ChevronRight size={15}/></button> }

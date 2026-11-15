@@ -5,17 +5,37 @@
 .shared-sheet-access .shared-access-note { color: var(--muted-foreground); font-size: var(--home-caption); margin-top: 24px; }
 .shared-access-success { display: flex; align-items: flex-start; gap: 10px; color: var(--brand); }
 .shared-access-success svg { flex-shrink: 0; margin-top: 4px; }
+.shared-sheet-access .share-account { margin-top: 0; font-size: var(--home-caption); color: var(--muted-foreground); overflow-wrap: anywhere; }
+.share-steps { list-style: none; padding: 0; margin: 16px 0 24px; display: flex; gap: 8px; }
+.share-steps li { display: flex; flex: 1; align-items: center; gap: 6px; min-width: 0; color: var(--muted-foreground); font-size: var(--home-caption); line-height: 1.5; }
+.share-steps li > span { display: grid; place-items: center; width: 24px; height: 24px; flex: 0 0 24px; border: 1px solid var(--border); border-radius: 50%; }
+.share-steps .is-current { color: var(--foreground); font-weight: 700; }
+.share-steps .is-current > span { color: var(--primary-foreground); background: var(--primary); border-color: var(--primary); }
+.share-steps .is-done { color: var(--brand); }
+.share-next-step { padding: 24px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); }
+.share-next-step h3 { margin-bottom: 10px; }
+.share-next-step > p { margin: 0 0 20px; word-break: keep-all; overflow-wrap: anywhere; }
+.share-next-step > .shared-access-success { margin-bottom: 14px; font-size: var(--home-caption); }
+.share-next-step > button, .share-connection-tools > button, .share-availability > button { display: flex; justify-content: center; align-items: center; gap: 8px; width: 100%; margin-top: 12px; }
+.share-next-step > .share-action-note { margin: 12px 0 0; color: var(--muted-foreground); font-size: var(--home-caption); }
+.share-file-link { margin-top: 18px; font-size: var(--home-caption); }
+.share-connection-tools { border-top: 1px solid var(--border); }
+.share-connection-tools > summary { color: var(--muted-foreground); font-size: var(--home-caption); }
+.share-connection-tools > p { font-size: var(--home-caption); }
+.share-availability { border-top: 1px solid var(--border); margin-top: 20px; padding-top: 16px; }
+.share-availability p { color: var(--muted-foreground); font-size: var(--home-caption); }
+@media (max-width: 420px) { .share-next-step { padding: 16px; }.share-steps { gap: 4px; }.share-steps li { flex-direction: column; text-align: center; } }
 .shared-sheet-access a { display: inline-flex; align-items: center; gap: 6px; color: var(--brand); text-decoration: underline; }
 .sheet-badge.web-sheet-badge { min-height: 36px; color: var(--brand); background: var(--card); border-color: var(--border); font-size: var(--home-caption); }
 @media (max-width: 650px) { .sheet-badge.web-sheet-badge { width: 36px; justify-content: center; padding: 0; flex-shrink: 0; }.web-sheet-badge span { display: none; } }
 .share-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 24px; }
-.share-tabs button { flex: 1; justify-content: center; min-height: 44px; }
+.shared-sheet-access .share-tabs button { flex: 1; justify-content: center; min-height: 44px; padding: 10px 8px; font-size: var(--home-caption); }
 .share-tabs button[aria-pressed=true] { border-color: var(--primary); color: var(--primary); font-weight: 700; }
 .share-section { margin-top: 16px; }
 .share-form, .share-copy { display: grid; gap: 12px; margin: 16px 0; }
 .shared-sheet-access label { display: grid; gap: 6px; min-width: 0; }
 .shared-sheet-access input:not([type=checkbox]):not([type=radio]), .shared-sheet-access select { width: 100%; min-width: 0; padding: 10px 12px; min-height: 44px; border: 1px solid var(--border); border-radius: var(--radius); color: var(--foreground); background: var(--card); font: inherit; }
-.shared-sheet-access button { min-height: 44px; white-space: normal; }
+.shared-sheet-access button { min-height: 44px; white-space: normal; font-size: var(--home-body); line-height: 1.5; }
 .shared-sheet-access :focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
 .share-invite-row, .share-preview, .share-confirm { border: 1px solid var(--border); padding: 16px; margin: 16px 0; border-radius: var(--radius); overflow-wrap: anywhere; }
 .share-invite-row { display: grid; gap: 8px; }

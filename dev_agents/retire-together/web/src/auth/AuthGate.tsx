@@ -1,10 +1,11 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
-import { ArrowRight, LogOut, UserRound } from 'lucide-react'
+import { ArrowRight, Bell, ChevronRight, LogOut, Settings, UserRound, Users } from 'lucide-react'
 import { Brand, Modal } from '../components'
 import { apiFetch, expiredEvent, setAuthSession } from './session'
 import { loginErrorText, usePopupLogin } from './usePopupLogin'
 import InvitationEntry, { invitationRoute } from './InvitationEntry'
 import './auth.css'
+import './account-menu.css'
 
 type Session = { email: string; role: string; csrf_token: string }
 type Status = { mode: 'local' | 'web'; login_enabled: boolean; initialized?: boolean }
@@ -119,12 +120,20 @@ export function AuthGate({ children }: { children: ReactNode }) {
   </main>
 }
 
-export function AccountMenu() {
+type AccountMenuProps = {
+  onProfile?: () => void
+  onFamily?: () => void
+  onNotifications?: () => void
+  dataMode?: { isDemo: boolean; asOf: string; onChange: (demo: boolean) => void }
+}
+
+export function AccountMenu({ onProfile, onFamily, onNotifications, dataMode }: AccountMenuProps = {}) {
   const { mode, session } = useAuth()
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  if (mode !== 'web' || !session) return null
+  if (!session && !onProfile && !onFamily && !onNotifications && !dataMode) return null
+  function navigate(action: () => void) { setOpen(false); action() }
   async function logout() {
     setBusy(true); setError('')
     try {
@@ -135,7 +144,20 @@ export function AccountMenu() {
     } catch (e) { setError(e instanceof Error ? e.message : '연결을 확인해 주세요.') }
     finally { setBusy(false) }
   }
-  return <><button className="auth-account" aria-label="로그인 계정" onClick={() => setOpen(true)}><UserRound size={19}/></button>
-    {open && <Modal title="로그인 계정" onClose={() => setOpen(false)}><div className="auth-account-details"><span>{session.role === 'owner' ? '고정 오너' : '배우자'}</span><p>{session.email}</p><button className="auth-login" disabled={busy} onClick={logout}><LogOut size={17}/>{busy ? '로그아웃 중…' : '로그아웃'}</button>{error && <p role="alert">{error}</p>}</div></Modal>}
+  return <><button className="auth-account" aria-label="마이페이지" title="마이페이지" aria-haspopup="dialog" onClick={() => setOpen(true)}><UserRound size={22} aria-hidden="true"/></button>
+    {open && <Modal title="마이페이지" onClose={() => setOpen(false)}><div className="account-page">
+      <div className="account-identity"><UserRound size={28} aria-hidden="true"/><div><strong>{session ? 'Google 계정으로 로그인 중' : '이 컴퓨터의 가계 노트'}</strong><p>{session?.email ?? '저장된 내 정보와 자산을 관리해요.'}</p>{session && <span>{session.role === 'owner' ? '오너' : '배우자'}</span>}</div></div>
+      <nav className="account-actions" aria-label="내 계정 관리">
+        {onProfile && <button onClick={() => navigate(onProfile)}><Settings size={20} aria-hidden="true"/><span>내 정보 · 설정</span><ChevronRight size={18} aria-hidden="true"/></button>}
+        {onFamily && <button onClick={() => navigate(onFamily)}><Users size={20} aria-hidden="true"/><span>우리 가족</span><ChevronRight size={18} aria-hidden="true"/></button>}
+        {onNotifications && <button onClick={() => navigate(onNotifications)}><Bell size={20} aria-hidden="true"/><span>알림 · 안내</span><ChevronRight size={18} aria-hidden="true"/></button>}
+      </nav>
+      {dataMode && <section className="account-view"><h3>화면에 보여줄 자료</h3><div role="group" aria-label="데이터 보기">
+        <button aria-pressed={!dataMode.isDemo} onClick={() => navigate(() => dataMode.onChange(false))}>내 자산</button>
+        <button aria-pressed={dataMode.isDemo} onClick={() => navigate(() => dataMode.onChange(true))}>예시 보기</button>
+      </div><p>{dataMode.isDemo ? '지금은 예시 자료를 보고 있어요.' : dataMode.asOf === '미등록' ? '아직 등록한 자산이 없어요.' : `내 자산 · ${dataMode.asOf} 기준`}<br/>예시 보기로 바꿔도 내 자료는 그대로 보관돼요.</p></section>}
+      {mode === 'web' && session && <button className="account-logout" disabled={busy} onClick={logout}><LogOut size={18} aria-hidden="true"/>{busy ? '로그아웃 중…' : '로그아웃'}</button>}
+      {error && <p role="alert" className="auth-error">{error}</p>}
+    </div></Modal>}
   </>
 }

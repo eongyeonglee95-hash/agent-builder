@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Check, ExternalLink, RefreshCw } from 'lucide-react'
+import { ArrowRight, Check, ExternalLink, RefreshCw } from 'lucide-react'
 import { api } from '../local-data'
 import { useAuth } from './AuthGate'
 import { chooseSheet, type PickerCredentials } from './picker'
 import InviteManager from './InviteManager'
-import SharedDataPanel from './SharedDataPanel'
+import SharedDataPanel, { type MigrationPreview } from './SharedDataPanel'
 import './shared-sheet-access.css'
 
 export type AccessStatus = {
@@ -26,6 +26,7 @@ export default function SharedSheetAccess({ onChanged = () => {}, initialTab = '
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [disconnect, setDisconnect] = useState(false)
+  const [preview, setPreview] = useState<MigrationPreview | null>(null)
   const [callbackError, setCallbackError] = useState(() => callbackErrors[new URL(location.href).searchParams.get('sheet_connection') ?? ''] ?? '')
   const [tab, setTab] = useState(initialTab)
   const refresh = useCallback(async (signal?: AbortSignal) => { const next = await api<AccessStatus>('/google/shared/status', 'GET', undefined, signal); if (!signal?.aborted) setStatus(next) }, [])
@@ -37,7 +38,12 @@ export default function SharedSheetAccess({ onChanged = () => {}, initialTab = '
   }, [refresh])
   async function run(action: () => Promise<void>) { setBusy(true); setError(''); setNotice(''); setCallbackError(''); try { await action() } catch (e) { setError(e instanceof Error ? e.message : '연결 상태를 확인하지 못했어요.') } finally { setBusy(false) } }
   async function connect() { const result = await api<{ authorization_url: string }>('/google/shared/connect', 'POST'); location.assign(result.authorization_url) }
-  async function create() { await api('/google/shared/spreadsheet', 'POST'); await refresh(); onChanged(); setNotice('공통 시트를 연결했어요. 우리 자료에서 이전할 내용을 대조해 주세요.') }
+  async function create() { await api('/google/shared/spreadsheet', 'POST'); await refresh(); onChanged() }
+  function openTab(next: string) { setPreview(null); setTab(next); setNotice(''); setError('') }
+  async function review() {
+    const next = await api<MigrationPreview>('/shared-data/migration/preview', 'POST')
+    setPreview(next); setTab('data')
+  }
   async function select() {
     const credentials = await api<PickerCredentials>('/google/shared/picker', 'POST')
     if (status?.spreadsheet?.spreadsheet_id) credentials.spreadsheet_id = status.spreadsheet.spreadsheet_id
@@ -46,29 +52,54 @@ export default function SharedSheetAccess({ onChanged = () => {}, initialTab = '
     if (owner) await api('/google/shared/spreadsheet', 'PUT', { spreadsheet_id: id })
     await refresh(); onChanged(); setNotice('공통 시트 접근을 다시 확인했어요.')
   }
-  return <section className="shared-sheet-access" aria-label="Google 시트 접근 권한">
-    <p>{owner ? '고정 오너' : '배우자'} · {session?.email}</p>
-    <div className="share-tabs" role="group" aria-label="공유 설정 메뉴">{[['file', '공통 시트'], ['data', '우리 자료'], ...(owner ? [['invite', '배우자 초대']] : [])].map(([id, label]) => <button key={id} className="secondary-button" aria-pressed={tab === id} onClick={() => setTab(id)}>{label}</button>)}</div>
+  const step = !status?.connected ? 0 : !status.active ? 1 : 2
+  const linked = !!status?.spreadsheet?.spreadsheet_id
+  return <section className="shared-sheet-access" aria-label="Google 시트 접근 권한" aria-busy={loading || busy}>
+    <p className="share-account">{session?.email}</p>
+    {status?.active && <div className="share-tabs" role="group" aria-label="공유 설정 메뉴">{[['file', '공통 시트'], ['data', '우리 자료'], ...(owner ? [['invite', '배우자 초대']] : [])].map(([id, label]) => <button key={id} disabled={busy} className="secondary-button" aria-pressed={tab === id} onClick={() => openTab(id)}>{label}</button>)}</div>}
     {loading ? <p role="status">시트 접근 상태를 확인하고 있어요…</p> : <>
-      {tab === 'file' && <>
-        {status?.connected ? <div className="shared-access-success" role="status"><Check size={20}/><strong>Google 파일 접근 동의가 완료됐어요.</strong></div> : <><h3>Google에서 파일 접근을 허용해 주세요.</h3><p>앱에서 만들거나 직접 선택한 시트에 접근합니다. 현재 로그인한 본인 계정으로 동의해 주세요.</p></>}
-        {status?.spreadsheet?.url && <p><a href={status.spreadsheet.url} target="_blank" rel="noreferrer">연결된 Google 시트 열기 <ExternalLink size={15}/></a></p>}
-        {status?.active && <p>같은 공통 시트가 연결되어 있어요. 다음 로그인에도 이 파일을 불러와요.</p>}
-        {status?.detail && <p role="alert" className="form-error">{status.detail}</p>}
-        {status && (!status.connected || status.health === 'attention' || callbackError) && <button className="primary-button" disabled={busy} onClick={() => void run(connect)}>Google에서 접근 허용<ExternalLink size={16}/></button>}
-        {status?.connected && <>
-          {owner && !status.spreadsheet && <><p>본인 소유의 기존 양식 시트를 선택하거나 새 공통 시트를 만들어 주세요. 연결 후 기존 자료를 대조할 수 있어요.</p><button className="primary-button" disabled={busy} onClick={() => void run(create)}>새 공통 시트 만들기</button></>}
-          {owner && status.spreadsheet && !status.spreadsheet.ready && <><p>진행 중인 파일 설정이 있어요. 같은 요청을 이어서 확인하며 새 파일을 중복 생성하지 않습니다.</p><button className="primary-button" disabled={busy} onClick={() => void run(create)}>진행 중인 파일 설정 이어가기</button></>}
-          {(!status.spreadsheet || status.spreadsheet.spreadsheet_id) && <button className="secondary-button" disabled={busy} onClick={() => void run(select)}>{status.spreadsheet ? '같은 공통 시트 접근 승인' : 'Google에서 기존 시트 선택'}</button>}
-          <button className="text-link" disabled={busy} onClick={() => setDisconnect(true)}>내 파일 접근 동의 해제</button>
-          <button className="text-link" disabled={busy} onClick={() => void run(connect)}>접근 권한 다시 동의</button>
-        </>}
-        {disconnect && <div className="share-confirm"><p>내 파일 접근 동의만 해제할까요? 로그인·오너·연결된 파일과 자료는 유지됩니다. 로컬 장부로 전환하지 않아요.</p><button className="danger-button" disabled={busy} onClick={() => void run(async () => { await api('/google/shared/connection', 'DELETE'); setDisconnect(false); await refresh(); onChanged(); setNotice('내 파일 접근 동의를 해제했어요. 다시 동의하면 같은 파일을 사용해요.') })}>동의 해제 확인</button><button className="secondary-button" disabled={busy} onClick={() => setDisconnect(false)}>취소</button></div>}
-        <button className="secondary-button" disabled={busy} onClick={() => void run(async () => { await refresh(); onChanged() })}><RefreshCw size={15}/>연결 상태 다시 확인</button>
-        <p className="shared-access-note">오너와 공통 파일은 자동으로 바뀌지 않아요. 삭제·권한 오류에서는 기존 파일을 복구한 뒤 다시 확인해 주세요.</p>
+      {tab === 'file' && status && <>
+        {!status.data_started && <ol className="share-steps" aria-label="자료 연결 순서">{['Google 연결', '시트 선택', '내 자료 확인'].map((label, index) => <li key={label} className={index < step ? 'is-done' : index === step ? 'is-current' : ''} aria-current={index === step ? 'step' : undefined}><span aria-hidden="true">{index < step ? <Check size={14}/> : index + 1}</span>{label}</li>)}</ol>}
+        <div className="share-next-step">
+          {!status.connected ? <>
+            <h3>{linked ? '사용하던 시트를 다시 연결해 주세요' : '내 자료를 Google에 연결해요'}</h3>
+            <p>{linked ? '연결된 파일은 기억하고 있어요. Google에서 접근만 다시 허용하면 같은 파일을 사용해요.' : 'Google 로그인은 완료됐어요. 가계 노트를 저장할 시트에 접근하도록 한 번 더 허용해 주세요.'}</p>
+            <button className="primary-button" disabled={busy} onClick={() => void run(connect)}>Google에서 접근 허용<ArrowRight size={16}/></button>
+          </> : status.active ? <>
+            <span className="shared-access-success" role="status"><Check size={18}/>{status.data_started ? '연결된 시트를 찾았어요' : '시트 연결 완료'}</span>
+            <h3>{status.data_started ? '내 자료를 불러올게요' : '이제, 내 자료를 확인해요'}</h3>
+            <p>{status.data_started ? '다시 연결할 필요 없이 같은 시트의 자료를 읽어요. 다음 로그인에도 자동으로 불러와요.' : owner ? '파일 연결은 끝났어요. 이 컴퓨터에 저장한 자료와 시트의 내용을 먼저 확인해 주세요.' : '오너가 자료를 옮기면 이 시트의 자료를 함께 볼 수 있어요.'}</p>
+            <button className="primary-button" disabled={busy} onClick={() => status.data_started || !owner ? openTab('data') : void run(review)}>{busy ? '자료 확인 중…' : status.data_started ? '내 자료 불러오기' : owner ? '이 컴퓨터 자료 확인' : '우리 자료 확인'}<ArrowRight size={16}/></button>
+            {!status.data_started && owner && <p className="share-action-note">지금은 내용만 확인해요. 자료가 자동으로 옮겨지지는 않아요.</p>}
+          </> : status.health === 'attention' ? <>
+            <h3>사용하던 시트의 연결을 확인해 주세요</h3><p>기존 파일은 기억하고 있어요. 아래 안내를 확인한 뒤 다시 연결해 주세요.</p>
+            <button className="primary-button" disabled={busy} onClick={() => void run(async () => { await refresh(); onChanged() })}><RefreshCw size={16}/>연결 상태 다시 확인</button>
+            <button className="text-link" disabled={busy} onClick={() => void run(connect)}>Google에서 접근 허용</button>
+          </> : owner && !status.spreadsheet ? <>
+            <p className="shared-access-success" role="status"><Check size={18}/>Google 파일 접근 동의가 완료됐어요.</p><h3>어떤 시트를 사용할까요?</h3>
+            <p>처음이라면 새 가계 노트를 만드세요. 둘이서은퇴에서 사용하던 시트가 있으면 불러올 수 있어요.</p>
+            <button className="primary-button" disabled={busy} onClick={() => void run(create)}>새 가계 노트 만들기<ArrowRight size={16}/></button>
+            <button className="secondary-button" disabled={busy} onClick={() => void run(select)}>사용하던 시트 불러오기</button>
+          </> : owner && status.spreadsheet && !status.spreadsheet.ready ? <>
+            <h3>진행하던 연결을 마칠게요</h3><p>이전에 시작한 파일 설정을 이어서 확인해요. 새 파일을 또 만들지 않아요.</p>
+            <button className="primary-button" disabled={busy} onClick={() => void run(create)}>진행 중인 파일 설정 이어가기<ArrowRight size={16}/></button>
+          </> : <><h3>공통 시트를 준비하고 있어요</h3><p>오너가 파일 연결을 마치면 같은 자료를 불러올 수 있어요.</p></>}
+          {status.detail && <p role="alert" className="form-error">{status.detail}</p>}
+        </div>
+        {status.spreadsheet?.url && <a className="share-file-link" href={status.spreadsheet.url} target="_blank" rel="noreferrer">연결된 Google 시트 열기 <ExternalLink size={15}/></a>}
+        <details className="share-connection-tools"><summary>연결 관리</summary>
+          <p>{owner ? '오너' : '배우자'} 계정 · 파일을 바꾸지 않고 연결 상태를 관리해요.</p>
+          {status.connected && <>
+            {linked && <button className="secondary-button" disabled={busy} onClick={() => void run(select)}>같은 공통 시트 접근 승인</button>}
+            <button className="text-link" disabled={busy} onClick={() => void run(connect)}>접근 권한 다시 동의</button>
+            <button className="text-link" disabled={busy} onClick={() => setDisconnect(true)}>내 파일 접근 동의 해제</button>
+          </>}
+          {disconnect && <div className="share-confirm"><p>내 파일 접근 동의만 해제할까요? 로그인·연결된 파일과 자료는 그대로 남아요.</p><button className="danger-button" disabled={busy} onClick={() => void run(async () => { await api('/google/shared/connection', 'DELETE'); setDisconnect(false); await refresh(); onChanged(); setNotice('내 파일 접근 동의를 해제했어요. 다시 동의하면 같은 파일을 사용해요.') })}>동의 해제 확인</button><button className="secondary-button" disabled={busy} onClick={() => setDisconnect(false)}>취소</button></div>}
+          {status.health !== 'attention' && <button className="secondary-button" disabled={busy} onClick={() => void run(async () => { await refresh(); onChanged() })}><RefreshCw size={15}/>연결 상태 다시 확인</button>}
+        </details>
       </>}
       {tab !== 'file' && !status?.active && <p>공통 시트의 연결 상태를 먼저 확인해 주세요.<button className="text-link" onClick={() => setTab('file')}>공통 시트 확인</button></p>}
-      {tab === 'data' && status?.active && <SharedDataPanel started={!!status.data_started} onChanged={() => { void refresh(); onChanged() }}/>}
+      {tab === 'data' && status?.active && <SharedDataPanel started={!!status.data_started} initialPreview={preview} onChanged={() => { void refresh(); onChanged() }}/>}
       {tab === 'invite' && status?.active && owner && <InviteManager/>}
     </>}
     {(error || callbackError) && <p role="alert" className="form-error">{error || callbackError}</p>}{notice && <p role="status">{notice}</p>}

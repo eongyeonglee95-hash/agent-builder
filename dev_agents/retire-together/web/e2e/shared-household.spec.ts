@@ -12,9 +12,9 @@ async function login(page: Page, person = '테스트 오너') {
   const popup = await opened
   await popup.getByRole('link', { name: person, exact: true }).click()
   await expect.poll(() => popup.isClosed()).toBe(true)
-  await expect(page.getByRole('button', { name: '로그인 계정', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: '마이페이지', exact: true })).toBeVisible()
 }
-async function panel(page: Page) { await page.getByRole('button', { name: '구글 시트 연결 설정', exact: true }).click(); await expect(dialog(page)).toBeVisible() }
+async function panel(page: Page) { await page.getByRole('button', { name: '내 자산 연결 Google 시트', exact: true }).click(); await expect(dialog(page)).toBeVisible() }
 async function consent(page: Page) {
   await panel(page)
   await dialog(page).getByRole('button', { name: 'Google에서 접근 허용' }).click()
@@ -23,16 +23,25 @@ async function consent(page: Page) {
 }
 async function setupFile(page: Page) {
   await login(page); await consent(page)
-  await dialog(page).getByRole('button', { name: '새 공통 시트 만들기' }).click()
+  await dialog(page).getByRole('button', { name: '새 가계 노트 만들기' }).click()
   await expect(dialog(page).getByRole('link', { name: '연결된 Google 시트 열기' })).toBeVisible()
 }
-async function migrate(page: Page) {
-  await dialog(page).getByRole('button', { name: '우리 자료', exact: true }).click()
-  await dialog(page).getByRole('button', { name: '이전할 자료 대조' }).click()
-  await expect(dialog(page).getByRole('heading', { name: '이전 전 대조' })).toBeVisible()
-  await dialog(page).getByLabel('명의·건수·금액과 충돌 선택을 확인했어요').check()
-  await dialog(page).getByRole('button', { name: '확인한 자료 이전' }).click()
-  await expect(dialog(page).getByText('공유 자료 이전과 저장 후 대조를 마쳤어요.')).toBeVisible()
+async function loadMigratedFixture(page: Page) {
+  // Seed synthetic shared state through the API to test existing-data screens.
+  // The production UI intentionally blocks cutover until financial pages are connected.
+  const statuses = await page.evaluate(async () => {
+    const session = await (await fetch('/api/auth/session')).json()
+    const headers = { 'Content-Type': 'application/json', 'X-Retire-CSRF': session.csrf_token }
+    const preview = await fetch('/api/shared-data/migration/preview', { method: 'POST', headers })
+    if (!preview.ok) return [preview.status]
+    const plan = await preview.json()
+    const saved = await fetch('/api/shared-data/migration/commit', { method: 'POST', headers, body: JSON.stringify({ operation_id: crypto.randomUUID(), preview_id: plan.preview_id, choices: {} }) })
+    return [preview.status, saved.status]
+  })
+  expect(statuses).toEqual([200, 200])
+  await page.reload(); await panel(page)
+  await dialog(page).getByRole('button', { name: '내 자료 불러오기', exact: true }).click()
+  await expect(dialog(page).getByRole('button', { name: '내 정보 수정' })).toBeVisible()
 }
 async function issue(page: Page) {
   await dialog(page).getByRole('button', { name: '배우자 초대', exact: true }).click()
@@ -69,11 +78,12 @@ test('오너 시작·생성 응답 유실 재시도·재방문·동의 해제/�
     if (lose && route.request().method() === 'POST') { lose = false; await route.fetch(); await route.abort(); return }
     await route.continue()
   })
-  await dialog(page).getByRole('button', { name: '새 공통 시트 만들기' }).click()
+  await dialog(page).getByRole('button', { name: '새 가계 노트 만들기' }).click()
   await expect(dialog(page).getByRole('alert')).toBeVisible()
-  await dialog(page).getByRole('button', { name: '새 공통 시트 만들기' }).click()
+  await dialog(page).getByRole('button', { name: '새 가계 노트 만들기' }).click()
   await expect(dialog(page).getByRole('link', { name: '연결된 Google 시트 열기' })).toHaveAttribute('href', new RegExp(SID))
   expect((await controls(page, {})).creates).toBe(1)
+  await dialog(page).getByText('연결 관리', { exact: true }).click()
   await dialog(page).getByRole('button', { name: '내 파일 접근 동의 해제' }).click()
   await dialog(page).getByRole('button', { name: '동의 해제 확인' }).click()
   await expect(dialog(page).getByRole('button', { name: 'Google에서 접근 허용' })).toBeVisible()
@@ -81,12 +91,13 @@ test('오너 시작·생성 응답 유실 재시도·재방문·동의 해제/�
   await page.reload(); await panel(page)
   await dialog(page).getByRole('button', { name: 'Google에서 접근 허용' }).click()
   await page.getByRole('link', { name: '테스트 오너', exact: true }).click()
-  await expect(dialog(page).getByText('같은 공통 시트가 연결되어 있어요.', { exact: false })).toBeVisible()
+  await expect(dialog(page).getByRole('heading', { name: '이제, 내 자료를 확인해요' })).toBeVisible()
   expect((await controls(page, {})).creates).toBe(1)
+  await dialog(page).getByText('연결 관리', { exact: true }).click()
   await controls(page, { status: 503 })
   await dialog(page).getByRole('button', { name: '연결 상태 다시 확인' }).click()
   await expect(dialog(page).getByRole('alert')).toContainText('기존 연결은 유지')
-  await expect(dialog(page).getByRole('button', { name: '새 공통 시트 만들기' })).toHaveCount(0)
+  await expect(dialog(page).getByRole('button', { name: '새 가계 노트 만들기' })).toHaveCount(0)
   await controls(page, { status: 200 })
   await dialog(page).getByRole('button', { name: '연결 상태 다시 확인' }).click()
   await expect(dialog(page).getByRole('alert')).toHaveCount(0)
@@ -96,7 +107,7 @@ test('오너 시작·생성 응답 유실 재시도·재방문·동의 해제/�
 test('Picker 미설정·로딩 실패·취소·오너/양식 거부·선택 ID 서버 검증', async ({ page }) => {
   await controls(page, { reset: true, empty: false })
   await login(page); await consent(page)
-  const select = () => dialog(page).getByRole('button', { name: 'Google에서 기존 시트 선택' }).click()
+  const select = () => dialog(page).getByRole('button', { name: '사용하던 시트 불러오기' }).click()
   await select(); await expect(dialog(page).getByRole('alert')).toContainText('Picker API 키와 프로젝트 번호')
   await controls(page, { picker: true }); await select()
   await expect(dialog(page).getByRole('alert')).toContainText('선택창을 열지 못했어요')
@@ -114,12 +125,12 @@ test('Picker 미설정·로딩 실패·취소·오너/양식 거부·선택 ID �
   expect(await page.evaluate(() => JSON.stringify([localStorage, sessionStorage]))).not.toMatch(/synthetic-.*token|picker-key/)
 })
 
-test('이전·두 사람 첫 흐름과 재방문·나/배우자·고정 지분·개인 편집 허용', async ({ page, browser }) => {
-  await setupFile(page); await migrate(page)
+test('이전된 자료·두 사람 첫 흐름과 재방문·나/배우자·고정 지분·개인 편집 허용', async ({ page, browser }) => {
+  await setupFile(page); await loadMigratedFixture(page)
   const link = await issue(page)
   const context = await browser.newContext(); await guard(context); const partner = await context.newPage()
   await accept(partner, link)
-  await expect(partner.getByRole('button', { name: '로그인 계정', exact: true })).toBeVisible()
+  await expect(partner.getByRole('button', { name: '마이페이지', exact: true })).toBeVisible()
   await expect(partner.getByRole('region', { name: '자산 요약' })).toContainText('1,300만원')
   await partner.getByRole('group', { name: '자산 소유자 선택' }).getByRole('button', { name: '나', exact: true }).click()
   await expect(partner.getByRole('heading', { name: '배우자 이름의 자산 현황' })).toBeVisible()
@@ -146,12 +157,12 @@ test('이전·두 사람 첫 흐름과 재방문·나/배우자·고정 지분·
   await expect(dialog(page).getByRole('button', { name: '배우자 정보 수정' })).toBeEnabled()
   await expect(dialog(page).getByText('배우자 · 배우자 수정 이름', { exact: true })).toBeVisible()
   await dialog(partner).getByRole('button', { name: '닫기', exact: true }).click()
-  await partner.getByRole('button', { name: '로그인 계정', exact: true }).click()
+  await partner.getByRole('button', { name: '마이페이지', exact: true }).click()
   await expect(partner.getByRole('dialog')).toContainText('배우자')
   await partner.getByRole('button', { name: '로그아웃', exact: true }).click()
   await login(partner, '테스트 배우자')
   await panel(partner); await expect(dialog(partner).getByRole('link', { name: '연결된 Google 시트 열기' })).toHaveAttribute('href', new RegExp(SID))
-  await expect(dialog(partner).getByRole('button', { name: '새 공통 시트 만들기' })).toHaveCount(0)
+  await expect(dialog(partner).getByRole('button', { name: '새 가계 노트 만들기' })).toHaveCount(0)
   await context.close()
 })
 
@@ -178,7 +189,7 @@ test('초대 취소·대상 거부·만료 안내와 성공처럼 보이는 URL 
 })
 
 test('가입 대기 새로고침·Picker 같은 파일 검사·공유 재개·앱/Drive 해제 분리', async ({ page, browser }) => {
-  await setupFile(page); await migrate(page); const link = await issue(page)
+  await setupFile(page); await loadMigratedFixture(page); const link = await issue(page)
   await controls(page, { member_access: false })
   const context = await browser.newContext(); await guard(context); const partner = await context.newPage()
   await accept(partner, link)
@@ -194,7 +205,7 @@ test('가입 대기 새로고침·Picker 같은 파일 검사·공유 재개·�
   await expect(partner.getByRole('alert')).toContainText('이미 연결된')
   await partner.reload(); await picker(partner); await controls(page, { member_access: true })
   await partner.getByRole('button', { name: '공통 시트 접근 승인' }).click(); await partner.getByRole('button', { name: '파일 선택 결과' }).click()
-  await expect(partner.getByRole('button', { name: '로그인 계정' })).toBeVisible()
+  await expect(partner.getByRole('button', { name: '마이페이지' })).toBeVisible()
   await dialog(page).getByRole('button', { name: '초대 상태 다시 확인' }).click()
   await controls(page, { fail_delete: true })
   await dialog(page).getByRole('button', { name: '배우자 접근 해제' }).click()
@@ -209,7 +220,7 @@ test('가입 대기 새로고침·Picker 같은 파일 검사·공유 재개·�
 })
 
 test('수정 충돌은 초안 유지·다시 읽기·백업 대조 복구', async ({ page }) => {
-  await setupFile(page); await migrate(page)
+  await setupFile(page); await loadMigratedFixture(page)
   const p = dialog(page)
   await p.getByRole('button', { name: '내 정보 수정' }).click()
   await p.getByLabel('이름', { exact: true }).fill('충돌 초안')
@@ -237,7 +248,7 @@ test('수정 충돌은 초안 유지·다시 읽기·백업 대조 복구', asyn
 
 test('360/390/1440px·키보드 파일/초대/자료 화면·JSON 입력 없음', async ({ page }) => {
   const errors: string[] = []; page.on('pageerror', e => errors.push(e.message))
-  await setupFile(page); await migrate(page)
+  await setupFile(page); await loadMigratedFixture(page)
   for (const width of [1440, 390, 360]) {
     await page.setViewportSize({ width, height: 900 })
     for (const tab of ['공통 시트', '우리 자료', '배우자 초대']) {
@@ -256,18 +267,43 @@ test('360/390/1440px·키보드 파일/초대/자료 화면·JSON 입력 없음'
 })
 
 
-test('이전 충돌 선택 뒤 실제 선택 합계 재대조를 거쳐 확정', async ({ page }) => {
+test('다른 자료 선택 뒤 합계를 다시 확인하고 실제 이전은 준비 중으로 유지', async ({ page }) => {
   await setupFile(page)
   await controls(page, { legacy_conflict: true })
   const p = dialog(page)
   await p.getByRole('button', { name: '우리 자료', exact: true }).click()
-  await p.getByRole('button', { name: '이전할 자료 대조' }).click()
-  await expect(p.getByRole('button', { name: '확인한 자료 이전' })).toBeDisabled()
+  await p.getByRole('button', { name: '이 컴퓨터 자료 확인' }).click()
+  await expect(p.getByRole('button', { name: '자료 옮기기 준비 중' })).toBeDisabled()
   await p.getByRole('radio', { name: /기존 시트 자료/ }).check()
-  await expect(p.getByLabel('명의·건수·금액과 충돌 선택을 확인했어요')).toBeDisabled()
   await p.getByRole('button', { name: '선택 결과 대조' }).click()
   await expect(p.getByText('오너 이름 · 자산 150만원 / 대출 0원', { exact: true }).last()).toBeVisible()
-  await p.getByLabel('명의·건수·금액과 충돌 선택을 확인했어요').check()
-  await p.getByRole('button', { name: '확인한 자료 이전' }).click()
-  await expect(p.getByText('공유 자료 이전과 저장 후 대조를 마쳤어요.')).toBeVisible()
+  await expect(p.getByRole('button', { name: '자료 옮기기 준비 중' })).toBeDisabled()
+  expect((await page.request.get('/api/google/shared/status')).ok()).toBe(true)
+  expect(await page.evaluate(async () => (await (await fetch('/api/google/shared/status')).json()).data_started)).toBe(false)
+})
+
+test('연결된 파일은 다음 행동 하나로 자료 확인, 연결 관리는 접힘·자동 이전 없음', async ({ page }) => {
+  const errors: string[] = []; page.on('pageerror', e => errors.push(e.message))
+  const mutations: string[] = []
+  await setupFile(page)
+  const p = dialog(page)
+  page.on('request', r => { if (r.method() === 'POST') mutations.push(new URL(r.url()).pathname) })
+  await expect(p.getByRole('button', { name: '새 가계 노트 만들기' })).toHaveCount(0)
+  await expect(p.getByRole('button', { name: '내 파일 접근 동의 해제' })).toBeHidden()
+  await expect(p.locator('.share-next-step .primary-button')).toHaveCount(1)
+  for (const width of [1440, 390, 360]) {
+    await page.setViewportSize({ width, height: 900 })
+    expect(await p.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    await page.screenshot({ path: test.info().outputPath(`connection-next-step-${width}.png`) })
+  }
+  await p.getByRole('button', { name: '이 컴퓨터 자료 확인' }).click()
+  await expect(p.getByRole('heading', { name: '옮길 자료 미리보기' })).toBeVisible()
+  await expect(p.getByRole('button', { name: '자료 옮기기 준비 중' })).toBeDisabled()
+  expect(mutations.filter(path => path.endsWith('/migration/preview'))).toHaveLength(1)
+  expect(mutations.filter(path => path.endsWith('/migration/commit'))).toEqual([])
+  await page.screenshot({ path: test.info().outputPath('migration-review-360.png') })
+  await p.getByRole('button', { name: '공통 시트', exact: true }).click()
+  await expect(p.getByRole('button', { name: '이 컴퓨터 자료 확인' })).toBeVisible()
+  expect(errors).toEqual([])
 })

@@ -16,6 +16,7 @@
 - **개발 서버는 하나만** (2026-11-02 사용자 결정, 여러 세션 동시 작업): 주소는 늘 http://127.0.0.1:5180 (API 8010). `scripts/dev-web.sh`를 실행하면 이미 떠 있을 때 주소만 알려 주고 끝난다 — 새 포트로 따로 띄우지 않는다. 서버 코드(backend/·tools/·rules/)와 화면은 고치면 저절로 반영되므로 다시 띄울 필요가 없다. 정말 멈췄을 때만 `scripts/dev-web.sh --restart`. 브라우저 테스트는 세션마다 다른 `RETIRE_E2E_PORT`를 쓴다.
 
 ## 시작할 때 반드시 읽을 것
+0. `backlog.md` — 남은 일·다음 행동. 새 요청과 착수 담당·경로, 종료 시 검증 근거·남은 일을 갱신한다. 기존 ID의 상태 원본은 `docs/AGENT_DESIGN.md` §0이며 해당 작업을 바꾸면 백로그도 맞춘다. 보류 작업은 사용자 재개 요청을 기다린다.
 1. `docs/MASTER_CONTEXT.md` — 단일 출발점. 제품 철학과 책임 분리 원칙
 2. `docs/AGENT_DESIGN.md` — 현재 실행 계획·협업(§0), Agent 정의(§1), 이전 PoC 기록(§2). 현재 범위는 §0이 우선한다
 3. 작업 영역에 따라 `docs/REBALANCING_RULES.md`, `docs/CALCULATION_RULES.md`, `docs/TAX_RULES.md`

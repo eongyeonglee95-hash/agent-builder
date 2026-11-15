@@ -3,6 +3,7 @@
 이 저장소에서 작업하는 Codex는 `CLAUDE.md`를 먼저 읽고 같은 제품·계산·보안 원칙을 따른다.
 
 - 현재 실행 계획과 파일 담당: `docs/AGENT_DESIGN.md` §0.
+- 작업 시작 시 `backlog.md`에서 남은 일과 다음 행동을 확인한다. 새 요청을 기록하고 착수 시 담당·경로, 종료 시 검증 근거·남은 일을 갱신한다. 기존 ID의 상태 원본은 `docs/AGENT_DESIGN.md` §0을 유지하며 백로그의 다음 행동을 함께 맞춘다. 목록 등록만으로 보류 작업을 재개하지 않는다.
 - Shrimp 시범 운영: `retire-together-shrimp` MCP로 SHARE-02~07을 관리한다. 상태 원본은 계속 `docs/AGENT_DESIGN.md` §0이며, 착수 전 인계 확인·완료 검증 후 문서 반영을 유지한다. 작업 상태는 한 세션만 수정한다. 규칙 자동 초기화·전체 작업 초기화·연속 자동 실행은 사용자가 요청한 범위를 넘겨 수행하지 않는다. 사용법과 MCP 미연결 시 조회 명령은 `docs/LOCAL_DEVELOPMENT.md`의 Shrimp 절.
 - 제품 맥락: `docs/MASTER_CONTEXT.md`.
 - 화면 기준: `docs/assets/concept.jpg`, `docs/SCREEN_REFERENCE.md`.
