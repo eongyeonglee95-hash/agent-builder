@@ -282,6 +282,34 @@ async def file_import(file: Annotated[UploadFile, File()], account_id: Annotated
     return {"groups": [preview]}
 
 
+@router.get("/kiwoom/status")
+def kiwoom_status():
+    from tools import kiwoom
+    return {"configured": kiwoom.configured()}
+
+
+@router.post("/kiwoom")
+async def kiwoom_import(owner: Literal["me", "partner"] = "me"):
+    """키움 REST API로 일반계좌 잔고를 읽어 확인 표를 만든다(저장 안 함 — 저장은 /commit). 조회 TR만 부른다."""
+    from tools import kiwoom
+    import anyio
+    try:
+        body = await anyio.to_thread.run_sync(kiwoom.fetch_balance)
+    except kiwoom.KiwoomError as e:
+        raise HTTPException(502, str(e)) from None
+    df, meta = kiwoom.holdings_from_balance(body)
+    if df.empty:
+        raise HTTPException(422, "키움 계좌에 보유 종목이 없어요.")
+    accts = load_accounts(accounts_path())
+    want = WEB_TO_OWNER[owner]
+    matched = next((k for k, a in accts.items() if a.get("broker") == "kiwoom" and a.get("account_type") == "general"
+                    and a.get("owner") == want and a.get("active", True) is not False), None)
+    preview = _preview(df, meta, matched, accts[matched].get("label") if matched else "키움 주식계좌", "api")
+    preview["matched_label"] = accts[matched].get("label") if matched else None
+    preview["suggested"] = {"label": "키움 주식계좌", "owner": owner, "broker": "kiwoom", "account_type": "general"}
+    return {"groups": [preview]}
+
+
 # ---------- 엑셀 양식 (진짜 엑셀로 입력) ----------
 
 TEMPLATE_COLUMNS = ["계좌", "종목명", "종목코드", "보유수량", "현재가", "매입금액", "자산군", "주식 구분"]
@@ -384,7 +412,7 @@ def _overlaps_existing(contract: dict, existing_accounts: list[str]) -> bool:
 def _contracts_preview(meta: dict, owner: str) -> dict:
     label = meta.get("account_label") or "연금"
     owner = owner if owner in ("me", "partner") else "me"
-    brokered = [a.get("account") or "" for a in storage.list_assets() if a.get("owner") == owner and a.get("pocket") == "retirement" and a.get("source") in ("capture", "file")]
+    brokered = [a.get("account") or "" for a in storage.list_assets() if a.get("owner") == owner and a.get("pocket") == "retirement" and a.get("source") in ledger.CAPTURE_SOURCES]
     rows = [{**c, "layer": 0 if c.get("insurance_detail") and not c.get("product_type") else guess_layer(label, c.get("product_type") or ""), "overlap": False if c.get("insurance_detail") else _overlaps_existing(c, brokered)} for c in meta.get("contracts") or []]
     total = sum(r["amount"] for r in rows if r.get("amount") is not None)
     screen = meta.get("screen_total_value") or None
@@ -466,7 +494,7 @@ class CommitRow(InputModel):
 
 class CommitInput(InputModel):
     account_id: Annotated[str, Field(min_length=1, max_length=64)]
-    source: Literal["capture", "file"]
+    source: Literal["capture", "file", "api"]
     as_of: dt.date
     rows: Annotated[list[CommitRow], Field(min_length=1, max_length=1000)]
     screen_total: Annotated[int | None, Field(ge=0, le=10**15)] = None
