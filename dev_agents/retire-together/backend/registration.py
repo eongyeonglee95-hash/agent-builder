@@ -291,12 +291,15 @@ def kiwoom_status():
 
 def _kiwoom_read() -> tuple[pd.DataFrame, dict, int]:
     from tools import kiwoom
-    try:
-        body = kiwoom.fetch_balance()
-        cash = kiwoom.fetch_deposit()
+    import time
+    try:   # 국내 잔고·미국 잔고·원화 예수금·외화 예수금 — 호출 한도(초당 5회) 안에서 차례로
+        body = kiwoom.fetch_balance(); time.sleep(0.25)
+        us = kiwoom.fetch_us_balance(); time.sleep(0.25)
+        cash = kiwoom.fetch_deposit(); time.sleep(0.25)
+        cash += kiwoom.fetch_us_cash()
     except kiwoom.KiwoomError as e:
         raise HTTPException(502, str(e)) from None
-    df, meta = kiwoom.holdings_from_balance(body)
+    df, meta = kiwoom.holdings_from_balance(body, us=us)
     if df.empty and not cash:
         raise HTTPException(422, "키움 계좌에 보유 종목도 예수금도 없어요.")
     return df, meta, cash

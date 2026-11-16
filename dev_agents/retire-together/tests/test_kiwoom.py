@@ -17,6 +17,29 @@ BALANCE = {
 }
 
 
+US = {"tot_evlt_amt_krw": "000000004621939", "result_list": [
+    {"stk_cd": "AMZN", "frgn_stk_nm": "아마존닷컴", "poss_qty": "000000000013", "now_pric_krw": "000000355533", "frgn_stk_book_amt_krw": "000004482370"}]}
+
+
+@pytest.fixture(autouse=True)
+def no_network(monkeypatch):
+    """테스트는 실제 키움 서버를 절대 부르지 않는다(.env에 진짜 키가 있어도). 필요한 응답은 각 테스트가 다시 넣는다."""
+    def blocked(*a, **k):
+        raise AssertionError("테스트에서 키움 서버 호출")
+    monkeypatch.setattr(kiwoom, "_post", blocked)
+    monkeypatch.setattr(kiwoom, "fetch_us_balance", lambda: {})
+    monkeypatch.setattr(kiwoom, "fetch_deposit", lambda: 0)
+    monkeypatch.setattr(kiwoom, "fetch_us_cash", lambda: 0)
+    monkeypatch.setattr("time.sleep", lambda *_: None)
+
+
+def test_us_rows_use_krw_and_add_to_total():
+    df, meta = kiwoom.holdings_from_balance(BALANCE, "acct", us=US)
+    us = df[df["stock_group"] == "us"].iloc[0]
+    assert (us["ticker_name"], us["ticker"], us["qty"], us["price"], us["buy_value"]) == ("아마존닷컴 (AMZN)", None, 13, 355533, 4482370)
+    assert meta["screen_total_value"] == 540_000 + 4_621_939 and meta["reconciled"]   # 13×355,533=4,621,929 — 원 단위 반올림 차이만
+
+
 @pytest.mark.parametrize("raw, want", [("000000000177000", 177000), ("-00000000196888", -196888), ("+59000", 59000), ("", 0), ("46.25", 46)])
 def test_num(raw, want):
     assert kiwoom.num(raw) == want
@@ -66,7 +89,8 @@ def test_auto_sync_saves_known_holdings_with_cash(client, env, monkeypatch):  # 
     from backend import registration
     registration._last_sync.clear()
     monkeypatch.setattr(kiwoom, "fetch_balance", lambda: BALANCE)
-    monkeypatch.setattr(kiwoom, "fetch_deposit", lambda: 70_000)
+    monkeypatch.setattr(kiwoom, "fetch_deposit", lambda: 69_974)
+    monkeypatch.setattr(kiwoom, "fetch_us_cash", lambda: 26)   # 외화 예수금(원화 환산)도 예수금에 더한다
     monkeypatch.setattr(kiwoom, "configured", lambda: True)
     assert client.post("/api/register/sync").json()["status"] == "none"   # 태그 없으면 아무것도 안 한다
     put = client.put("/api/register/accounts/spouse_test_general/auto-sync", json={"auto_sync": True})
@@ -81,4 +105,6 @@ def test_auto_sync_saves_known_holdings_with_cash(client, env, monkeypatch):  # 
     assert r["status"] == "updated" and r["total"] == 610_000 and r["cash"] == 70_000, r
     kids = sorted((a["name"], a["amount"]) for a in client.get("/api/assets").json() if a["parent_id"])
     assert kids == [("배우자 일반계좌 · 예수금", 70_000), ("배우자 일반계좌 · 주식", 540_000)]
+    root = next(a for a in client.get("/api/assets").json() if a.get("account_id") == "spouse_test_general" and not a["parent_id"])
+    assert root["amount"] == 610_000   # 계좌 줄도 새 합계
     assert client.post("/api/register/sync").json()["status"] == "fresh"   # 10분 안에는 다시 안 부른다

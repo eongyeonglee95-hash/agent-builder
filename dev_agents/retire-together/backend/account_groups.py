@@ -40,6 +40,8 @@ def replace_group(rows, account_id, source, payloads, timestamp):
     if root:
         root = {**defaults, **root, 'account_id': account_id,
                 'version': root['version'] + 1, 'updated_at': timestamp}
+        if root.get('valuation_source') == 'details' and root.get('source') in IMPORTED:   # 가져오기로 만든 계좌 줄만 새 세부 합으로 (직접 입력한 총액은 보존)
+            root.update(amount=sum(p['amount'] for p in payloads), as_of=first.get('as_of', root.get('as_of')))
     else:
         root = {**defaults, **first, 'id': str(uuid4()), 'name': first['account'],
                 'assetClass': 'mixed', 'amount': sum(p['amount'] for p in payloads),
