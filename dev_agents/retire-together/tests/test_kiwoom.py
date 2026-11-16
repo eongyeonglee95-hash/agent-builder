@@ -60,3 +60,25 @@ def test_import_reports_kiwoom_error(client, monkeypatch):  # noqa: F811
     monkeypatch.setattr(kiwoom, "fetch_balance", boom)
     r = client.post("/api/register/kiwoom")
     assert r.status_code == 502 and "IP" in r.json()["detail"]
+
+
+def test_auto_sync_saves_known_holdings_with_cash(client, env, monkeypatch):  # noqa: F811
+    from backend import registration
+    registration._last_sync.clear()
+    monkeypatch.setattr(kiwoom, "fetch_balance", lambda: BALANCE)
+    monkeypatch.setattr(kiwoom, "fetch_deposit", lambda: 70_000)
+    monkeypatch.setattr(kiwoom, "configured", lambda: True)
+    assert client.post("/api/register/sync").json()["status"] == "none"   # 태그 없으면 아무것도 안 한다
+    put = client.put("/api/register/accounts/spouse_test_general/auto-sync", json={"auto_sync": True})
+    assert put.status_code == 200 and put.json()["auto_sync"] is True
+    assert client.put("/api/register/accounts/me_test_pension/auto-sync", json={"auto_sync": True}).status_code == 422
+    # 삼성전자는 처음 보는 종목 → 저장하지 않고 확인 표
+    r = client.post("/api/register/sync").json()
+    assert r["status"] == "review" and r["groups"][0]["cash"] == 70_000 and not [a for a in client.get("/api/assets").json() if a["parent_id"]]
+    (env / "asset_map.yaml").write_text("assets:\n  KODEX 200:\n    ticker: '069500'\n    asset_class: stock\n    status: confirmed\n"
+                                        "  삼성전자:\n    ticker: '005930'\n    asset_class: stock\n    status: confirmed\nclass_defaults: {}\n", encoding="utf-8")
+    r = client.post("/api/register/sync").json()
+    assert r["status"] == "updated" and r["total"] == 610_000 and r["cash"] == 70_000, r
+    kids = sorted((a["name"], a["amount"]) for a in client.get("/api/assets").json() if a["parent_id"])
+    assert kids == [("배우자 일반계좌 · 예수금", 70_000), ("배우자 일반계좌 · 주식", 540_000)]
+    assert client.post("/api/register/sync").json()["status"] == "fresh"   # 10분 안에는 다시 안 부른다

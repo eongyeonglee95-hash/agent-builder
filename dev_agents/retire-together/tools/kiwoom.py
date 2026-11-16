@@ -4,6 +4,7 @@
 KIWOOM_MOCK=1 이면 모의투자 서버(mockapi)를 쓴다. 근거·한도: docs/wiki/sources/broker-apis.md
 - 토큰 au10001 POST /oauth2/token (유효 24시간 → 만료 전까지 메모리에 둔다)
 - 잔고 kt00018 POST /api/dostk/acnt (qry_tp 1=합산, dmst_stex_tp KRX). 응답 숫자는 0채움·부호 포함 문자열
+- 예수금 kt00001 POST /api/dostk/acnt (qry_tp 3=추정조회) → d2_entra(D+2 추정예수금: 결제 끝난 뒤 실제로 남는 현금)
 - 연속조회: 응답 헤더 cont-yn=Y 면 next-key 를 실어 다시 부른다. 조회 TR 초당 5회 한도라 쪽마다 0.25초 쉰다
 """
 from __future__ import annotations
@@ -86,7 +87,7 @@ def _base() -> str:
     return MOCK if _env().get("KIWOOM_MOCK", "").strip() in ("1", "true", "yes") else REAL
 
 
-def _post(url: str, headers: dict, body: dict) -> requests.Response:
+def _post(url: str, headers: dict, body: dict, retry: bool = True) -> requests.Response:
     try:
         resp = requests.post(url, headers={"Content-Type": "application/json;charset=UTF-8", **headers}, json=body, timeout=15)
     except requests.RequestException:
@@ -96,8 +97,13 @@ def _post(url: str, headers: dict, body: dict) -> requests.Response:
     except ValueError:
         data = {}
     code = data.get("return_code", 0 if resp.ok else None)
+    msg = str(data.get("return_msg") or resp.reason or "").strip()[:200]
+    if (not resp.ok or code not in (0, "0", None)) and any(c in msg for c in ("1700", "1701", "1702")):
+        if retry:   # 초당 호출 한도 — 1초 쉬고 한 번만 다시
+            time.sleep(1.1)
+            return _post(url, headers, body, retry=False)
+        raise KiwoomError("키움 API 호출 한도에 걸렸어요. 잠시 뒤 다시 불러와 주세요.")
     if not resp.ok or code not in (0, "0", None):
-        msg = str(data.get("return_msg") or resp.reason or "").strip()[:200]
         raise KiwoomError(f"키움 API 오류: {msg or resp.status_code}. 앱키·시크릿키와 등록한 IP(지금 이 컴퓨터의 공인 IP)를 확인해 주세요.")
     return resp
 
@@ -141,3 +147,9 @@ def fetch_balance() -> dict:
         time.sleep(0.25)
     out["acnt_evlt_remn_indv_tot"] = rows
     return out
+
+
+def fetch_deposit() -> int:
+    """D+2 추정예수금(원). 미수로 음수면 0 — 현금 주머니에 빚을 넣지 않는다."""
+    data = _post(f"{_base()}/api/dostk/acnt", {"api-id": "kt00001", "authorization": f"Bearer {token()}"}, {"qry_tp": "3"}).json()
+    return max(0, num(data.get("d2_entra")))

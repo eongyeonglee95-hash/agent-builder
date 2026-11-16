@@ -34,6 +34,7 @@ OWNER_TO_WEB = {"me": "me", "spouse": "partner"}
 WEB_TO_OWNER = {"me": "me", "partner": "spouse"}
 POCKET_TO_WEB = {"pension": "retirement", "cash": "cash"}
 BROKER_LABELS = {"mirae": "미래에셋", "kiwoom": "키움", "kis": "한국투자", "samsung": "삼성", "nh": "NH", "kb": "KB", "shinhan": "신한", "toss": "토스", "other": "기타"}
+AUTO_SYNC_BROKERS = ("kiwoom",)   # api: true 태그를 달면 화면을 열 때 잔고를 저절로 갱신하는 증권사 (키는 로컬 .env)
 TYPE_LABELS = {"pension_savings": "연금저축", "irp": "IRP", "isa": "ISA", "general": "일반"}
 
 
@@ -62,7 +63,7 @@ def account_view(acct_id: str, a: dict, holdings_accounts: set[str]) -> dict:
             "broker": a.get("broker"), "broker_label": BROKER_LABELS.get(a.get("broker"), a.get("broker") or ""),
             "account_type": a.get("account_type"), "type_label": TYPE_LABELS.get(a.get("account_type"), a.get("account_type") or ""),
             "pocket": POCKET_TO_WEB.get(a.get("pocket"), "cash"), "active": a.get("active", True) is not False,
-            "has_holdings": acct_id in holdings_accounts}
+            "has_holdings": acct_id in holdings_accounts, "auto_sync": bool(a.get("api")) and a.get("broker") in AUTO_SYNC_BROKERS}
 
 
 @router.get("/accounts")
@@ -288,26 +289,101 @@ def kiwoom_status():
     return {"configured": kiwoom.configured()}
 
 
-@router.post("/kiwoom")
-async def kiwoom_import(owner: Literal["me", "partner"] = "me"):
-    """키움 REST API로 일반계좌 잔고를 읽어 확인 표를 만든다(저장 안 함 — 저장은 /commit). 조회 TR만 부른다."""
+def _kiwoom_read() -> tuple[pd.DataFrame, dict, int]:
     from tools import kiwoom
-    import anyio
     try:
-        body = await anyio.to_thread.run_sync(kiwoom.fetch_balance)
+        body = kiwoom.fetch_balance()
+        cash = kiwoom.fetch_deposit()
     except kiwoom.KiwoomError as e:
         raise HTTPException(502, str(e)) from None
     df, meta = kiwoom.holdings_from_balance(body)
-    if df.empty:
-        raise HTTPException(422, "키움 계좌에 보유 종목이 없어요.")
+    if df.empty and not cash:
+        raise HTTPException(422, "키움 계좌에 보유 종목도 예수금도 없어요.")
+    return df, meta, cash
+
+
+def _kiwoom_preview(df: pd.DataFrame, meta: dict, cash: int, matched: str | None, accts: dict, owner: str) -> dict:
+    preview = _preview(df, meta, matched, accts[matched].get("label") if matched else "키움 주식계좌", "api")
+    preview["matched_label"] = accts[matched].get("label") if matched else None
+    preview["suggested"] = {"label": "키움 주식계좌", "owner": owner, "broker": "kiwoom", "account_type": "general"}
+    preview["cash"] = cash
+    return preview
+
+
+@router.post("/kiwoom")
+async def kiwoom_import(owner: Literal["me", "partner"] = "me"):
+    """키움 REST API로 일반계좌 잔고·예수금을 읽어 확인 표를 만든다(저장 안 함 — 저장은 /commit). 조회 TR만 부른다."""
+    import anyio
+    df, meta, cash = await anyio.to_thread.run_sync(_kiwoom_read)
     accts = load_accounts(accounts_path())
     want = WEB_TO_OWNER[owner]
     matched = next((k for k, a in accts.items() if a.get("broker") == "kiwoom" and a.get("account_type") == "general"
                     and a.get("owner") == want and a.get("active", True) is not False), None)
-    preview = _preview(df, meta, matched, accts[matched].get("label") if matched else "키움 주식계좌", "api")
-    preview["matched_label"] = accts[matched].get("label") if matched else None
-    preview["suggested"] = {"label": "키움 주식계좌", "owner": owner, "broker": "kiwoom", "account_type": "general"}
-    return {"groups": [preview]}
+    return {"groups": [_kiwoom_preview(df, meta, cash, matched, accts, owner)]}
+
+
+SYNC_EVERY = dt.timedelta(minutes=10)
+_last_sync: dict[str, dt.datetime] = {}   # 계좌별 마지막 자동 갱신 시각 (서버 메모리 — 다시 띄우면 한 번 더 갱신될 뿐)
+_sync_lock = __import__("threading").Lock()   # 화면이 동시에 두 번 불러도 한 번만 갱신
+
+
+@router.post("/sync")
+def auto_sync(force: bool = False):
+    """자동 갱신 태그(api: true)가 달린 키움 계좌를 지금 잔고로 바꾼다. 화면이 열릴 때 부른다.
+    아는 종목뿐이고 키움 총평가와 합계가 맞으면 바로 저장, 새 종목·차이가 있으면 확인 표를 돌려준다(저장 안 함).
+    키는 하나뿐이라(.env) 태그 달린 키움 계좌 중 첫 번째만 갱신한다."""
+    accts = load_accounts(accounts_path())
+    target = next((k for k, a in accts.items() if a.get("broker") in AUTO_SYNC_BROKERS and a.get("api")
+                   and a.get("active", True) is not False), None)
+    if target is None:
+        return {"status": "none"}
+    from tools import kiwoom
+    if not kiwoom.configured():
+        return {"status": "no_key", "account_id": target}
+    if not _sync_lock.acquire(blocking=False):
+        return {"status": "busy", "account_id": target}
+    try:
+        return _sync(target, accts, force)
+    finally:
+        _sync_lock.release()
+
+
+def _sync(target: str, accts: dict, force: bool) -> dict:
+    now = dt.datetime.now()
+    if not force and target in _last_sync and now - _last_sync[target] < SYNC_EVERY:
+        return {"status": "fresh", "account_id": target, "at": _last_sync[target].isoformat(timespec="minutes")}
+    df, meta, cash = _kiwoom_read()
+    owner = OWNER_TO_WEB.get(accts[target].get("owner"), "me")
+    preview = _kiwoom_preview(df, meta, cash, target, accts, owner)
+    if not preview["rows"] or any(not r["asset_class"] for r in preview["rows"]) or not meta.get("reconciled"):
+        return {"status": "review", "account_id": target, "groups": [preview]}
+    rows = [CommitRow(ticker_name=r["ticker_name"], ticker=r["ticker"], qty=r["qty"], price=r["price"], asset_class=r["asset_class"],
+                      stock_group=r["stock_group"] if r["asset_class"] == "stock" else None, buy_value=r["buy_value"])
+            for r in preview["rows"]]
+    out = commit(CommitInput(account_id=target, source="api", as_of=dt.date.today(), rows=rows,
+                             screen_total=preview["screen_total"], cash=cash or None))
+    _last_sync[target] = now
+    return {"status": "updated", "account_id": target, "label": accts[target].get("label") or target, "total": out["total"],
+            "holdings": out["holdings"], "cash": out["cash"], "at": now.isoformat(timespec="minutes")}
+
+
+class AutoSyncInput(InputModel):
+    auto_sync: bool
+
+
+@router.put("/accounts/{account_id}/auto-sync")
+def set_auto_sync(account_id: str, data: AutoSyncInput):
+    """계좌에 '자동 갱신' 태그(accounts.yaml api: true)를 달거나 뗀다. 지금은 키움만."""
+    rows = load_accounts_list(accounts_path())
+    row = next((r for r in rows if r.get("id") == account_id and r.get("active", True) is not False), None)
+    if row is None:
+        raise HTTPException(404, "등록된 계좌가 아니에요.")
+    if data.auto_sync and row.get("broker") not in AUTO_SYNC_BROKERS:
+        raise HTTPException(422, "자동 갱신은 지금 키움 계좌만 돼요.")
+    row["api"] = data.auto_sync
+    save_accounts(rows, load_pools(accounts_path()), accounts_path())
+    _last_sync.pop(account_id, None)
+    return account_view(account_id, row, set())
 
 
 # ---------- 엑셀 양식 (진짜 엑셀로 입력) ----------
@@ -499,6 +575,7 @@ class CommitInput(InputModel):
     rows: Annotated[list[CommitRow], Field(min_length=1, max_length=1000)]
     screen_total: Annotated[int | None, Field(ge=0, le=10**15)] = None
     accept_diff: bool = False
+    cash: Annotated[int | None, Field(ge=0, le=10**15)] = None   # 예수금(API로 읽은 계좌만). 자산 장부에만 남고 종목 스냅샷에는 안 들어간다
 
 
 @router.post("/commit")
@@ -525,6 +602,9 @@ def commit(data: CommitInput):
         by_class[r.asset_class] = by_class.get(r.asset_class, 0) + r.qty * r.price
     payloads = [{"name": f"{label} · {CLASS_LABELS.get(cls, '혼합·미분류')}", "account": label, "owner": owner, "pocket": pocket,
                  "assetClass": cls, "amount": amount, "as_of": data.as_of.isoformat()} for cls, amount in by_class.items()]
+    if data.cash:
+        payloads.append({"name": f"{label} · 예수금", "account": label, "owner": owner, "pocket": pocket,
+                         "assetClass": "cash", "amount": data.cash, "as_of": data.as_of.isoformat()})
     from backend.account_groups import replace_group
     replace_group(storage.list_assets(), data.account_id, data.source, payloads, storage.now())
     # (1) 엔진용 스냅샷 — 등록·활성·형식·중복 검사는 store가 다시 한다 (SAFE-01/02)
@@ -543,6 +623,6 @@ def commit(data: CommitInput):
         store.replace_holdings(data.account_id, [r.model_dump() for r in data.rows], data.as_of.isoformat())
     # (4) 자산군별 자산 행
     created = storage.replace_account_assets(data.account_id, data.source, payloads)
-    return {"assets": created, "holdings": len(data.rows), "tags_confirmed": tagged, "total": sum(by_class.values()),
+    return {"assets": created, "holdings": len(data.rows), "tags_confirmed": tagged, "total": sum(by_class.values()) + (data.cash or 0), "cash": data.cash or 0,
             "snapshot": str(snapshot_path.relative_to(ROOT)) if snapshot_path.is_relative_to(ROOT) else snapshot_path.name,
             "sheet": store is not None}

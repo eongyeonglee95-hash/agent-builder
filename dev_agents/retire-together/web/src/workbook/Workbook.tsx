@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { cn } from '@/lib/utils'
 import { api } from '../local-data'
 import { AssetSheet } from '../sheet'
-import { UploadFlow } from '../register'
+import { UploadFlow, type Preview } from '../register'
 import { ReadGrid, type Cell } from './ReadGrid'
 import { RebalancePlan } from './RebalancePlan'
 import { useRetirementRows } from './retirement'
@@ -35,6 +35,8 @@ type Pool = { pool_id: string; label: string; mode: string; strategy?: string; t
   last_decision?: { date: string; decision: string; reason: string } | null }
 type Summary = { line: string; dashboard: { net: number; total: number; debt: number; retirement: number; cash: number; property: number; financial: number }; holdings: { accounts: HAccount[]; holdings: HRow[]; total: Totals; live: boolean }; rebalance: { pools: Pool[] } }
 
+let kiwoomSyncStarted = false
+
 export function Workbook({ onClassic }: { onClassic: () => void }) {
   const [sheet, setSheet] = useState<SheetKey>(() => { const h = location.hash.replace(/^#(sheet-)?/, ''); return (SHEETS.find(s => s[0] === h)?.[0]) ?? 'summary' })
   const [owner, setOwner] = useState<Owner>('together')
@@ -56,6 +58,15 @@ export function Workbook({ onClassic }: { onClassic: () => void }) {
   useEffect(() => { history.replaceState(null, '', sheet === 'summary' ? location.pathname : `#sheet-${sheet}`) }, [sheet])
   useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(''), 3500); return () => clearTimeout(t) }, [toast])
   const changed = useCallback((msg: string) => { setToast(msg); setRev(r => r + 1) }, [])
+  const [kiwoomAuto, setKiwoomAuto] = useState<Preview[] | undefined>()
+  useEffect(() => {   // 자동 갱신 태그가 달린 키움 계좌 — 화면을 열 때 한 번 (서버가 10분 안 재호출은 건너뛴다)
+    if (kiwoomSyncStarted) return   // 개발 모드에서 효과가 두 번 돌아도 키움은 한 번만 (호출 한도)
+    kiwoomSyncStarted = true
+    api<{ status: string; label?: string; total?: number; cash?: number; groups?: Preview[] }>('/register/sync', 'POST').then(r => {
+      if (r.status === 'updated') changed(`${r.label}를 키움 잔고로 갱신했어요 · ${(r.total ?? 0).toLocaleString('ko-KR')}원`)
+      else if (r.status === 'review') { setKiwoomAuto(r.groups); setImportMode('kiwoom') }
+    }).catch(e => setToast(`키움 자동 갱신을 못 했어요: ${e instanceof Error ? e.message : ''}`))
+  }, [changed])
   const retire = useRetirementRows({ rev, onChanged: changed, onError: setError })
 
   const summaryRows = useMemo<Cell[][]>(() => {
@@ -145,10 +156,10 @@ export function Workbook({ onClassic }: { onClassic: () => void }) {
       <span className="ml-auto hidden items-center px-4 text-xs text-grey-600 md:flex">{sheet === 'retire' ? '층을 눌러 준비 상태를 확인해요 · 세전·오늘 돈 · 상세 표는 부부 전체 기준' : sheet === 'rebalance' ? '이번 달 납입 칸에 금액을 넣으면 다시 계산해요 · 결정은 기록만 하고 주문은 증권사 앱에서' : sheet === 'summary' ? '숫자는 등록한 잔고와 장부로 계산했어요' : '칸을 눌러 바로 고치고, 엑셀에서 복사해 붙여 넣어도 돼요'}</span>
     </nav>
 
-    <Dialog open={importMode !== null} onOpenChange={o => { if (!o) setImportMode(null) }}>
+    <Dialog open={importMode !== null} onOpenChange={o => { if (!o) { setImportMode(null); setKiwoomAuto(undefined) } }}>
       <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-3xl">
         <DialogHeader><DialogTitle>{importMode === 'capture' ? '증권사 앱 캡처로 등록' : importMode === 'kiwoom' ? '키움에서 잔고 불러오기' : '엑셀·CSV 파일 올리기'}</DialogTitle></DialogHeader>
-        {importMode && <UploadFlow mode={importMode} owner={owner} onSaved={msg => { setImportMode(null); changed(msg) }}/>}
+        {importMode && <UploadFlow mode={importMode} owner={owner} initial={importMode === 'kiwoom' ? kiwoomAuto : undefined} onSaved={msg => { setImportMode(null); setKiwoomAuto(undefined); changed(msg) }}/>}
       </DialogContent>
     </Dialog>
     {retire.dialog}

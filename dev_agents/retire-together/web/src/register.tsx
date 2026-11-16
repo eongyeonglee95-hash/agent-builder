@@ -11,14 +11,14 @@ import { AssetSheet } from './sheet'
 // 계산은 전부 서버(코드)가 한다. 화면은 값을 보여 주고 사용자가 고친 칸을 그대로 보낸다.
 
 type Method = 'choose' | 'capture' | 'manual' | 'file' | 'sheet'
-export type RegisterAccount = { id: string; label: string; owner: 'me' | 'partner'; broker: string | null; broker_label: string; account_type: string | null; type_label: string; pocket: 'retirement' | 'cash'; active: boolean; has_holdings: boolean }
+export type RegisterAccount = { id: string; label: string; owner: 'me' | 'partner'; broker: string | null; broker_label: string; account_type: string | null; type_label: string; pocket: 'retirement' | 'cash'; active: boolean; has_holdings: boolean; auto_sync?: boolean }
 type PreviewRow = { ticker_name: string; ticker: string | null; qty: number | null; price: number | null; value: number | null; buy_value: number | null; asset_class: string | null; stock_group: string | null; role: string | null; confirmed: boolean; candidates: [string, string][] }
 type InsuranceFields = { amount_source?: 'accumulation' | 'total_premiums' | null; insurance_detail?: boolean; monthly_premium?: number | null; total_premiums?: number | null; surrender_value?: number | null; paid_installments?: number | null; total_installments?: number | null }
 type ContractRow = InsuranceFields & { company: string; product_type: string; product_name: string; start_date: string | null; payout_start_date: string | null; amount: number | null; as_of: string | null; layer: number; overlap?: boolean }
 // 연금 표·보험 상세: 계약 한 줄 = 금액 자산 하나. 적립금 우선, 없으면 총납입보험료(출처 표시).
 type ContractEdit = InsuranceFields & { key: number; company: string; product_type: string; product_name: string; amount: string; as_of: string; payout_start_date: string; layer: number; include: boolean; overlap: boolean }
 type ContractGroup = { key: number; label: string; owner: 'me' | 'partner'; rows: ContractEdit[]; screenTotal: number | null; layerLabels: Record<string, string>; saved: string; error: string }
-type Preview = { kind?: 'holdings' | 'contracts'; contracts?: ContractRow[]; layer_labels?: Record<string, string>; owner?: 'me' | 'partner'; account_id: string | null; account_label: string; source: 'capture' | 'file' | 'api'; rows: PreviewRow[]; computed_total: number; screen_total: number | null; verified: boolean; reconciled: boolean; diff: number; value_diff: number | null; errors: string[]; class_labels: Record<string, string>; stock_groups?: Record<string, string>; matched_label?: string | null; suggested?: { label: string; owner: 'me' | 'partner'; broker: string; account_type: string } }
+export type Preview = { kind?: 'holdings' | 'contracts'; contracts?: ContractRow[]; layer_labels?: Record<string, string>; owner?: 'me' | 'partner'; account_id: string | null; account_label: string; source: 'capture' | 'file' | 'api'; cash?: number; rows: PreviewRow[]; computed_total: number; screen_total: number | null; verified: boolean; reconciled: boolean; diff: number; value_diff: number | null; errors: string[]; class_labels: Record<string, string>; stock_groups?: Record<string, string>; matched_label?: string | null; suggested?: { label: string; owner: 'me' | 'partner'; broker: string; account_type: string } }
 type EditRow = { key: number; ticker_name: string; ticker: string; qty: string; price: string; buy: string; asset_class: string; stock_group: string; confirmed: boolean; candidates: [string, string][] }
 const HOLDING_CLASSES = ['stock', 'long_bond', 'mid_bond', 'gold', 'commodity', 'cash', 'mixed']
 // 주식 안의 구분 — 보여 주기만 나눈다. 리밸런싱은 주식 하나로 맞춘다 (2026-10-28 사용자)
@@ -81,7 +81,7 @@ function rowProblems(rows: EditRow[]) {
   ].filter(Boolean)))]
 }
 
-export function UploadFlow({ mode, owner, onSaved }: { mode: 'capture' | 'file' | 'kiwoom'; owner: Owner; onSaved: (message: string) => void }) {
+export function UploadFlow({ mode, owner, onSaved, initial }: { mode: 'capture' | 'file' | 'kiwoom'; owner: Owner; onSaved: (message: string) => void; initial?: Preview[] }) {
   const [accounts, setAccounts] = useState<RegisterAccount[]>([])
   const [files, setFiles] = useState<File[]>([])
   const [busy, setBusy] = useState(false)
@@ -98,6 +98,7 @@ export function UploadFlow({ mode, owner, onSaved }: { mode: 'capture' | 'file' 
   const ownerHint = owner === 'partner' ? 'partner' : 'me'
   const source = isCapture ? '캡처 화면' : isKiwoom ? '키움 잔고' : '파일'
   const [kiwoomReady, setKiwoomReady] = useState<boolean | null>(null)
+  useEffect(() => { if (initial?.length) show(initial) }, [])   // eslint-disable-line react-hooks/exhaustive-deps — 자동 갱신이 이미 읽은 표(다시 부르면 키움 호출 한도에 걸린다)
   useEffect(() => { if (isKiwoom) api<{ configured: boolean }>('/register/kiwoom/status').then(r => setKiwoomReady(r.configured)).catch(() => setKiwoomReady(false)) }, [isKiwoom])
 
   async function loadAccounts() {
@@ -120,12 +121,15 @@ export function UploadFlow({ mode, owner, onSaved }: { mode: 'capture' | 'file' 
     if (isCapture) files.forEach(f => form.append('images', f)); else form.append('file', files[0])
     try {
       const out = isKiwoom ? await api<{ groups: Preview[] }>(`/register/kiwoom?owner=${ownerHint}`, 'POST') : await upload<{ groups: Preview[] }>(isCapture ? '/register/capture' : '/register/file', form)
-      const holdings = out.groups.filter(p => p.kind !== 'contracts'), contractGroups = out.groups.filter(p => p.kind === 'contracts')
-      setGroups(holdings.length ? holdings.map((p, i) => ({ key: i, preview: p, rows: toEdit(p), accountId: p.account_id ?? '', acceptDiff: false, creating: !p.account_id, picking: false, error: '', saved: '' })) : null)
-      setContracts(contractGroups.length ? contractGroups.map((p, i) => ({ key: i, label: p.account_label, owner: p.owner ?? ownerHint, layerLabels: p.layer_labels ?? {}, screenTotal: p.screen_total, saved: '', error: '',
-        rows: (p.contracts ?? []).map((c, k) => ({ ...c, key: k, company: c.company, product_type: c.product_type, product_name: c.product_name, amount: c.amount == null ? '' : String(c.amount), as_of: c.as_of ?? '', payout_start_date: c.payout_start_date ?? '', layer: c.layer === 1 ? 3 : c.layer, include: !c.overlap, overlap: !!c.overlap })) })) : null)
-      setEditing(null)
+      show(out.groups)
     } catch (e) { setError(e instanceof Error ? e.message : '변환하지 못했어요.') } finally { setBusy(false) }
+  }
+  function show(list: Preview[]) {
+    const holdings = list.filter(p => p.kind !== 'contracts'), contractGroups = list.filter(p => p.kind === 'contracts')
+    setGroups(holdings.length ? holdings.map((p, i) => ({ key: i, preview: p, rows: toEdit(p), accountId: p.account_id ?? '', acceptDiff: false, creating: !p.account_id, picking: false, error: '', saved: '' })) : null)
+    setContracts(contractGroups.length ? contractGroups.map((p, i) => ({ key: i, label: p.account_label, owner: p.owner ?? ownerHint, layerLabels: p.layer_labels ?? {}, screenTotal: p.screen_total, saved: '', error: '',
+      rows: (p.contracts ?? []).map((c, k) => ({ ...c, key: k, company: c.company, product_type: c.product_type, product_name: c.product_name, amount: c.amount == null ? '' : String(c.amount), as_of: c.as_of ?? '', payout_start_date: c.payout_start_date ?? '', layer: c.layer === 1 ? 3 : c.layer, include: !c.overlap, overlap: !!c.overlap })) })) : null)
+    setEditing(null)
   }
   const patchGroup = (key: number, patch: Partial<Group> | ((g: Group) => Partial<Group>)) => setGroups(gs => gs && gs.map(g => g.key === key ? { ...g, ...(typeof patch === 'function' ? patch(g) : patch) } : g))
   const editRow = (g: Group, rowKey: number, patch: Partial<EditRow>) => patchGroup(g.key, gg => ({ rows: gg.rows.map(r => r.key === rowKey ? { ...r, ...patch } : r) }))
@@ -165,7 +169,7 @@ export function UploadFlow({ mode, owner, onSaved }: { mode: 'capture' | 'file' 
       if (g.saved) { done.push(g.saved); continue }
       try {
         const out = await api<{ total: number; holdings: number; sheet: boolean }>('/register/commit', 'POST', {
-          account_id: g.accountId, source: g.preview.source, as_of: asOf, screen_total: g.preview.screen_total, accept_diff: g.acceptDiff,
+          account_id: g.accountId, source: g.preview.source, as_of: asOf, screen_total: g.preview.screen_total, accept_diff: g.acceptDiff, cash: g.preview.cash || null,
           rows: g.rows.map(r => ({ ticker_name: r.ticker_name.trim(), ticker: r.ticker.trim().toUpperCase() || null, qty: toInt(r.qty), price: toInt(r.price),
             asset_class: r.asset_class, stock_group: r.asset_class === 'stock' && r.stock_group ? r.stock_group : null, buy_value: toMoney(r.buy) || null })),
         })
@@ -304,6 +308,7 @@ export function UploadFlow({ mode, owner, onSaved }: { mode: 'capture' | 'file' 
             </select>
           : target && <span className="rv-to">{target.broker_label} {target.type_label} · {target.owner === 'me' ? '나' : '배우자'}의 <b>{target.label}</b>에 저장<button type="button" className="rv-link" onClick={() => patchGroup(g.key, { picking: true })}>바꾸기</button></span>}
       </div>
+      {isKiwoom && target && <label className="rv-accept"><input type="checkbox" checked={!!target.auto_sync} onChange={async e => { try { const next = await api<RegisterAccount>(`/register/accounts/${target.id}/auto-sync`, 'PUT', { auto_sync: e.target.checked }); setAccounts(list => list.map(a => a.id === next.id ? { ...a, auto_sync: next.auto_sync } : a)) } catch (err) { patchGroup(g.key, { error: err instanceof Error ? err.message : '자동 갱신 설정을 바꾸지 못했어요.' }) } }}/>자동 갱신 — 화면을 열 때 이 계좌를 키움 잔고로 저절로 바꿔요</label>}
       {g.creating && <NewAccount initial={g.preview.suggested ?? { label: g.preview.account_label, owner: ownerHint, broker: 'other', account_type: 'general' }} onCancel={accounts.length ? () => patchGroup(g.key, { creating: false, picking: true }) : undefined} onCreated={async id => { await loadAccounts(); patchGroup(g.key, { creating: false, picking: false, accountId: id }) }}/>}
       <div className="rv-total n">
         <div className="rv-big">{won(st.total)}</div>
@@ -314,6 +319,7 @@ export function UploadFlow({ mode, owner, onSaved }: { mode: 'capture' | 'file' 
             : st.matches ? <>{source} 합계 <b>{won(g.preview.screen_total!)}</b>와 같아요</>
             : <>{source} 합계 <b>{won(g.preview.screen_total!)}</b>와 {signed(st.diff)}원 달라요. {isCapture ? '이 계좌 캡처가 한 장 빠졌을 수 있어요.' : isKiwoom ? '장중에는 현재가가 바뀌어 조금 다를 수 있어요.' : '수량이나 현재가를 확인해 주세요.'}</>}
         </div>
+        {!!g.preview.cash && <div className="rv-check">예수금 <b>{won(g.preview.cash)}</b>도 이 계좌 현금으로 함께 저장해요</div>}
         {st.verified && !st.matches && <label className="rv-accept"><input type="checkbox" checked={g.acceptDiff} onChange={e => patchGroup(g.key, { acceptDiff: e.target.checked })}/>차이를 확인했고 이대로 등록할게요</label>}
       </div>
       {mixView(g, st.total)}
@@ -338,7 +344,7 @@ export function UploadFlow({ mode, owner, onSaved }: { mode: 'capture' | 'file' 
     {kiwoomReady === false && <p className="form-help">아직 키움 앱키가 없어요. 키움 OpenAPI 포털에서 App Key를 발급받고(이 컴퓨터의 공인 IP 등록 필요) 프로젝트 폴더의 .env 파일에 KIWOOM_APPKEY, KIWOOM_SECRETKEY를 넣어 주세요.</p>}
     {error && <div className="form-error" role="alert"><Info size={16}/>{error}</div>}
     <button type="button" className="primary-button full-width" disabled={busy || kiwoomReady === false} onClick={convert}>{busy ? '키움에서 불러오는 중…' : '키움에서 잔고 불러오기'}<ArrowRight size={16}/></button>
-    <p className="form-help">앱키는 이 컴퓨터의 .env에만 있고 화면이나 시트에 쓰지 않아요. 예수금(현금)은 불러오지 않아요 — 종목 잔고만이에요.</p>
+    <p className="form-help">앱키는 이 컴퓨터의 .env에만 있고 화면이나 시트에 쓰지 않아요. 종목 잔고와 예수금(현금)을 함께 불러와요.</p>
   </div>
 
   return <div className="register-upload">
