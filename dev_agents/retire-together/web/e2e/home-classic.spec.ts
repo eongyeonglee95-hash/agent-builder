@@ -52,7 +52,8 @@ test('기본 목업 구조는 미등록에도 유지되고 사진형은 별도 �
   await page.getByRole('button', { name: '자산 등록', exact: true }).click()
   await expect(page.getByRole('dialog')).toBeVisible()
   await page.keyboard.press('Escape')
-  await page.getByRole('button', { name: '예시 보기', exact: true }).click()
+  await page.getByRole('button', { name: '마이페이지', exact: true }).click()
+  await page.getByRole('dialog', { name: '마이페이지' }).getByRole('button', { name: '예시 보기', exact: true }).click()
   for (const width of [1440, 1024, 390, 360]) {
     await page.setViewportSize({ width, height: 1000 })
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)

@@ -134,3 +134,4 @@ main.ux-home .check-count { font-size: 15px; }
 .nav-sheet { padding: 0 11px; }
 .nav-sub { padding-left: 24px; }
 @media (max-width: 1200px) and (min-width: 901px) { .nav-sub small:not(.nav-badge) { display: none; } .sidebar .nav-sub .nav-badge { padding: 1px 5px; font-size: 12px; } }
+main.ux-home .stat-note { word-break: keep-all; }   /* 총자산 설명의 금액이 중간에서 끊기지 않게 */

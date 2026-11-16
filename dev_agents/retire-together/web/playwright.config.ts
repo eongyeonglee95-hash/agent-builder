@@ -4,6 +4,7 @@ const testOrigin = `http://127.0.0.1:${process.env.RETIRE_E2E_PORT ?? '8765'}`
 
 export default defineConfig({
   testDir: './e2e',
+  testIgnore: ['shared-household.spec.ts'],   // 전용 임시 서버가 필요 — share.playwright.config.ts로 돌린다
   outputDir: process.env.RETIRE_E2E_PORT ? `test-results-${process.env.RETIRE_E2E_PORT}` : 'test-results',
   fullyParallel: false,
   workers: 1,

@@ -25,7 +25,7 @@ export function AnalysisHero({ data, hidden, onEdit, onAdd, onDetails }: Props) 
           <span className="property-hero-candidate-value"><span>{latest ? `${trackBasis[latest.price_basis]} 격차` : '계획 매수가'}</span><strong>{hidden ? '••••' : latest ? trackSigned(latest.gap) : c.price == null ? '미입력' : money(c.price)}</strong></span>
         </button>
       })}</div>
-      <button type="button" className="property-hero-add" disabled={data.plan.candidates.length >= 20} onClick={onAdd}><Plus size={14}/>관심 단지 추가</button>
+      <button type="button" className="property-hero-add" disabled={data.plan.candidates.length >= 50} onClick={onAdd}><Plus size={14}/>관심 단지 추가</button>
     </aside><CandidateAnalysis key={candidate.id} candidate={candidate} entries={data.track[candidate.id] ?? []} budget={data.comparisons.find(b => b.id === candidate.id)} hidden={hidden} onDetails={() => onDetails(candidate.id)}/></div>
       : <div className="property-hero-start"><BookOpen size={28}/><div><h3>마음에 둔 단지를 등록해 주세요.</h3><p>확인한 가격을 한 번씩 남기면, 격차의 변화와 그 이유를 여기서 볼 수 있어요.</p><button className="property-move-button" onClick={onAdd}><Plus size={14}/>관심 단지 추가</button></div></div>}
   </section>
