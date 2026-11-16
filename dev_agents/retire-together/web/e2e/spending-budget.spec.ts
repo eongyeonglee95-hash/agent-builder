@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { clearAssets } from './helpers'
 
 test.beforeEach(async ({ request }) => {
   const family = await (await request.get('/api/family')).json()
@@ -102,6 +103,7 @@ test('생활비 계산: 개인 보기에서도 부부 목표·모바일 편집�
 })
 
 test('연금 미입력: 생활비를 적용하면 상단에 저장 목표가 즉시 나타나고 다시 열어도 유지된다', async ({ page, request }) => {
+  await clearAssets(request)   // 앞 테스트가 남긴 연금 계좌가 있으면 '연금 미입력'이 아니다
   const { plan } = await (await request.get('/api/retirement')).json()
   expect((await request.put('/api/retirement/plan', { data: { ...plan, me: {}, partner: {}, monthly_need: null } })).ok()).toBe(true)
   await page.addInitScript(() => localStorage.setItem('retire.pensionPrompt.later', String(Date.now())))

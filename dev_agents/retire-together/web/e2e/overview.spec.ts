@@ -14,7 +14,9 @@ test('자산 요약: 핵심 금액·상태별 행동과 작은 화면', async ({
       rebalance: { pools: [] },
     } })
   })
-  await page.goto('/')
+  // 2026-11-07부터 첫 화면은 메인 대시보드 — 이 요약은 '표로 보기'(#sheet-summary) 안에 있다.
+  await page.addInitScript(() => localStorage.setItem('retire.pensionPrompt.later', String(Date.now())))
+  await page.goto('/#sheet-summary')
   const overview = page.getByRole('region', { name: '우리 자산 한눈에' })
   await expect(overview).toContainText('730,000,000')
   for (const width of [1440, 390, 360]) {
@@ -29,12 +31,14 @@ test('자산 요약: 핵심 금액·상태별 행동과 작은 화면', async ({
   await expect(page.getByRole('dialog')).toBeVisible()
   await page.keyboard.press('Escape')
   stale = true
+  await page.goto('/#sheet-summary')
   await page.reload()
   await expect(overview).toContainText('1개 계좌의 잔고')
   await overview.getByRole('button', { name: '보유종목 확인' }).click()
   await expect(page.getByRole('tab', { name: '보유종목' })).toHaveAttribute('aria-selected', 'true')
   fail = true
-  await page.goto('/')
+  await page.goto('/#sheet-summary')
+  await page.reload()
   await expect(page.getByRole('button', { name: '다시 불러오기', exact: true })).toBeVisible()
   await expect(overview).toHaveCount(0)
   fail = false

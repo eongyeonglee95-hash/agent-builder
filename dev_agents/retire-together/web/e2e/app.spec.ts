@@ -352,13 +352,13 @@ test('엑셀처럼: 복사한 표를 붙여 넣고 키보드로 고쳐 저장하
   await expect(dialog.locator('.xl-save')).toBeDisabled()   // 계좌가 비어 빨간 칸
   // 첫 줄 계좌: 새 계좌 만들기
   await grid.locator('.xl-cell').nth(start).click()
-  await grid.getByLabel('계좌').selectOption('__new__')
+  await grid.getByLabel('계좌', { exact: true }).selectOption('__new__')
   await dialog.locator('.new-account [name="label"]').fill('엑셀 연금저축')
   await dialog.getByRole('button', { name: '계좌 추가' }).click()
   await expect(grid.locator('.xl-cell').nth(start)).toHaveText('엑셀 연금저축')
   // 둘째 줄 계좌: 고르는 칸
   await grid.locator('.xl-cell').nth(start + width).click()
-  await grid.getByLabel('계좌').selectOption({ label: '엑셀 연금저축' })
+  await grid.getByLabel('계좌', { exact: true }).selectOption({ label: '엑셀 연금저축' })
   // 키보드로 수량 고치기: 둘째 줄 보유수량 칸으로 옮겨 숫자를 치고 Enter
   await grid.locator('.xl-cell').nth(start + width + 3).click()
   await page.keyboard.type('600')
@@ -377,7 +377,8 @@ test('엑셀처럼: 복사한 표를 붙여 넣고 키보드로 고쳐 저장하
   const assets = inline.getByRole('grid', { name: '자산 표' })
   await expect(assets).toBeVisible()
   await expect(assets.locator('.xl-cell').first()).not.toHaveText('')
-  const aw = await assets.locator('.xl-head').count()
+  const heads = await assets.locator('.xl-head').allTextContents()
+  const aw = heads.length
   const texts = await assets.locator('.xl-cell').allTextContents()
   const firstEmpty = texts.findIndex((t, i) => i % aw === 0 && t === '' && texts.slice(i, i + aw).every(x => x === ''))   // 첫 빈 줄
   const base = firstEmpty
@@ -386,9 +387,9 @@ test('엑셀처럼: 복사한 표를 붙여 넣고 키보드로 고쳐 저장하
   await page.keyboard.press('Tab')
   await page.keyboard.type('공동명의 아파트')
   await page.keyboard.press('Enter')
-  await assets.locator('.xl-cell').nth(base + 4).click()
+  await assets.locator('.xl-cell').nth(base + heads.indexOf('종류')).click()
   await assets.getByLabel('종류').selectOption('property')
-  await assets.locator('.xl-cell').nth(base + 6).click()
+  await assets.locator('.xl-cell').nth(base + heads.indexOf('금액')).click()
   await page.keyboard.type('900000000')
   await page.keyboard.press('Enter')
   await inline.locator('.xl-save').click()
@@ -465,9 +466,9 @@ test('은퇴: 첫 화면 팝업·연금 카드에서 입력하면 저장하고 �
   await expect(page.getByRole('heading', { name: '연금', exact: true })).toBeVisible()
   await page.getByRole('button', { name: '3층 개인연금 살펴보기', exact: true }).click()
   await page.getByRole('button', { name: '개인연금 납입·수령 설정', exact: true }).click()
-  const again = page.getByRole('dialog', { name: '개인연금 입력', exact: true })
-  await again.getByRole('spinbutton', { name: '나 연금저축 1년 납입액', exact: true }).fill('600')
-  await again.getByRole('button', { name: '저장하고 다시 계산' }).click()
+  const again = page.getByRole('dialog', { name: '개인연금 미래 납입 계획', exact: true })
+  await again.getByRole('spinbutton', { name: '매년 납입할 금액', exact: true }).fill('600')
+  await again.getByRole('button', { name: '나 계획 저장' }).click()
   await expect(again).not.toBeVisible()
   const saved = await (await request.get('/api/retirement')).json()
   expect(saved.plan.me.national_monthly).toBe(1_000_000)

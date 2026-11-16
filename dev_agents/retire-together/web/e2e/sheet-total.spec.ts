@@ -1,5 +1,8 @@
 import { expect, test, type APIRequestContext } from '@playwright/test'
 
+// 연금이 비어 있으면 워크북에 연금 입력 팝업이 뜬다(retirement.tsx). 이 파일은 표만 보므로 '나중에'를 눌러 둔 상태로 시작한다.
+test.beforeEach(async ({ page }) => { await page.addInitScript(() => localStorage.setItem('retire.pensionPrompt.later', String(Date.now()))) })
+
 async function addAsset(request: APIRequestContext, name: string, pocket: string, amount: number) {
   const response = await request.post('/api/assets', { data: {
     request_id: crypto.randomUUID(), name, account: name + ' 계좌', owner: 'me',
