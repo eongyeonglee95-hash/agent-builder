@@ -51,7 +51,8 @@ def client(tmp_path, monkeypatch):
 
 def test_summary_line_has_net_returns_and_rebalance_verdict(client):
     d = client.get("/api/workbook/summary").json()
-    assert "순자산 300만원" in d["line"] and "불어난 돈 50만원 +20.00%" in d["line"]
+    assert "순자산 300만원" in d["line"] and "연금 계좌 300만원(넣은 돈 250만원, 불어난 돈 50만원 +20.00%)" in d["line"]
+    assert "주식 계좌" not in d["line"]   # 연금 계좌만 있으면 주식 계좌 줄은 없다
     assert "리밸런싱 필요: 테스트 연금 주식 +70.0%p" in d["line"]
     assert d["rebalance"]["pools"][0]["triggered"] is True
 

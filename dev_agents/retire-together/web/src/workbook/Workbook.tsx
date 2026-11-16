@@ -27,7 +27,7 @@ const CLASS: Record<string, [string, string]> = { stock: ['주식', 'var(--cls-s
 const OWNER_LABEL: Record<string, string> = { me: '나', partner: '배우자', joint: '공동' }
 
 type Totals = { value: number; buy_value: number | null; total_return: number | null; total_rate: number | null; today_return: number | null; today_rate: number | null; count: number; cost_known: number }
-type HAccount = Totals & { id: string; label: string; owner: string; as_of: string | null; stale: boolean; age_days: number | null }
+type HAccount = Totals & { id: string; label: string; owner: string; pocket: string; as_of: string | null; stale: boolean; age_days: number | null }
 type HRow = { account_id: string; asset_class: string | null; value: number }
 type Pool = { pool_id: string; label: string; mode: string; strategy?: string; threshold_pp?: number; total_value?: number; new_cash?: number; new_cash_account?: string; accounts: { id: string; label: string }[]; as_of: string | null; error?: string; headline?: string; triggered?: boolean; blocked_reason?: string | null; notes?: string[]
   classes?: { asset_class: string; label: string; target: number; current: number; deviation_pp: number; value: number; over_threshold: boolean }[]
@@ -83,21 +83,36 @@ export function Workbook({ onClassic }: { onClassic: () => void }) {
     rows.push([{ v: '현금 주머니' }, { v: d.cash, fmt: 'won' }, { v: pctOf(d.cash, d.financial), fmt: 'pct' }, { span: 5, bar: { pct: pctOf(d.cash, d.financial), color: 'var(--cls-cash)' } }])
     rows.push([{ v: '부동산' }, { v: d.property, fmt: 'won' }, {}, { span: 5 }])
     rows.push([{ span: 8 }])
-    rows.push([{ v: `계좌별 종목 잔고${h.live ? ' · 현재가 반영' : ' · 등록한 잔고 기준'}`, section: true, span: 8 }])
-    rows.push(['계좌', '소유자', '기준일', '평가금액', '넣은 돈', '불어난 돈', '수익률', h.live ? '오늘' : '비중'].map(v => ({ v, head: true })))
-    for (const a of h.accounts) rows.push([{ v: a.label, tone: a.stale ? 'muted' : undefined }, { v: OWNER_LABEL[a.owner] ?? a.owner }, { v: a.as_of ? `${a.as_of}${a.stale ? ` (${a.age_days}일 전)` : ''}` : '—', tone: a.stale ? 'muted' : undefined },
-      { v: a.value, fmt: 'won' }, { v: a.buy_value, fmt: 'won' }, { v: a.total_return, fmt: 'signed', tone: 'auto' }, { v: a.total_rate, fmt: 'pct', tone: 'auto' },
-      h.live ? { v: a.today_return, fmt: 'signed', tone: 'auto' } : { v: pctOf(a.value, t.value), fmt: 'pct' }])
-    if (h.accounts.length) rows.push([{ v: '합계', bold: true }, {}, {}, { v: t.value, fmt: 'won', bold: true }, { v: t.buy_value, fmt: 'won', bold: true }, { v: t.total_return, fmt: 'signed', tone: 'auto', bold: true }, { v: t.total_rate, fmt: 'pct', tone: 'auto', bold: true }, h.live ? { v: t.today_return, fmt: 'signed', tone: 'auto', bold: true } : { v: 100, fmt: 'pct' }])
-    else rows.push([{ v: '등록한 종목 잔고가 없어요. 위 "가져오기"에서 사진이나 엑셀로 등록하세요.', span: 8, tone: 'muted' }])
-    if (t.count && t.cost_known < t.count) rows.push([{ v: `넣은 돈·불어난 돈은 매입금액을 아는 ${t.cost_known}/${t.count}종목 기준이에요.`, span: 8, tone: 'muted' }])
-    rows.push([{ span: 8 }])
-    rows.push([{ v: '자산군 비중 (종목 잔고)', section: true, span: 8 }])
-    rows.push([{ v: '자산군', head: true }, { v: '금액(원)', head: true }, { v: '비중', head: true }, { v: '', head: true, span: 5 }])
-    const byCls = new Map<string, number>()
-    h.holdings.forEach(r => byCls.set(r.asset_class ?? 'mixed', (byCls.get(r.asset_class ?? 'mixed') ?? 0) + r.value))
-    ;[...byCls.entries()].sort((a, b) => b[1] - a[1]).forEach(([k, v]) => rows.push([{ v: CLASS[k]?.[0] ?? k }, { v, fmt: 'won' }, { v: pctOf(v, t.value), fmt: 'pct' }, { span: 5, bar: { pct: pctOf(v, t.value), color: CLASS[k]?.[1] ?? 'var(--grey-300)' } }]))
-    rows.push([{ span: 8 }])
+    // 연금 계좌와 주식 계좌(현금 주머니)는 섞지 않는다 — 연금 안의 주식형 ETF도 '연금'이다 (2026-11-16 사용자)
+    const groups: [string, string, HAccount[]][] = [['연금 계좌', 'retirement', h.accounts.filter(a => a.pocket === 'retirement')], ['주식 계좌', 'cash', h.accounts.filter(a => a.pocket !== 'retirement')]]
+    const sub = (list: HAccount[]) => {
+      const value = list.reduce((n, a) => n + a.value, 0), known = list.every(a => a.buy_value != null)
+      const buy = known ? list.reduce((n, a) => n + (a.buy_value ?? 0), 0) : null, ret = buy != null ? value - buy : null
+      return { value, buy, ret, rate: buy ? (ret! / buy) * 100 : null, today: list.some(a => a.today_return != null) ? list.reduce((n, a) => n + (a.today_return ?? 0), 0) : null }
+    }
+    if (!h.accounts.length) {
+      rows.push([{ v: '계좌별 종목 잔고', section: true, span: 8 }])
+      rows.push([{ v: '등록한 종목 잔고가 없어요. 위 "가져오기"에서 사진이나 엑셀로 등록하세요.', span: 8, tone: 'muted' }])
+    }
+    for (const [title, pocket, list] of groups) {
+      if (!list.length) continue
+      const st = sub(list)
+      rows.push([{ v: `${title}${h.live ? ' · 현재가 반영' : ' · 등록한 잔고 기준'}`, section: true, span: 8 }])
+      rows.push(['계좌', '소유자', '기준일', '평가금액', '넣은 돈', '불어난 돈', '수익률', h.live ? '오늘' : '비중'].map(v => ({ v, head: true })))
+      for (const a of list) rows.push([{ v: a.label, tone: a.stale ? 'muted' : undefined }, { v: OWNER_LABEL[a.owner] ?? a.owner }, { v: a.as_of ? `${a.as_of}${a.stale ? ` (${a.age_days}일 전)` : ''}` : '—', tone: a.stale ? 'muted' : undefined },
+        { v: a.value, fmt: 'won' }, { v: a.buy_value, fmt: 'won' }, { v: a.total_return, fmt: 'signed', tone: 'auto' }, { v: a.total_rate, fmt: 'pct', tone: 'auto' },
+        h.live ? { v: a.today_return, fmt: 'signed', tone: 'auto' } : { v: pctOf(a.value, st.value), fmt: 'pct' }])
+      if (list.length > 1) rows.push([{ v: '합계', bold: true }, {}, {}, { v: st.value, fmt: 'won', bold: true }, { v: st.buy, fmt: 'won', bold: true }, { v: st.ret, fmt: 'signed', tone: 'auto', bold: true }, { v: st.rate, fmt: 'pct', tone: 'auto', bold: true },
+        h.live ? { v: st.today, fmt: 'signed', tone: 'auto', bold: true } : { v: 100, fmt: 'pct', bold: true }])
+      if (pocket === 'retirement') {
+        const ids = new Set(list.map(a => a.id)), byCls = new Map<string, number>()
+        h.holdings.filter(r => ids.has(r.account_id)).forEach(r => byCls.set(r.asset_class ?? 'mixed', (byCls.get(r.asset_class ?? 'mixed') ?? 0) + r.value))
+        rows.push([{ v: '연금 계좌 안의 자산군', head: true }, { v: '금액(원)', head: true }, { v: '비중', head: true }, { v: '', head: true, span: 5 }])
+        ;[...byCls.entries()].sort((a, b) => b[1] - a[1]).forEach(([k, v]) => rows.push([{ v: CLASS[k]?.[0] ?? k }, { v, fmt: 'won' }, { v: pctOf(v, st.value), fmt: 'pct' }, { span: 5, bar: { pct: pctOf(v, st.value), color: CLASS[k]?.[1] ?? 'var(--grey-300)' } }]))
+      }
+      rows.push([{ span: 8 }])
+    }
+    if (t.count && t.cost_known < t.count) rows.push([{ v: `넣은 돈·불어난 돈은 매입금액을 아는 ${t.cost_known}/${t.count}종목 기준이에요.`, span: 8, tone: 'muted' }], [{ span: 8 }])
     rows.push([{ v: '리밸런싱 판정', section: true, span: 8 }])
     rows.push([{ v: '묶음', head: true }, { v: '전략', head: true, span: 2 }, { v: '판정', head: true }, { v: '가장 큰 편차', head: true, span: 2 }, { v: '', head: true, span: 2 }])
     for (const p of data.rebalance.pools) {
