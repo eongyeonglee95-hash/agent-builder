@@ -304,6 +304,8 @@ def _kiwoom_read() -> tuple[pd.DataFrame, dict, int]:
 
 def _kiwoom_preview(df: pd.DataFrame, meta: dict, cash: int, matched: str | None, accts: dict, owner: str) -> dict:
     preview = _preview(df, meta, matched, accts[matched].get("label") if matched else "키움 주식계좌", "api")
+    for r in preview["rows"]:   # 키움 일반계좌는 전부 주식 (2026-11-16 사용자) — 처음 보는 종목도 묻지 않는다
+        r["asset_class"] = r["asset_class"] or "stock"
     preview["matched_label"] = accts[matched].get("label") if matched else None
     preview["suggested"] = {"label": "키움 주식계좌", "owner": owner, "broker": "kiwoom", "account_type": "general"}
     preview["cash"] = cash
