@@ -90,7 +90,7 @@ HTML 목업: `docs/assets/mockup-rebalancing.html` (2026-10-26). 리밸런싱 �
    - 리밸런싱: 매도·매수로 목표 비율을 맞춘다
    - 매수만: 매도 없이 납입금으로 부족한 자산군만 기계적으로 산다
 3. 리밸런싱 화면 상단에 풀 선택 드롭다운. 화면은 선택한 풀 기준으로 그린다
-현재 저장은 `rules/accounts.yaml`의 `pool` / `pools`와 기존 Streamlit 설정 화면이다. 전환 시 검증된 API와 DB로 연결하고 기존 계좌·풀·운용 모드를 이관한다.
+현재 저장은 `rules/accounts.yaml`의 `pool` / `pools`이고 웹 설정 화면은 아직 없다(BACKLOG RB-SETTINGS). 전환 시 검증된 API와 DB로 연결하고 기존 계좌·풀·운용 모드를 이관한다.
 
 ## 구현 순서
 - 기반: 합성 테스트·입력/저장/제약 검증 보강.

@@ -79,7 +79,7 @@
 ## 개발 방향
 - 목적: 사용자 본인이 Claude로 개발하며 AI Agent 역량 강화
 - 화면 기준은 `DESIGN_SYSTEM.md`, 구조는 위 "화면 방향".
-- 목표 스택: React·TypeScript·Vite, Python 3.12·uv·FastAPI·Pydantic, 로컬 SQLite. Streamlit은 정리 예정(2026-11-16). LLM 실행 엔진은 Claude, 도구/파일 접근 경계를 검증한다. 할 일의 원본은 `BACKLOG.md`(2026-11-16). Shrimp(2026-11-07 설치)는 참고용, 사용법은 LOCAL_DEVELOPMENT의 Shrimp 절.
+- 목표 스택: React·TypeScript·Vite, Python 3.12·uv·FastAPI·Pydantic, 로컬 SQLite. Streamlit은 2026-11-16 삭제. LLM 실행 엔진은 Claude, 도구/파일 접근 경계를 검증한다. 할 일의 원본은 `BACKLOG.md`(2026-11-16). Shrimp(2026-11-07 설치)는 참고용, 사용법은 LOCAL_DEVELOPMENT의 Shrimp 절.
 - 첫 Agent: Pension Rebalancing Agent (`AGENT_DESIGN.md` §1)
 
 ## 미결

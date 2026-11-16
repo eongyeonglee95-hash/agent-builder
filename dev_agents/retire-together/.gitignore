@@ -8,7 +8,6 @@ data/*
 !data/.gitkeep
 !data/fixtures/
 .DS_Store
-.streamlit/secrets.toml
 .taskmaster/
 
 # Shrimp MCP 설치본 (작업 데이터는 기존 data/local/ 제외 규칙 사용)
