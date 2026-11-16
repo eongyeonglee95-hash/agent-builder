@@ -18,7 +18,7 @@ type ContractRow = InsuranceFields & { company: string; product_type: string; pr
 // 연금 표·보험 상세: 계약 한 줄 = 금액 자산 하나. 적립금 우선, 없으면 총납입보험료(출처 표시).
 type ContractEdit = InsuranceFields & { key: number; company: string; product_type: string; product_name: string; amount: string; as_of: string; payout_start_date: string; layer: number; include: boolean; overlap: boolean }
 type ContractGroup = { key: number; label: string; owner: 'me' | 'partner'; rows: ContractEdit[]; screenTotal: number | null; layerLabels: Record<string, string>; saved: string; error: string }
-type Preview = { kind?: 'holdings' | 'contracts'; contracts?: ContractRow[]; layer_labels?: Record<string, string>; owner?: 'me' | 'partner'; account_id: string | null; account_label: string; source: 'capture' | 'file'; rows: PreviewRow[]; computed_total: number; screen_total: number | null; verified: boolean; reconciled: boolean; diff: number; value_diff: number | null; errors: string[]; class_labels: Record<string, string>; stock_groups?: Record<string, string>; matched_label?: string | null; suggested?: { label: string; owner: 'me' | 'partner'; broker: string; account_type: string } }
+type Preview = { kind?: 'holdings' | 'contracts'; contracts?: ContractRow[]; layer_labels?: Record<string, string>; owner?: 'me' | 'partner'; account_id: string | null; account_label: string; source: 'capture' | 'file' | 'api'; rows: PreviewRow[]; computed_total: number; screen_total: number | null; verified: boolean; reconciled: boolean; diff: number; value_diff: number | null; errors: string[]; class_labels: Record<string, string>; stock_groups?: Record<string, string>; matched_label?: string | null; suggested?: { label: string; owner: 'me' | 'partner'; broker: string; account_type: string } }
 type EditRow = { key: number; ticker_name: string; ticker: string; qty: string; price: string; buy: string; asset_class: string; stock_group: string; confirmed: boolean; candidates: [string, string][] }
 const HOLDING_CLASSES = ['stock', 'long_bond', 'mid_bond', 'gold', 'commodity', 'cash', 'mixed']
 // 주식 안의 구분 — 보여 주기만 나눈다. 리밸런싱은 주식 하나로 맞춘다 (2026-10-28 사용자)
@@ -81,7 +81,7 @@ function rowProblems(rows: EditRow[]) {
   ].filter(Boolean)))]
 }
 
-export function UploadFlow({ mode, owner, onSaved }: { mode: 'capture' | 'file'; owner: Owner; onSaved: (message: string) => void }) {
+export function UploadFlow({ mode, owner, onSaved }: { mode: 'capture' | 'file' | 'kiwoom'; owner: Owner; onSaved: (message: string) => void }) {
   const [accounts, setAccounts] = useState<RegisterAccount[]>([])
   const [files, setFiles] = useState<File[]>([])
   const [busy, setBusy] = useState(false)
@@ -94,9 +94,11 @@ export function UploadFlow({ mode, owner, onSaved }: { mode: 'capture' | 'file';
   const [editing, setEditing] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const today = new Date().toLocaleDateString('en-CA')
-  const isCapture = mode === 'capture'
+  const isCapture = mode === 'capture', isKiwoom = mode === 'kiwoom'
   const ownerHint = owner === 'partner' ? 'partner' : 'me'
-  const source = isCapture ? '캡처 화면' : '파일'
+  const source = isCapture ? '캡처 화면' : isKiwoom ? '키움 잔고' : '파일'
+  const [kiwoomReady, setKiwoomReady] = useState<boolean | null>(null)
+  useEffect(() => { if (isKiwoom) api<{ configured: boolean }>('/register/kiwoom/status').then(r => setKiwoomReady(r.configured)).catch(() => setKiwoomReady(false)) }, [isKiwoom])
 
   async function loadAccounts() {
     try { setAccounts(await api<RegisterAccount[]>('/register/accounts')) } catch { /* 목록이 없어도 등록은 진행 — 확인 화면에서 새 계좌를 만든다 */ }
@@ -111,13 +113,13 @@ export function UploadFlow({ mode, owner, onSaved }: { mode: 'capture' | 'file';
     setFiles(isCapture ? [...files, ...next].slice(0, 12) : [next[0]])
   }
   async function convert() {
-    if (!files.length) { setError(isCapture ? '캡처를 한 장 이상 올려 주세요.' : '파일을 올려 주세요.'); return }
+    if (!isKiwoom && !files.length) { setError(isCapture ? '캡처를 한 장 이상 올려 주세요.' : '파일을 올려 주세요.'); return }
     setBusy(true); setError('')
     const form = new FormData()
     form.append('owner', ownerHint)
     if (isCapture) files.forEach(f => form.append('images', f)); else form.append('file', files[0])
     try {
-      const out = await upload<{ groups: Preview[] }>(isCapture ? '/register/capture' : '/register/file', form)
+      const out = isKiwoom ? await api<{ groups: Preview[] }>(`/register/kiwoom?owner=${ownerHint}`, 'POST') : await upload<{ groups: Preview[] }>(isCapture ? '/register/capture' : '/register/file', form)
       const holdings = out.groups.filter(p => p.kind !== 'contracts'), contractGroups = out.groups.filter(p => p.kind === 'contracts')
       setGroups(holdings.length ? holdings.map((p, i) => ({ key: i, preview: p, rows: toEdit(p), accountId: p.account_id ?? '', acceptDiff: false, creating: !p.account_id, picking: false, error: '', saved: '' })) : null)
       setContracts(contractGroups.length ? contractGroups.map((p, i) => ({ key: i, label: p.account_label, owner: p.owner ?? ownerHint, layerLabels: p.layer_labels ?? {}, screenTotal: p.screen_total, saved: '', error: '',
@@ -310,7 +312,7 @@ export function UploadFlow({ mode, owner, onSaved }: { mode: 'capture' | 'file';
           {st.hasBuy && <>매입 {won(st.buy)} · </>}
           {!st.verified ? `${source} 합계를 읽지 못해 대조하지 않았어요. 숫자를 한 번 봐 주세요.`
             : st.matches ? <>{source} 합계 <b>{won(g.preview.screen_total!)}</b>와 같아요</>
-            : <>{source} 합계 <b>{won(g.preview.screen_total!)}</b>와 {signed(st.diff)}원 달라요. {isCapture ? '이 계좌 캡처가 한 장 빠졌을 수 있어요.' : '수량이나 현재가를 확인해 주세요.'}</>}
+            : <>{source} 합계 <b>{won(g.preview.screen_total!)}</b>와 {signed(st.diff)}원 달라요. {isCapture ? '이 계좌 캡처가 한 장 빠졌을 수 있어요.' : isKiwoom ? '장중에는 현재가가 바뀌어 조금 다를 수 있어요.' : '수량이나 현재가를 확인해 주세요.'}</>}
         </div>
         {st.verified && !st.matches && <label className="rv-accept"><input type="checkbox" checked={g.acceptDiff} onChange={e => patchGroup(g.key, { acceptDiff: e.target.checked })}/>차이를 확인했고 이대로 등록할게요</label>}
       </div>
@@ -327,9 +329,17 @@ export function UploadFlow({ mode, owner, onSaved }: { mode: 'capture' | 'file';
     </section> })}
     <div className="rv-cta">
       <button type="submit" className="rv-save" disabled={busy || !canSave}>{busy ? '등록하는 중…' : ctaLabel}</button>
-      <button type="button" className="rv-link" disabled={busy} onClick={() => { setGroups(null); setContracts(null) }}>다른 {isCapture ? '캡처' : '파일'} 올리기</button>
+      <button type="button" className="rv-link" disabled={busy} onClick={() => { setGroups(null); setContracts(null) }}>{isKiwoom ? '처음으로' : `다른 ${isCapture ? '캡처' : '파일'} 올리기`}</button>
     </div>
   </form></>
+
+  if (isKiwoom) return <div className="register-upload">
+    <p className="form-intro">키움 일반(주식) 계좌의 지금 잔고를 키움 API로 불러와요.<br/>조회만 하고 주문은 하지 않아요. 불러온 표를 확인한 뒤 등록해요.</p>
+    {kiwoomReady === false && <p className="form-help">아직 키움 앱키가 없어요. 키움 OpenAPI 포털에서 App Key를 발급받고(이 컴퓨터의 공인 IP 등록 필요) 프로젝트 폴더의 .env 파일에 KIWOOM_APPKEY, KIWOOM_SECRETKEY를 넣어 주세요.</p>}
+    {error && <div className="form-error" role="alert"><Info size={16}/>{error}</div>}
+    <button type="button" className="primary-button full-width" disabled={busy || kiwoomReady === false} onClick={convert}>{busy ? '키움에서 불러오는 중…' : '키움에서 잔고 불러오기'}<ArrowRight size={16}/></button>
+    <p className="form-help">앱키는 이 컴퓨터의 .env에만 있고 화면이나 시트에 쓰지 않아요. 예수금(현금)은 불러오지 않아요 — 종목 잔고만이에요.</p>
+  </div>
 
   return <div className="register-upload">
     <p className="form-intro">{isCapture ? <>증권사 앱의 잔고 화면이나 금감원 통합연금포털 '내 연금조회' 화면을 캡처해서 올려요.<br/>계좌가 여러 개여도 한 번에 — 화면 위의 계좌 이름으로 나눠요. 연금보험처럼 종목이 없는 계약도 포털 표면 돼요.</> : <>CSV나 엑셀을 올려요.<br/>종목명·수량·현재가(또는 평가금액) 열만 있으면 돼요.</>}</p>

@@ -101,7 +101,7 @@ export function AssetSheet({ owner, initialTab = 'holdings', onSaved, embedded =
         const visible = list.filter(a => owner === 'together' || a.owner === owner || a.owner === 'joint')
         const rs: Row[] = visible.map(a => ({ _key: `a${++seq}`, name: String(a.name ?? ''), account: String(a.account ?? ''), owner: String(a.owner ?? 'me'), share_percent: a.share_percent ? String(a.share_percent) : '', pocket: String(a.pocket ?? ''), pension_layer: a.pocket === 'retirement' ? String(a.pension_layer ?? a.pension_layer_effective ?? '') : '', assetClass: String(a.assetClass ?? ''), amount: String(a.amount ?? ''), as_of: String(a.as_of ?? '') }))
         const m: Record<string, Meta> = {}
-        rs.forEach((r, i) => { const a = visible[i]; m[r._key] = { id: String(a.id), version: Number(a.version), raw: a, readonly: a.source === 'file' || a.source === 'capture', orig: sigOf(r, KEYS.assets) } })
+        rs.forEach((r, i) => { const a = visible[i]; m[r._key] = { id: String(a.id), version: Number(a.version), raw: a, readonly: a.source === 'file' || a.source === 'capture' || a.source === 'api', orig: sigOf(r, KEYS.assets) } })
         if (my !== loadSeq.current) return
         setRows(rs); setMeta(m)
       }

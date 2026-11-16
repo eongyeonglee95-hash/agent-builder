@@ -42,7 +42,7 @@ export function Workbook({ onClassic }: { onClassic: () => void }) {
   const [data, setData] = useState<Summary | null>(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [importMode, setImportMode] = useState<'capture' | 'file' | null>(null)
+  const [importMode, setImportMode] = useState<'capture' | 'file' | 'kiwoom' | null>(null)
   const [rev, setRev] = useState(0)
   const [toast, setToast] = useState('')
 
@@ -113,6 +113,7 @@ export function Workbook({ onClassic }: { onClassic: () => void }) {
           <DropdownMenuContent align="end" className="w-60">
             <DropdownMenuItem onSelect={() => setImportMode('capture')}><Camera className="size-4"/>증권사 앱 캡처로 등록</DropdownMenuItem>
             <DropdownMenuItem onSelect={() => setImportMode('file')}><FileSpreadsheet className="size-4"/>엑셀·CSV 파일 올리기</DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => setImportMode('kiwoom')}><RefreshCw className="size-4"/>키움에서 잔고 불러오기</DropdownMenuItem>
             <DropdownMenuItem onSelect={retire.openPension}><Landmark className="size-4"/>국민연금·퇴직연금 입력</DropdownMenuItem>
             <DropdownMenuSeparator/>
             <DropdownMenuItem asChild><a href={`/api/register/template.xlsx?prefill=1&owner=${owner}`} download><Download className="size-4"/>지금 잔고를 엑셀로 받기</a></DropdownMenuItem>
@@ -146,7 +147,7 @@ export function Workbook({ onClassic }: { onClassic: () => void }) {
 
     <Dialog open={importMode !== null} onOpenChange={o => { if (!o) setImportMode(null) }}>
       <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-3xl">
-        <DialogHeader><DialogTitle>{importMode === 'capture' ? '증권사 앱 캡처로 등록' : '엑셀·CSV 파일 올리기'}</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{importMode === 'capture' ? '증권사 앱 캡처로 등록' : importMode === 'kiwoom' ? '키움에서 잔고 불러오기' : '엑셀·CSV 파일 올리기'}</DialogTitle></DialogHeader>
         {importMode && <UploadFlow mode={importMode} owner={owner} onSaved={msg => { setImportMode(null); changed(msg) }}/>}
       </DialogContent>
     </Dialog>

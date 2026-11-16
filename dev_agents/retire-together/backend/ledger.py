@@ -16,7 +16,7 @@ from fastapi import HTTPException
 from tools import sheets as gsheets
 from tools.sheets import ASSET_COLUMNS, ASSET_TAB, HOLDING_COLUMNS, HOLDING_TAB, SheetsError
 
-CAPTURE_SOURCES = ("capture", "file")   # 계좌 단위로 다시 등록하면 통째로 바뀌는 출처
+CAPTURE_SOURCES = ("capture", "file", "api")   # 계좌 단위로 다시 등록하면 통째로 바뀌는 출처
 CACHE_SECONDS = 5
 
 
