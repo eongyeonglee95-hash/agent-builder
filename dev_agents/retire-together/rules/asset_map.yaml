@@ -77,6 +77,11 @@ assets:
     asset_class: commodity
     role: core
     status: proposed
+  루미르:
+    ticker: '474170'
+    asset_class: stock
+    role: core
+    status: confirmed
 class_defaults:
   long_bond:
     ticker: '439870'
