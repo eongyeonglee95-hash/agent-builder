@@ -1,0 +1,38 @@
+.auth-account { width: 44px; height: 44px; color: var(--foreground); }
+.account-topbar .topbar-right { gap: 12px; }
+.account-topbar .auth-account { width: 52px; height: 52px; }
+/* Account and file access remain available on the compact retirement page too. */
+.workspace.tower-shell > .topbar.account-topbar { display: flex; height: 72px; }
+.asset-connect { display: inline-flex; align-items: center; gap: 14px; min-height: 58px; min-width: 228px; padding: 9px 20px; border: 1px solid var(--brand); border-radius: var(--radius); background: var(--brand); color: var(--brand-ink); text-align: left; cursor: pointer; }
+.asset-connect > svg { flex-shrink: 0; }
+.asset-connect > svg:last-child { margin-left: auto; }
+.asset-connect > span { display: grid; gap: 2px; }
+.asset-connect strong { font-size: var(--text-lg); line-height: 1.3; font-weight: 700; white-space: nowrap; }
+.asset-connect small { font-size: var(--home-caption); line-height: 1.3; }
+.asset-connect:hover { background: var(--brand-dark); border-color: var(--brand-dark); }
+.asset-connect:focus-visible, .account-page button:focus-visible { outline: 3px solid var(--brand); outline-offset: 3px; }
+.account-page { display: grid; gap: 24px; font-size: var(--home-body); color: var(--foreground); }
+.account-identity { display: flex; gap: 16px; align-items: flex-start; }
+.account-identity > svg { flex-shrink: 0; margin-top: 4px; color: var(--brand); }
+.account-identity > div { min-width: 0; }
+.account-identity strong { font-weight: 700; }
+.account-identity p { margin: 6px 0 10px; overflow-wrap: anywhere; color: var(--muted-foreground); line-height: 1.6; }
+.account-identity span { display: inline-block; padding: 3px 9px; border-radius: var(--radius); background: var(--brand-tint); color: var(--brand); font-size: var(--home-caption); }
+.account-actions { display: grid; border-top: 1px solid var(--border); }
+.account-actions:empty { display: none; }
+.account-actions button { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 58px; border-bottom: 1px solid var(--border); font-size: var(--home-body); text-align: left; }
+.account-actions button > svg:last-child { margin-left: auto; color: var(--muted-foreground); }
+.account-actions button:hover { color: var(--brand); background: var(--muted); }
+.account-view h3 { margin: 0 0 12px; font-size: var(--home-body); font-weight: 700; }
+.account-view [role=group] { display: flex; gap: 8px; }
+.account-view button { flex: 1; min-height: 48px; border: 1px solid var(--border); border-radius: var(--radius); padding: 8px; font-size: var(--home-body); }
+.account-view button[aria-pressed=true] { border-color: var(--brand); color: var(--brand); background: var(--brand-tint); font-weight: 700; }
+.account-view p { margin: 12px 0 0; font-size: var(--home-caption); color: var(--muted-foreground); line-height: 1.7; word-break: keep-all; }
+.account-logout { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; font-size: var(--home-body); color: var(--muted-foreground); border: 1px solid var(--border); border-radius: var(--radius); }
+.account-logout:hover { color: var(--foreground); background: var(--muted); }
+.account-logout:disabled { cursor: wait; opacity: .65; }
+@media (max-width: 650px) {
+  .topbar.account-topbar, .workspace.tower-shell > .topbar.account-topbar { height: auto; padding-top: 14px; padding-bottom: 16px; flex-wrap: wrap; gap: 14px; }
+  .account-topbar .topbar-left, .account-topbar .topbar-right { width: 100%; }
+  .account-topbar .asset-connect { flex: 1; min-width: 0; }
+}

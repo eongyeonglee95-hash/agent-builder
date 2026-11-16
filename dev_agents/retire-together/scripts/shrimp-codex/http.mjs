@@ -39,6 +39,7 @@ export async function createCodexHandler({ root = path.resolve(path.dirname(file
       else if (url.pathname === '/api/codex/run') result = await runner.start(input.taskIds)
       else if (url.pathname === '/api/codex/check') result = await runner.start([], true)
       else if (url.pathname === '/api/codex/stop') result = await runner.cancel()
+      else if (url.pathname === '/api/codex/acknowledge') result = await runner.acknowledge(input.jobId)
       else return reply(res, 404, { error: '없는 기능입니다.' })
       return reply(res, 200, result)
     } catch (error) { return reply(res, 409, { error: error.message }) }

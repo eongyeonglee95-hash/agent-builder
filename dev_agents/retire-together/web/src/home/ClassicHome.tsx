@@ -15,11 +15,12 @@ export function ClassicHome(props: ComponentProps<typeof HomeDashboard>) {
   const stale = isDemo || !ready ? [] : ledger.filter(a => a.as_of && (Date.now() - new Date(`${a.as_of}T00:00:00`).getTime()) / 86_400_000 >= 30)
   const recent = isDemo || !ready ? [] : [...ledger].sort((a, b) => (b.updated_at ?? '').localeCompare(a.updated_at ?? '')).slice(0, 4)
   const status = !ready ? loading ? '불러오는 중' : '자료 확인 필요' : isDemo ? '예시 자료' : snapshot.as_of ? `${snapshot.as_of.replaceAll('-', '.')} 기준` : '등록된 자산 없음'
+  const keep = (amount: string) => amount.replaceAll(' ', ' ')   // 금액 중간에서 줄이 바뀌지 않게
   // 순서 (2026-11-07 사용자): 노후 주머니(메인) → 갈아타기 재원 → 두 주머니와 부동산을 더한 총자산
   const cards = [
     { id: 'retirement', title: '노후 주머니', amount: snapshot.retirement, registered: populated && snapshot.assets.some(a => a.pocket === 'retirement'), note: '금융자산 중 · 연금·퇴직연금', color: 'var(--accent-hi)' },
     { id: 'cash', title: '갈아타기 재원', amount: snapshot.cash, registered: populated && snapshot.assets.some(a => a.pocket === 'cash'), note: '현금 주머니 · 예금·주식', color: 'var(--cls-commodity)' },
-    { id: 'all', title: '총자산', amount: snapshot.total, registered: populated, note: `순자산 ${populated ? display(snapshot.net) : '—'}`, color: 'var(--primary)' },
+    { id: 'all', title: '총자산', amount: snapshot.total, registered: populated, note: populated ? `노후 + 갈아타기${snapshot.property > 0 ? ` + 부동산 ${keep(display(snapshot.property))}` : ''} · 순자산 ${keep(display(snapshot.net))}` : '순자산 —', color: 'var(--primary)' },   // 앞 두 카드에 부동산을 더한 합계임을 보이게 (2026-11-09 사용자)
   ]
   return <div className="classic-home" aria-busy={!isDemo && loading}>
     <header className="classic-home-heading">

@@ -219,24 +219,52 @@ IRP 단계로 보류(DECISIONS 2026-10-26).
 
 ## 9. 부부 공유·운영
 
-설계는 `GOOGLE_SHEETS.md`. 2026-11-07까지 Shrimp(`retire-together-shrimp`)로 관리하던 작업이고, 지금은 여기가 원본이다. 옛 상세는 `archive/AGENT_HISTORY.md` §0.
-SHARE-02 Google 로그인·서버 세션·고정 오너는 끝남(2026-11-07, 실제 최초 로그인 확인).
+설계는 `GOOGLE_SHEETS.md`. 2026-11-09까지 Shrimp로 관리하던 작업이고 지금은 여기가 원본이다. 옛 상세는 `archive/AGENT_HISTORY.md` §0.
+끝난 것(자동 검수까지): SHARE-02 로그인·세션·고정 오너, SHARE-03 공통 시트(실제 Google 파일 API 확인), SHARE-04 배우자 초대 서버, SHARE-05 자료 공유·이전 도구, SHARE-06 초대·수락·재연결 화면.
 
-### SHARE-03 · P1 · 공통 시트 생성·기존 파일 선택·자동 복원
-서버(`backend/shared_sheets*.py`)와 자동 테스트는 끝남. 실제 Google 파일 연결은 확인 전.
-- [사용자] 1. 실제 Google 계정으로 공통 시트 만들기/기존 파일 고르기 → 다시 로그인하면 같은 파일이 열리는지
+### SHARE-07 · P1 · 금융 화면 공유 연결과 두 계정 통합 검수
+점검 도구·자동 회귀는 끝남. 워크북·종목·연금·부동산 화면은 아직 공유 API로 안 바뀜. 근거 `research/SHARE_07_VALIDATION.md`·`SHARE_06_VALIDATION.md`.
+- [ ] 1. 화면별 공유 API 미전환 범위 확인 → 영역별 작업으로 나누기
+- [ ] 2. 금융 화면 연결
+- [사용자] 3. 실제 두 계정·두 기기: Picker·공유/수락/해제·이전/복구·HTTPS 확인
 
-### SHARE-04 · P2 · 배우자 초대·가입·시트 공유·접근 해제 (선행 SHARE-03)
-- [ ] 이메일 지정·만료·일회용·취소/재사용/동시 수락, 초대 없는 가입 차단, 같은 시트 연결, 중간 실패 재개, 접근 해제 시 세션·공유 해제
+## 10. 증권사 연결·리포트 (2026-11-14~15 Codex 백로그에서 옮김, 원문 `archive/backlog-codex-2026-11-15.md`)
 
-### SHARE-05 · P2 · 프로필·은퇴/부동산 계획·계좌 자료 공유와 이전
-- [ ] 저장 원천·스키마 확정, me/partner를 고정 멤버에 대응, 원본 백업·건수/합계 대조·재시도 중복 방지, 동시 저장 충돌·복구
+### KIS-MCP-01 · P2 · 한국투자 MCP 조회 연결 (설치 끝, 키 대기)
+조회 전용으로 제한한 공식 MCP(`~/.local/share/mcp/kis-trading-mcp`, Codex 서버 `kis_readonly`).
+- [사용자] 1. 한국투자 API 신청 → `~/KIS/config/kis_devlp.yaml`에 키 입력(채팅·저장소에 넣지 않음)
+- [ ] 2. 실제 잔고·평가액을 증권사 원본과 대조
 
-### SHARE-06 · P2 · 오너 시작·파일 선택·배우자 초대/수락·재연결 화면 (선행 02~05)
-- [ ] 첫 흐름/재방문, 로그인한 사람 기준 나/배우자 표시, 만료/거부/연결 실패 안내, 모바일·키보드. 사용자에게 클라이언트 JSON을 요구하지 않음
+### KIWOOM-MCP-01 · P2 · 키움 공식 MCP (설치 끝, 키 대기)
+앱 안 키움 REST 연결(2026-11-16, REG-PRICE 등)과 별개로 Codex용 MCP. 겹치면 하나로 정리한다.
+- [사용자] 1. 로컬 Codex 설정에 키·real 모드
 
-### SHARE-07 · P2 · 두 계정 통합·복구·배포 전 검증 (선행 02~06)
-- [ ] 가짜 Google 응답 회귀 + 테스트 시트의 실제 두 계정, 제3자 차단·권한 철회·백업 복구·HTTPS
+### PENSION-BROKER-01 · P2 [사용자] · 연금저축·IRP 증권사 API 지원 확인
+2026-11-14 사용자: 한국투자를 기본 연동 대상, 키움 병행. 공개자료 조사는 끝, 실조회·실주문은 미검증.
+- [사용자] 개인연금22/퇴직연금29의 ETF 주문·정정/취소 TR·제한·수수료 확인(외부 문의는 사용자가 요청할 때만)
+
+### DATA-FLOW · P1 · 입력 → 주문표 → 결정 기록 연결 확인
+- [ ] 계좌 스냅샷 자동 로드·현재가·총액/종목 중복 집계를 실제 구현과 대조해 남은 범위 확정 → 재현 가능한 검수
+
+### PROPERTY-REPORT-ROUTINE · P2 · 부동산 주간/월간 리포트 루틴 (시범 운영, Claude)
+관심 단지 24곳을 매주 월 09:00·매달 16일 09:00 조사해 Claude Docs로(루틴은 claude.ai/code/routines, 저장소 밖).
+- [ ] 1. 2026-11-14 시험 실행 결과(문서 생성·"확인 못 함" 비율) 보고 프롬프트 손보기
+- [ ] 2. 정기 실행 2회 이상, 숫자마다 출처·기준일, 예측 표현 없음
+
+### PROPERTY-TAB-REDESIGN · P1 [결정] · 부동산 탭 재설계 (Claude)
+띠(매물 증감) + 시장/팔로잉 보드/단지 상세/리포트 4탭. 시안 https://claude.ai/artifact/NujGAaseJe2KmyrkpcQ5ws
+- [결정] 1. 보드 기본 보기 · 띠 항목 · 리포트 요일 · 격차 계산을 어디까지 숨길지
+- [ ] 2. 토큰만으로 구현, `/api/property-move/watch` 실데이터로 1440/390px 검수. PROPERTY-OBSERVATORY-SITE와 겹치는 부분은 결정 때 정리
+
+### PROPERTY-REPORT-SOURCES · P2 · 정기 리포트 수집 (설계 끝)
+- [ ] `research/real_estate/REPORT_COLLECTION_PLAN.md`에서 우선 출처·주기 정하기 → 발행일/관측일·이전 호 변화 추적
+
+### REPORT-AI-01 · P2 · 부동산·연금 주간/월간 리포트 (OpenAI API, 2026-11-14 방향 확인)
+앞단 점검 끝(2026-11-15). 부족한 것: 보고서 입력 고정본, 입출금 반영 운용수익률, 통화·환율·소수 수량.
+- [ ] ① 공통 입력·자료 완전성 기준 ② 합성 자료로 기간 비교 ③ 고정본 ④ 주간·월간 템플릿. 숫자는 코드/DB, 전략·주문 원칙 유지
+
+### SPENDING-SAMSUNG · [보류] · 삼성카드 소비 절감
+사용자 보류(2026-11-09). 재개 요청 전 손대지 않는다.
 
 ---
 
@@ -246,4 +274,5 @@ SHARE-02 Google 로그인·서버 세션·고정 오너는 끝남(2026-11-07, �
 - [사용자] RETIRE-01 은퇴 시트 · PENSION-TOWER 연금탑
 - [사용자] PROPERTY-MARKET-INPUT · PROPERTY-ANALYSIS-HERO · PROPERTY-MOVE
 - [사용자] HOME-DESIGN 원본 대시보드 복구 · PERSONAL-CONTRIBUTIONS 3층 납입 계획(2026-11-07)
+- [결정] PROPERTY-OBSERVATORY-SITE 부동산 관측실 시안(`sites/property-observatory/`, `web/public/previews/property-observatory/`) · PROPERTY-RESEARCH-CONCEPTS(`web/public/previews/property-futures.html`) 확인
 - [결정] DESIGN-DIRECTIONS 4방향 디자인 시안(소나무·모래빛·인디고·흑연) 중 고르기 — `web/public/previews/design-directions.html`

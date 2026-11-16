@@ -138,6 +138,94 @@ async function request(handler, { method = 'GET', url = '/api/codex/status', hea
   return { handled, ...res }
 }
 
+test('status reads current tasks without rewriting historical outcomes or either file', async () => {
+  const { runner, tasksFile } = await fixture()
+  const job = { id: 'old', taskId: 'a', status: 'blocked', message: 'OAuth setup missing then', logs: [], answer: 'Old answer' }
+  runner.state.jobs = [job]; await runner.save()
+  const history = await readFile(path.join(runner.stateDir, 'state.json'), 'utf8')
+  assert.equal((await runner.snapshot()).jobs[0].currentTask.status, 'pending')
+  const data = JSON.stringify({ tasks: [{ ...task('a', [], 'completed'), summary: 'Verified later' }] })
+  await writeFile(tasksFile, data)
+  const snapshot = await runner.snapshot()
+  assert.equal(snapshot.jobs[0].currentTask.status, 'completed')
+  assert.equal(snapshot.jobs[0].currentTask.summary, 'Verified later')
+  assert.equal(snapshot.jobs[0].status, 'blocked')
+  assert.equal(job.currentTask, undefined)
+  assert.equal(await readFile(tasksFile, 'utf8'), data)
+  assert.equal(await readFile(path.join(runner.stateDir, 'state.json'), 'utf8'), history)
+  await writeFile(tasksFile, '{invalid')
+  const unavailable = await runner.snapshot()
+  assert.ok(unavailable.taskStateError)
+  assert.equal(unavailable.jobs[0].currentTask, null)
+  assert.equal(unavailable.jobs[0].status, 'blocked')
+})
+
+test('acknowledgement persists without changing task status, logs, answer or launching work', async () => {
+  const { runner, tasksFile, calls } = await fixture()
+  const before = await readFile(tasksFile, 'utf8')
+  const original = { id: 'old', taskId: 'a', status: 'blocked', message: 'Needs confirmation', logs: [{ text: 'Original log' }], answer: 'Original answer' }
+  runner.state.jobs = [{ ...original }]
+  await runner.acknowledge('old')
+  const timestamp = runner.state.jobs[0].acknowledgedAt
+  assert.ok(timestamp)
+  await runner.acknowledge('old')
+  await runner.init()
+  const { acknowledgedAt, ...preserved } = runner.state.jobs[0]
+  assert.equal(acknowledgedAt, timestamp)
+  assert.deepEqual(preserved, original)
+  assert.equal(await readFile(tasksFile, 'utf8'), before)
+  assert.equal(calls.length, 0)
+  await assert.rejects(runner.acknowledge('missing'), /찾을 수/)
+  runner.state.jobs.push({ id: 'active', status: 'running' })
+  await assert.rejects(runner.acknowledge('active'), /진행 중/)
+  runner.busy = true
+  await assert.rejects(runner.acknowledge('old'), /현재 실행 중/)
+})
+
+test('waiting display follows the latest execution, survives acknowledgement and never changes dependencies', async () => {
+  const { runner, tasksFile } = await fixture({ tasks: [task('a', [], 'in_progress'), task('b', ['a'])] })
+  const before = await readFile(tasksFile, 'utf8')
+  runner.state.jobs = [{ id: 'old', taskId: 'a', status: 'blocked', logs: [] }]
+  let snapshot = await runner.snapshot()
+  assert.equal(snapshot.taskDisplayStatuses.a, 'awaiting_confirmation')
+  assert.equal(snapshot.jobs[0].currentTask.status, 'in_progress')
+  await runner.acknowledge('old')
+  assert.equal((await runner.snapshot()).taskDisplayStatuses.a, 'awaiting_confirmation')
+  assert.throws(() => executionOrder(JSON.parse(before).tasks, ['b']), /선행 작업/)
+  runner.state.jobs.push({ id: 'retry', taskId: 'a', status: 'queued', logs: [] })
+  assert.equal((await runner.snapshot()).taskDisplayStatuses.a, 'in_progress')
+  runner.state.jobs[1].status = 'running'
+  assert.equal((await runner.snapshot()).taskDisplayStatuses.a, 'in_progress')
+  runner.state.jobs[1].status = 'interrupted'
+  assert.equal((await runner.snapshot()).taskDisplayStatuses.a, 'retry_required')
+  for (const status of ['failed', 'cancelled']) {
+    runner.state.jobs[1].status = status
+    await runner.acknowledge('retry')
+    assert.equal((await runner.snapshot()).taskDisplayStatuses.a, 'retry_required')
+    assert.throws(() => executionOrder(JSON.parse(before).tasks, ['b']), /선행 작업/)
+    assert.deepEqual(executionOrder(JSON.parse(before).tasks, ['a']).map(item => item.id), ['a'])
+  }
+  assert.equal(await readFile(tasksFile, 'utf8'), before)
+  await writeFile(tasksFile, JSON.stringify({ tasks: [task('a', [], 'completed'), task('b', ['a'])] }))
+  assert.equal((await runner.snapshot()).taskDisplayStatuses.a, 'completed')
+})
+
+test('acknowledgement API requires same-origin token and leaves work incomplete', async () => {
+  const { runner, tasksFile } = await fixture()
+  const handler = await createCodexHandler({ runner })
+  runner.state.jobs = [{ id: 'blocked', taskId: 'a', status: 'blocked', logs: [] }]
+  const token = (await request(handler)).data.token
+  const input = { method: 'POST', url: '/api/codex/acknowledge', headers: { origin: 'http://127.0.0.1:9998', 'content-type': 'application/json' }, body: JSON.stringify({ projectId: 'retire-together', jobId: 'blocked' }) }
+  assert.equal((await request(handler, input)).status, 403)
+  assert.equal(runner.state.jobs[0].acknowledgedAt, undefined)
+  input.headers['x-shrimp-codex-token'] = token
+  assert.equal((await request(handler, { ...input, headers: { ...input.headers, origin: 'https://other.example' } })).status, 403)
+  assert.equal((await request(handler, input)).status, 200)
+  assert.ok(runner.state.jobs[0].acknowledgedAt)
+  assert.equal(runner.state.jobs[0].status, 'blocked')
+  assert.equal(JSON.parse(await readFile(tasksFile, 'utf8')).tasks[0].status, 'pending')
+})
+
 test('HTTP boundary rejects cross-site, wrong host, missing token and foreign project', async () => {
   const { runner } = await fixture()
   const handler = await createCodexHandler({ runner })

@@ -4,6 +4,7 @@ export type Living = { school: string; commute: string; life: string; concerns: 
 export const emptyLiving = (): Living => ({ school: '', commute: '', life: '', concerns: '' })
 export type Candidate = {
   id: string; name: string; address: Address | null; area_m2: number | null
+  members?: { name: string; jibun: string }[]   // 여러 차수 묶음(국토부 이름·지번). 화면은 보존만 한다
   price: number | null; price_basis: 'manual' | 'trade' | 'asking'; price_date: string | null
   asking_low: number | null; asking_high: number | null; asking_date: string | null
   purchase_costs: number | null; memo: string; living: Living

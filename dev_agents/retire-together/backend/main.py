@@ -11,11 +11,15 @@ import yaml
 from backend.strategies import StrategyDisplay, load_strategy_display
 from backend import storage, rebalance, registration, google_api, holdings, workbook, portfolio, retirement, property, property_move
 from backend import auth
+from backend import household_invites
+from backend import shared_data
 
 app = FastAPI(title="둘이서은퇴 · 로컬 API", version="0.1.0", docs_url="/api/docs",
               redoc_url=None, openapi_url="/api/openapi.json")
 app.middleware("http")(auth.boundary)
 app.include_router(auth.router)          # SHARE-02 웹 로그인·서버 세션·고정 오너
+app.include_router(household_invites.router)  # SHARE-04 초대·공유·접근 해제
+app.include_router(shared_data.router)  # SHARE-05 고정 멤버 자료·백업/이전/복구
 app.include_router(registration.router)   # REG-01 자산 등록(사진·파일) — Claude 담당
 app.include_router(google_api.router)     # SHEET-01 구글 시트 연결 — Claude 담당
 app.include_router(holdings.router)       # 보유 종목 손익 — Claude 담당 (CALCULATION_RULES §7)

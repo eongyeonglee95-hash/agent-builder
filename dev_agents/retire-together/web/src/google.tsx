@@ -1,7 +1,8 @@
 import { useAuth } from './auth/AuthGate'
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import { Check, ExternalLink, Info, RefreshCw, Sheet, Unplug } from 'lucide-react'
+import { ArrowRight, Check, ExternalLink, FileSpreadsheet, Info, RefreshCw, Sheet, Unplug } from 'lucide-react'
 import { api } from './local-data'
+import SharedSheetAccess from './auth/SharedSheetAccess'
 
 // SHEET-01 — 구글 시트 연결. 세 단계: OAuth 클라이언트 JSON 저장 → 구글 로그인 → 시트 만들기/지정.
 // 연결되면 자산 장부의 원천이 시트가 된다. 앱은 시트를 읽고, 등록·수정·삭제는 시트에 쓴다.
@@ -26,15 +27,15 @@ export function useSheetStatus(poll = false) {
   return { status, error, refresh, setStatus }
 }
 
-export function SheetBadge({ onClick }: { onClick: () => void }) {
-  const { status } = useSheetStatus()
-  if (!status || status.disabled) return null
-  return <button className={`sheet-badge ${status.active ? 'on' : ''}`} onClick={onClick} aria-label="구글 시트 연결 설정"><Sheet size={13}/>{status.active ? '구글 시트' : '로컬 저장'}</button>
+export function AssetConnectionButton({ onClick }: { onClick: () => void }) {
+  return <button className="asset-connect" onClick={onClick} aria-haspopup="dialog">
+    <FileSpreadsheet size={25} aria-hidden="true"/><span><strong>내 자산 연결</strong><small>Google 시트</small></span><ArrowRight size={20} aria-hidden="true"/>
+  </button>
 }
 
-export function GoogleSheetPanel(props: { onChanged: () => void }) {
+export function GoogleSheetPanel(props: { onChanged: () => void; initialTab?: string }) {
   const { mode } = useAuth()
-  if (mode === 'web') return <p>구글 로그인은 연결되었습니다. 공통 시트 연결은 다음 단계에서 제공됩니다.</p>
+  if (mode === 'web') return <SharedSheetAccess onChanged={props.onChanged} initialTab={props.initialTab}/>
   return <LocalGoogleSheetPanel {...props}/>
 }
 

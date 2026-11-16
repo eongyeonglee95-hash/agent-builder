@@ -46,7 +46,8 @@ test('자산 요약: 핵심 금액·상태별 행동과 작은 화면', async ({
 test('모바일 홈: 요약 다음에 체크리스트가 보인다', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 900 })
   await page.goto('/#home')
-  await page.getByRole('button', { name: '예시 보기', exact: true }).click()
+  await page.getByRole('button', { name: '마이페이지', exact: true }).click()
+  await page.getByRole('dialog', { name: '마이페이지' }).getByRole('button', { name: '예시 보기', exact: true }).click()
   const summary = page.getByRole('region', { name: '자산 요약' })
   const checklist = page.locator('.classic-home-checklist')
   await expect(summary).toBeVisible()

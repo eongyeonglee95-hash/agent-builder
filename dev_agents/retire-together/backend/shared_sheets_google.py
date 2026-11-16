@@ -6,7 +6,7 @@ from fastapi import HTTPException
 import requests
 
 from backend.auth_google import TOKEN_URL
-from tools.sheets import GoogleSheets, SheetsError, TABS
+from tools.sheets import API, GoogleSheets, SheetsError, TABS, _col_letter, _rows_to_dicts
 
 FILE_SCOPE = "https://www.googleapis.com/auth/drive.file"
 ALLOWED_SCOPES = {FILE_SCOPE, "openid", "email", "profile",
@@ -137,7 +137,7 @@ class GoogleFiles:
             if not set(TABS) <= titles:
                 raise SheetsError("missing tabs")
             for tab in TABS:
-                sheet.read(tab)
+                sheet.read(tab, header_only=True)
         except (SheetsError, KeyError, TypeError):
             raise HTTPException(409, "기존 시트의 자산·보유종목 탭과 머리글을 확인해 주세요. 자료는 변경하지 않았습니다.") from None
 
@@ -145,6 +145,22 @@ class GoogleFiles:
 class SharedGoogleSheets(GoogleSheets):
     def _call(self, method, url, **kwargs):
         return self.session.call(method, url, **kwargs)
+
+    def read(self, tab, *, header_only=False):
+        # An empty tab is not a valid shared ledger. The legacy reader treats it
+        # as zero assets, which could bind an unusable file or hide deleted headers.
+        cols = TABS[tab]
+        end = _col_letter(len(cols)) + ("1" if header_only else "")
+        got = self._call("GET", f"{API}/{self.spreadsheet_id}/values/{tab}!A1:{end}",
+                         params={"valueRenderOption": "UNFORMATTED_VALUE", "dateTimeRenderOption": "FORMATTED_STRING"})
+        values = got.get("values")
+        if not isinstance(values, list) or not values or any(not isinstance(row, list) for row in values):
+            raise SheetsError("공통 시트의 탭과 머리글을 확인해 주세요. 기존 파일 연결은 유지됩니다.")
+        header = [str(cell).strip() for cell in values[0]]
+        # Preserve the legacy reader's support for older, shorter column lists.
+        if not any(header) or (header[:len(cols)] != cols and header != cols[:len(header)]):
+            raise SheetsError("공통 시트의 머리글이 앱 양식과 다릅니다. 기존 파일 연결은 유지됩니다.")
+        return _rows_to_dicts(cols, values[1:])
 
     def write(self, tab, rows):
         # Legacy SheetStore clears a whole tab on writes. SHARE-05 must replace

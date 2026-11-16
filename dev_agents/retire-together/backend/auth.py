@@ -106,6 +106,9 @@ def login(request: Request):
 
 @router.get("/google/callback")
 def callback(request: Request):
+    if request.query_params.get("state", "").startswith("invite."):
+        from backend.household_invites import callback as invite_callback
+        return invite_callback(request)
     if request.query_params.get("state", "").startswith("files."):
         from backend.shared_sheets import callback as files_callback
         return files_callback(request)
@@ -209,6 +212,11 @@ def check_boundary(request: Request):
         raise HTTPException(403, "다른 출처의 요청은 허용하지 않습니다.")
     if path in PUBLIC and request.method == "GET":
         return
+    from backend.household_invites import PUBLIC as INVITE_PUBLIC
+    if path in INVITE_PUBLIC:
+        # These routes use a separate short-lived join cookie, verified Google
+        # identity and their own Origin/CSRF checks; they expose no financial API.
+        return
     token = request.cookies.get(config.session_cookie, "")
     identity = AuthStore(config.db_path).session(token)
     if identity is None:
@@ -221,10 +229,20 @@ def check_boundary(request: Request):
     if path.startswith("/api/google/") and not path.startswith("/api/google/shared/"):
         # InstalledAppFlow and the computer-wide token are never exposed in web mode.
         raise HTTPException(409, "웹 공통 시트 연결은 후속 작업에서 제공됩니다.")
-    if not path.startswith("/api/auth/") and identity["role"] != "owner":
-        # Existing financial APIs still use owner-relative me/partner. SHARE-04/05
+    partner_file_routes = {"/api/google/shared/status", "/api/google/shared/connect",
+                           "/api/google/shared/picker", "/api/google/shared/connection"}
+    shared_data_route = path == "/api/shared-data" or path.startswith("/api/shared-data/")
+    if not path.startswith("/api/auth/") and identity["role"] != "owner" and path not in partner_file_routes and not shared_data_route:
+        # Existing financial APIs still use owner-relative me/partner. SHARE-05
         # must supply per-member authorization/mapping before enabling partner access.
         raise HTTPException(403, "이 자료의 가구 구성원 권한 연결이 필요합니다.")
+    if (not shared_data_route and not path.startswith(("/api/auth/", "/api/google/"))
+            and path != "/api/health"):
+        from backend.shared_data_store import DataStore
+        if DataStore(config.db_path).started(identity["household_id"]):
+            # No stale local profile/YAML/CSV reads after cutover. SHARE-06 uses
+            # the explicit fixed-member API, not login-relative legacy contracts.
+            raise HTTPException(409, "공유 자료 API로 다시 불러와 주세요. 이전 로컬 자료로 전환하지 않았습니다.")
 
 
 async def boundary(request: Request, call_next):
@@ -236,7 +254,7 @@ async def boundary(request: Request, call_next):
         if getattr(request.state, "identity", None) is not None:
             context_token = request_context.set((request.state.auth_config, request.state.identity))
             path = request.url.path
-            if (request.method not in SAFE_METHODS and not path.startswith(("/api/auth/", "/api/google/"))
+            if (request.method not in SAFE_METHODS and not path.startswith(("/api/auth/", "/api/google/", "/api/shared-data"))
                     and path not in {"/api/rebalance/preview", "/api/workbook/rebalance", "/api/retirement/preview"}):
                 guard = financial_write_guard(request.state.auth_config, request.state.identity)
                 await run_in_threadpool(guard.__enter__)
