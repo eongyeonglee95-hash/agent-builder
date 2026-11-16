@@ -192,10 +192,16 @@ def summary(owner: str = "together", live: bool = False) -> dict:
     rb = rebalance_all(RebalanceInput(owner=owner, live=live))
     t = h["total"]
     parts = [f"{dt.date.today():%Y.%m.%d} 기준 순자산 {_man(dash['net'])}"]
-    if t["count"]:
-        line = f"종목 잔고 {_man(t['value'])}"
-        if t["total_return"] is not None:
-            line += f"(넣은 돈 {_man(t['buy_value'])}, 불어난 돈 {_man(t['total_return'])} {t['total_rate']:+.2f}%)"
+    # 연금 계좌와 주식 계좌(현금 주머니)는 따로 — 연금 안의 주식형 ETF도 연금이다 (2026-11-16 사용자)
+    for title, accts in (("연금 계좌", [a for a in h["accounts"] if a.get("pocket") == "retirement"]),
+                         ("주식 계좌", [a for a in h["accounts"] if a.get("pocket") != "retirement"])):
+        if not accts:
+            continue
+        value = sum(a["value"] for a in accts)
+        line = f"{title} {_man(value)}"
+        if all(a.get("buy_value") for a in accts):
+            buy = sum(a["buy_value"] for a in accts)
+            line += f"(넣은 돈 {_man(buy)}, 불어난 돈 {_man(value - buy)} {(value - buy) / buy * 100:+.2f}%)"
         parts.append(line)
     if live and t.get("today_return") is not None:
         parts.append(f"오늘 {_man(t['today_return'])}")
