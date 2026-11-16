@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { pct, pp, won } from '@/lib/format'
 
 // 읽기용 엑셀 표 — 요약·리밸런싱 시트. 편집용 표(sheet.tsx)와 같은 격자·선택·수식 입력줄 모양을 쓴다.
 // 숫자는 서버가 계산한 값을 그대로 보여 준다. 고칠 수 있는 칸(edit)은 이번 달 납입·결정 사유 같은 입력값뿐, 버튼 칸(btn)은 결정 기록.
@@ -18,16 +19,16 @@ export type Cell = {
   btn?: { label: string; onClick: () => void; disabled?: boolean; primary?: boolean }
 }
 
-const won = (n: number) => n.toLocaleString('ko-KR')
+// 표 칸은 머리줄에 단위(원)가 있어 숫자만. 표기 규칙은 lib/format.ts 한곳
 export function show(c: Cell): string {
   if (c.v === null || c.v === undefined || c.v === '') return ''
   if (typeof c.v === 'string') return c.v
   const n = c.v
   switch (c.fmt) {
-    case 'won': return won(n)
-    case 'signed': return `${n > 0 ? '+' : ''}${won(n)}`
-    case 'pct': return `${n.toFixed(2)}%`
-    case 'pp': return `${n > 0 ? '+' : ''}${n.toFixed(1)}%p`
+    case 'won': return won(n, { unit: false })
+    case 'signed': return won(n, { unit: false, signed: true })
+    case 'pct': return pct(n, { signed: false })
+    case 'pp': return pp(n)
     default: return String(n)
   }
 }

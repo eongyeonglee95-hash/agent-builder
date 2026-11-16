@@ -12,15 +12,15 @@ export const ownerLabels: Record<Owner, string> = { together: '부부 전체', m
 export const assetOwnerLabel = (owner: Asset['owner']) => owner === 'joint' ? '공동 소유' : ownerLabels[owner]
 export const assetSourceLabel = (asset: Asset) => ({ manual: '직접 입력', file: '파일 등록', capture: '사진 등록', photo: '사진 등록' }[asset.source ?? 'manual'] ?? '가져온 자료')
 export const classInfo: Record<string, { label: string; color: string }> = {
-  stock: { label: '주식', color: '#5985ec' },
-  long_bond: { label: '장기채', color: '#42b3aa' },
-  mid_bond: { label: '중기채', color: '#8ed2c8' },
-  gold: { label: '금', color: '#e6ba69' },
-  cash: { label: '현금', color: '#a1acc2' },
-  property: { label: '부동산', color: '#a08cce' },
-  commodity: { label: '원자재', color: '#d397b5' },
-  mixed: { label: '혼합·미분류', color: '#bdc6d4' },
-  debt: { label: '대출', color: '#ce968a' },
+  stock: { label: '주식', color: 'var(--cls-stock)' },
+  long_bond: { label: '장기채', color: 'var(--cls-long-bond)' },
+  mid_bond: { label: '중기채', color: 'var(--cls-mid-bond)' },
+  gold: { label: '금', color: 'var(--cls-gold)' },
+  cash: { label: '현금', color: 'var(--cls-cash)' },
+  property: { label: '부동산', color: 'var(--cls-property)' },
+  commodity: { label: '원자재', color: 'var(--cls-commodity)' },
+  mixed: { label: '혼합·미분류', color: 'var(--cls-mixed)' },
+  debt: { label: '대출', color: 'var(--cls-debt)' },
 }
 
 // Entirely synthetic, fixed design-review data. No personal holdings imported.
