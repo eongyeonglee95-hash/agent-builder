@@ -82,6 +82,42 @@ assets:
     asset_class: stock
     role: core
     status: confirmed
+  아마존닷컴 (AMZN):
+    ticker: ''
+    asset_class: stock
+    role: core
+    status: confirmed
+    stock_group: us
+  AST 스페이스모바일 (ASTS):
+    ticker: ''
+    asset_class: stock
+    role: core
+    status: confirmed
+    stock_group: us
+  알파벳 A (GOOGL):
+    ticker: ''
+    asset_class: stock
+    role: core
+    status: confirmed
+    stock_group: us
+  코카콜라 (KO):
+    ticker: ''
+    asset_class: stock
+    role: core
+    status: confirmed
+    stock_group: us
+  플래닛 랩스 (PL):
+    ticker: ''
+    asset_class: stock
+    role: core
+    status: confirmed
+    stock_group: us
+  레일 비전 (RVSN):
+    ticker: ''
+    asset_class: stock
+    role: core
+    status: confirmed
+    stock_group: us
 class_defaults:
   long_bond:
     ticker: '439870'
