@@ -51,8 +51,11 @@
   /* 상승 빨강·하락 파랑 — TDS. 표 안 작은 숫자는 700(대비 5.3:1 이상), 큰 숫자는 500, 옅은 바탕은 50 */
   --up: #d22030; --up-big: #f04452; --up-soft: #ffeeee;
   --down: #1b64da; --down-big: #3182f6; --down-soft: #e8f3ff;
-  /* 자산군 6색 — 지금 화면 값 유지(출처 없음, 바꿀지는 사용자 결정) */
-  --cls-stock: #5985ec; --cls-long-bond: #42b3aa; --cls-mid-bond: #8ed2c8; --cls-gold: #e6ba69; --cls-commodity: #d397b5; --cls-cash: #b0b8c1;
+  /* 자산군 9색 — 지금 화면 값 유지(출처 없음, 바꿀지는 사용자 결정). model.ts classInfo 가 이 토큰을 읽는다 — 색을 바꿀 땐 여기만 */
+  --cls-stock: #5985ec; --cls-long-bond: #42b3aa; --cls-mid-bond: #8ed2c8; --cls-gold: #e6ba69; --cls-commodity: #d397b5; --cls-cash: #a1acc2;
+  --cls-property: #a08cce; --cls-mixed: #bdc6d4; --cls-debt: #ce968a;
+  /* 입력 칸(사람이 넣는 값) 옅은 노랑 — 엑셀 입력 셀 관례, 워크북 납입·사유 칸 */
+  --input-soft: #fffdf3;
   /* 엑셀 보기 — 유일한 강조색 초록은 선택 테두리와 현재 시트 탭에만 */
   --sheet-line: var(--grey-200); --sheet-head: var(--grey-50); --sheet-head-text: var(--grey-600);
   --sheet-select: var(--brand); --sheet-select-soft: var(--brand-tint);   /* 엑셀 선택 초록 → 브랜드 주색으로 통일 (2026-11-06) */
@@ -128,6 +131,17 @@
   --color-sheet-head: var(--sheet-head);
   --color-sheet-select: var(--sheet-select);
   --color-sheet-select-soft: var(--sheet-select-soft);
+  --color-sheet-head-text: var(--sheet-head-text);
+  --color-input-soft: var(--input-soft);
+  --color-cls-stock: var(--cls-stock);
+  --color-cls-long-bond: var(--cls-long-bond);
+  --color-cls-mid-bond: var(--cls-mid-bond);
+  --color-cls-gold: var(--cls-gold);
+  --color-cls-commodity: var(--cls-commodity);
+  --color-cls-cash: var(--cls-cash);
+  --color-cls-property: var(--cls-property);
+  --color-cls-mixed: var(--cls-mixed);
+  --color-cls-debt: var(--cls-debt);
   --color-grey-50: var(--grey-50);
   --color-grey-100: var(--grey-100);
   --color-grey-200: var(--grey-200);

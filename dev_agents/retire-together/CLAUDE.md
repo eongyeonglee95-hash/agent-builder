@@ -19,7 +19,8 @@
 1. `docs/MASTER_CONTEXT.md` — 단일 출발점. 제품 철학과 책임 분리 원칙
 2. `docs/AGENT_DESIGN.md` — 현재 실행 계획·협업(§0), Agent 정의(§1), 이전 PoC 기록(§2). 현재 범위는 §0이 우선한다
 3. `docs/BACKLOG.md` — 할 일 한곳(기능 영역별). 다음 작업은 여기서 고르고, 끝나면 줄을 지운다
-4. 작업 영역에 따라 `docs/REBALANCING_RULES.md`, `docs/CALCULATION_RULES.md`, `docs/TAX_RULES.md`
+4. 화면을 만들거나 고칠 때 `docs/DESIGN_SYSTEM.md` — 토큰·숫자 표기·컴포넌트·점검표. 견본은 앱 주소 `#design`
+5. 작업 영역에 따라 `docs/REBALANCING_RULES.md`, `docs/CALCULATION_RULES.md`, `docs/TAX_RULES.md`
 
 ## 지켜야 할 원칙
 - 숫자 → 코드/DB. LLM은 계산하지 않는다. 모든 공식은 `CALCULATION_RULES.md`를 순수 함수로 구현하고 pytest 단위 테스트를 둔다
