@@ -1,4 +1,4 @@
-"""SAFE-01 — 저장 경로·계좌·수량·가격·합계 재검증 (docs/AGENT_DESIGN.md §0, ARCHITECTURE_REVIEW §4 P0).
+"""SAFE-01 — 저장 경로·계좌·수량·가격·합계 재검증 (docs/archive/ARCHITECTURE_REVIEW.md §4 P0).
 각 테스트는 보고서의 합성 입력을 그대로 재현한다. 고치기 전에는 실패해야 한다."""
 import datetime as dt
 from pathlib import Path
@@ -99,7 +99,7 @@ def test_unknown_or_inactive_account_blocks_orders():
 
 
 # =====================================================================================
-# SAFE-02 — 신규 매수 후보 적격·전략 범위·계좌 전환 검증 (ARCHITECTURE_REVIEW §4 P0 "제약 검사는 보유 종목에만", P1 "전략 저장은 합계만", P1 "계좌 전환 시 오저장")
+# SAFE-02 — 신규 매수 후보 적격·전략 범위·계좌 전환 검증 (docs/archive/ARCHITECTURE_REVIEW.md §4 P0 "제약 검사는 보유 종목에만", P1 "전략 저장은 합계만", P1 "계좌 전환 시 오저장")
 # =====================================================================================
 from tools.rebalance import NewCash  # noqa: E402
 

@@ -1,16 +1,12 @@
 # RetireTogether (둘이서은퇴) — MASTER CONTEXT
 
-최종 갱신: 2026-11-07 (Shrimp 작업 관리 설치)
-역할: 이 프로젝트의 단일 출발점. 새 세션·새 Agent·새 사람은 이 문서부터 읽는다. 세부 규칙은 각 문서로 분리 관리 (아래 "문서 지도").
-문서 지도: SCREEN_REFERENCE.md(화면) · MASTER_PRD.md(요구사항) · AGENT_DESIGN.md(Agent·PoC 범위) · REBALANCING_RULES.md(자산배분 규칙) · TAX_RULES.md(세금·수령 규칙) · CALCULATION_RULES.md(공식) · DECISIONS.md(결정 기록) · CHANGELOG.md
+최종 갱신: 2026-11-16
+역할: 제품 의도와 자산 구조의 원본. 할 일은 `BACKLOG.md`, 결정은 `DECISIONS.md`, 화면은 `DESIGN_SYSTEM.md`.
+아래 "계좌 현황·미결"은 2026-10-26 기준 기록이다. 바뀐 결정은 `DECISIONS.md`가 우선한다.
 
-## 현재 작업 방향 — 2026-10-27 사용자 승인
-- 2026-11-07 변경: 첫 진입은 메인 대시보드, 엑셀 워크북은 ‘표로 보기’로 연다. Google 로그인은 팝업에서 진행하고 원래 화면으로 이어지며, 첫 Google 동의는 유지한다.
-- 화면 기준은 저장소의 `docs/assets/concept.jpg`. 컨셉에 가까운 데스크톱·모바일 홈을 첫 검수 결과물로 삼는다.
-- React·TypeScript·Vite + Python·FastAPI로 전환하고 기존 계산 코드는 검증을 보강해 재사용한다. 현재 실행 가능한 UI는 아직 Streamlit이다.
-- 단일 실행 계획·담당·인계 상태는 `AGENT_DESIGN.md` §0. 상세 조사 근거는 `ARCHITECTURE_REVIEW.md`. 이전 PoC 일정과 충돌하면 현재 실행 계획이 우선한다.
-- Claude가 진행 중인 출처·저자 리서치와 확정된 투자 결정을 유지한다. Codex는 공유 설계·검토를 반영하며 동일 파일 동시 수정을 피한다.
-- 제품 진행을 디자인 검수/실데이터 연결/동작/검증으로 구분한다. 기존 체크리스트 단순 집계는 전체 제품 완성률로 사용하지 않는다.
+## 화면 방향
+- 첫 진입은 메인 대시보드(`concept.jpg` 구조, `home/ClassicHome.tsx`), 엑셀 워크북은 ‘표로 보기’로 연다. 비로그인은 먼저 Google 로그인(2026-11-07).
+- 원본 대시보드 구조를 지킨다: 총자산/두 주머니 → 자산 도넛/은퇴 목표/알림 → 전략/소득. 디자인 참고 요청은 구조 교체 승인이 아니다. 구조가 다른 제안은 별도 시안으로 먼저 보여 주고 사용자가 고른 뒤 반영한다(2026-11-07 사용자 재확인).
 
 ## 제품 철학
 "입력은 캡처 한 장, 판단은 두 분의 규칙, 제안은 에이전트가, 결정은 기록으로."
@@ -61,7 +57,7 @@
 - 2026-11-06 확정, 2026-11-07 구체화: 사용자 본인이 최초 설정에서 Google로 로그인하면 고정 오너와 가구가 자동 생성된다. 최초 운영은 한 가구이며 오너 양도·교체 기능은 제공하지 않는다. 오너 이메일 사전 지정은 요구하지 않는다. OAuth 앱 등록은 운영자가 한 번 수행하고 일반 사용자는 로그인만 한다.
 - 오너가 공통 구글 시트를 생성하거나 본인 소유의 기존 파일을 연결하고 배우자를 초대한다. 배우자는 초대 수락과 자기 구글 계정의 본인 확인 후 같은 가구·같은 시트로 들어온다. 초대 없는 계정의 가구 접근은 차단한다. 다음부터는 각자 로그인해 연결된 파일을 자동으로 불러온다.
 - 각자 자산은 본인 소유, 합산 뷰 공유, 상대 자산 편집 권한은 설정한다. 앱 멤버십과 실제 시트 공유 권한은 구분해 확인한다. 현재 로컬의 프로필·은퇴/부동산 계획도 두 기기에서 일치하도록 공유 저장·이전이 필요하다. 자녀·부모 확장은 후속이다.
-- 상세 설계는 [GOOGLE_SHEETS.md](GOOGLE_SHEETS.md), 구현 작업과 상태는 `AGENT_DESIGN.md` §0의 `SHARE-02~07`. 공유 설계를 확정하고 SHARE-02 구현을 진행 중이며, 웹 로그인·초대 구현 완료를 뜻하지 않는다.
+- 상세 설계는 [GOOGLE_SHEETS.md](GOOGLE_SHEETS.md), 구현 작업과 상태는 `BACKLOG.md`의 SHARE. 공유 설계를 확정하고 SHARE-02 구현을 진행 중이며, 웹 로그인·초대 구현 완료를 뜻하지 않는다.
 
 ## 부동산
 - 관심 단지·분양권 팔로우 카드: 매매·전세가·갭·실거래·뉴스·분양 일정. 시나리오 비교(실거주 갈아타기 vs 분양권 보유+월세)를 연도별 현금흐름과 현금 주머니 목표 시점, 노후 주머니 영향으로. 데이터: 국토부 실거래가 API, KB/부동산원 시세, 청약홈, 뉴스 검색
@@ -82,9 +78,9 @@
 
 ## 개발 방향
 - 목적: 사용자 본인이 Claude로 개발하며 AI Agent 역량 강화
-- UI는 컨셉의 정보 계층·사진·카드·차트·모바일 구성을 명세하고 SCREEN_REFERENCE 기준으로 검수한다. 기반 오류를 보강한 뒤 고정 데모로 홈을 먼저 보여주고, 안전한 실데이터 연결과 핵심 흐름을 완성한다 (AGENT_DESIGN §0).
-- 목표 스택: React·TypeScript·Vite, Python 3.12·uv·FastAPI·Pydantic, 로컬 SQLite. 기존 Streamlit은 비교 도구. LLM 실행 엔진은 Claude를 유지하며 도구/파일 접근 경계를 검증한다. 작업 상태의 원본은 AGENT_DESIGN §0이다. 사용자 승인으로 2026-11-07 Shrimp Task Manager를 설치하고 로그인 작업 SHARE-02~07을 시범 등록했다. MCP는 `retire-together-shrimp`, 사용법은 LOCAL_DEVELOPMENT의 Shrimp 절. 한 세션만 상태를 수정하며 문서 원본 이전은 별도 결정한다.
-- 첫 Agent: Pension Rebalancing Agent (AGENT_DESIGN.md의 PoC 1페이지)
+- 화면 기준은 `DESIGN_SYSTEM.md`, 구조는 위 "화면 방향".
+- 목표 스택: React·TypeScript·Vite, Python 3.12·uv·FastAPI·Pydantic, 로컬 SQLite. Streamlit은 정리 예정(2026-11-16). LLM 실행 엔진은 Claude, 도구/파일 접근 경계를 검증한다. 할 일의 원본은 `BACKLOG.md`(2026-11-16). Shrimp(2026-11-07 설치)는 참고용, 사용법은 LOCAL_DEVELOPMENT의 Shrimp 절.
+- 첫 Agent: Pension Rebalancing Agent (`AGENT_DESIGN.md` §1)
 
 ## 미결
 - 개인 도구 vs 서비스 (현재는 개인 도구로 시작)
@@ -94,4 +90,4 @@
 - 서비스명 확정 (둘이서은퇴 / RetireTogether)
 
 ## 산출물
-- 기획서·설명서는 PDF 선호. 컨셉 원본은 `docs/assets/concept.jpg`에 존재하며 현재 화면 검수의 기준이다.
+- 기획서·설명서는 PDF 선호. 컨셉 원본은 `docs/assets/concept.jpg`(메인 대시보드 구조의 기준).

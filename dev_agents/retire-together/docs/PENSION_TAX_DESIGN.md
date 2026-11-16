@@ -135,7 +135,7 @@ Agent는 금액을 직접 계산하거나 부족한 자료를 추정해 채우�
 | 3. 수령 대안 | 계좌별 수령 계획·제약 검증·같은 기간의 비교·적용 전 차이 확인 | 생활비·잔액·기간 밖 지급까지 비교, 불가능한 대안과 소급 변경 차단 |
 | 4. 설명 Agent | 검증된 결과로 원인과 대안 설명, 결정 기록 연결 | 숫자/소유자/연도 검증, 오류 시 기본 설명 유지, 승인된 계획만 저장 |
 
-예정 담당 경로는 `tools/pension_tax.py`·`rules/pension_tax.yaml`·은퇴 API·`web/src/retirement/TaxImpactPanel.tsx`와 전용 스타일/테스트다. 기존 `pension_tax_notice.py`와 배지는 1단계에서 호환하고, 공통 파일은 연결부만 수정한다. 실제 구현 착수 때 WORK_AREAS와 DEV_HANDOFF를 다시 확인한다.
+예정 담당 경로는 `tools/pension_tax.py`·`rules/pension_tax.yaml`·은퇴 API·`web/src/retirement/TaxImpactPanel.tsx`와 전용 스타일/테스트다. 기존 `pension_tax_notice.py`와 배지는 1단계에서 호환하고, 공통 파일은 연결부만 수정한다.
 
 필수 검수 사례:
 

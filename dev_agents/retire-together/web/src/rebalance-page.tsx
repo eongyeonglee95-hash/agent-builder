@@ -4,7 +4,7 @@ import { classInfo, type Owner, type Strategy } from './model'
 import { RebalancePreview } from './rebalance'
 import { RebalancePlan } from './workbook/RebalancePlan'
 
-// 예전 카드형 화면의 리밸런싱 페이지 — 리밸런싱 영역 파일 (docs/WORK_AREAS.md). App.tsx는 이 컴포넌트 한 줄만 둔다.
+// 예전 카드형 화면의 리밸런싱 페이지 — 리밸런싱 영역 파일 (docs/archive/WORK_AREAS.md). App.tsx는 이 컴포넌트 한 줄만 둔다.
 // 실제 데이터: 워크북과 같은 리밸런싱 카드(RebalancePlan) + Codex의 CSV 계산 미리보기. 예시 보기: 예전 비교 화면.
 type Deviation = { key: string; target: number; current: number; delta: number }
 
