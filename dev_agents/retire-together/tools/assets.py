@@ -190,6 +190,7 @@ def load_accounts_list(path: Path = ACCOUNTS_PATH) -> list[dict]:
 
 ASSET_MAP_HEADER = """# 종목 ↔ 자산군 매핑 — 비중 계산에 쓰이는 분류의 단일 원천. 입력 화면에서 저장하면 이 파일이 다시 쓰인다.
 # asset_class: stock / long_bond / mid_bond / gold / commodity / cash · role: core(핵심) | satellite(위성, 테마) · status: proposed | confirmed
+# stock_group(주식만, 화면 표시용): kr 국내 | us 미국 | em 신흥국·테마 | income 배당·리츠. 리밸런싱은 stock 하나로 맞춘다
 # class_defaults: 자산군 기본 종목 (보유 없는 자산군을 살 때). 선택 규칙은 docs/REBALANCING_RULES.md §1-2
 """
 
