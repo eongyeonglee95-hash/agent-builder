@@ -15,9 +15,6 @@
 
 파일: `register*`, `sheet*`, `google.tsx`, `backend/registration.py`, `tools/kiwoom.py`, `tools/parse_balance.py`, `rules/accounts.yaml`
 
-### REG-KIWOOM-FIRST · P0 · 키움 첫 등록
-- [사용자] 확인 창에서 루미르(474170) 자산군을 골라 등록 → 끝난 기준: 다음에 화면을 열면 묻지 않고 "키움 잔고로 갱신했어요" 알림
-
 ### REG-PRICE · P1 · 모든 계좌 현재가를 키움 시세로
 지금 "현재가 반영"은 웹 시세(`tools/market.py`). 키움 시세 TR로 미래에셋 연금 ETF 가격도 받는다.
 - [ ] 1. 키움 공식 명세에서 현재가 TR 확인(ka10001 주식기본정보 등)·호출 한도 정리 → `docs/wiki/sources/broker-apis.md`에 한 단락
@@ -215,6 +212,8 @@ IRP 단계로 보류(DECISIONS 2026-10-26).
 - [사용자] PROPERTY-MARKET-INPUT · PROPERTY-ANALYSIS-HERO · PROPERTY-MOVE
 
 ## 확인 끝 (11-02 UX 검토 항목 중 이미 고쳐진 것 — 지워도 됨)
+
+- REG-KIWOOM-FIRST 키움 첫 등록 → 키움 종목은 전부 주식으로 자동 분류(DECISIONS 2026-11-16), 2026-11-16 루미르 508,560원 + 예수금 3,215원 등록
 
 - 워크북 리밸런싱 탭 새로고침 시 카드형으로 바뀜 → 워크북이 주소를 `#sheet-rebalance`로 써서 새로고침해도 워크북 유지(`Workbook.tsx` 55행). 단 `#rebalance`로 직접 들어오면 카드형(의도)
 - 카드형 연금이 은퇴 계산과 안 이어짐 → `App.tsx`가 `retirement/RetirementTower`의 `RetirementPage`를 씀. 실제 화면 확인은 PENSION-TOWER 검수 때 함께

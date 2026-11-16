@@ -41,7 +41,7 @@ def test_import_preview_then_commit_as_api(client, monkeypatch):  # noqa: F811
     assert r.status_code == 200, r.text
     g = r.json()["groups"][0]
     assert g["source"] == "api" and g["account_id"] == "spouse_test_general" and g["screen_total"] == 540_000
-    assert [(x["ticker"], x["qty"], x["asset_class"]) for x in g["rows"]] == [("005930", 5, None), ("069500", 7, "stock")]
+    assert [(x["ticker"], x["qty"], x["asset_class"]) for x in g["rows"]] == [("005930", 5, "stock"), ("069500", 7, "stock")]   # 키움은 전부 주식
     # 나(me)에게는 키움 일반계좌가 없어 새 계좌를 제안한다
     mine = client.post("/api/register/kiwoom?owner=me").json()["groups"][0]
     assert mine["account_id"] is None and mine["suggested"]["broker"] == "kiwoom"
@@ -72,11 +72,11 @@ def test_auto_sync_saves_known_holdings_with_cash(client, env, monkeypatch):  # 
     put = client.put("/api/register/accounts/spouse_test_general/auto-sync", json={"auto_sync": True})
     assert put.status_code == 200 and put.json()["auto_sync"] is True
     assert client.put("/api/register/accounts/me_test_pension/auto-sync", json={"auto_sync": True}).status_code == 422
-    # 삼성전자는 처음 보는 종목 → 저장하지 않고 확인 표
+    # 처음 보는 종목(삼성전자)도 키움이면 주식으로 바로 저장. 합계가 다를 때만 확인 표
+    monkeypatch.setattr(kiwoom, "fetch_balance", lambda: {**BALANCE, "tot_evlt_amt": "000000000600000"})
     r = client.post("/api/register/sync").json()
     assert r["status"] == "review" and r["groups"][0]["cash"] == 70_000 and not [a for a in client.get("/api/assets").json() if a["parent_id"]]
-    (env / "asset_map.yaml").write_text("assets:\n  KODEX 200:\n    ticker: '069500'\n    asset_class: stock\n    status: confirmed\n"
-                                        "  삼성전자:\n    ticker: '005930'\n    asset_class: stock\n    status: confirmed\nclass_defaults: {}\n", encoding="utf-8")
+    monkeypatch.setattr(kiwoom, "fetch_balance", lambda: BALANCE)
     r = client.post("/api/register/sync").json()
     assert r["status"] == "updated" and r["total"] == 610_000 and r["cash"] == 70_000, r
     kids = sorted((a["name"], a["amount"]) for a in client.get("/api/assets").json() if a["parent_id"])
