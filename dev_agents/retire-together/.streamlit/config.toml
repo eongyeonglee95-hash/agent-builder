@@ -1,8 +1,0 @@
-# 개발용 화면 설정. 저장하면 자동 재실행. tools/ 변경 감시는 scripts/dev.sh가 PYTHONPATH로 켠다.
-[server]
-runOnSave = true
-headless = true
-folderWatchBlacklist = ["data", ".venv", "docs"]
-
-[browser]
-gatherUsageStats = false

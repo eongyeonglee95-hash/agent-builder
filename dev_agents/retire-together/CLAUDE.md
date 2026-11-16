@@ -23,7 +23,6 @@
 - `web/` React·TypeScript·Vite 화면 / `backend/` FastAPI
 - `tools/` 계산·등록 도구(Agent 도구 겸용) / `agent/` 메인 Agent / `rules/` 전략·자산 매핑·계좌 YAML
 - `tests/` pytest, `web/e2e/` 브라우저 테스트 / `data/` 실제 잔고(git 제외, `data/fixtures/`만 포함)
-- `app/` 예전 Streamlit 화면. 정리하기로 했다(2026-11-16 결정). 새 기능을 넣지 않는다.
 
 ## 실행
 - 개발 서버: `scripts/dev-web.sh` → http://127.0.0.1:5180 (API 8010). 이미 떠 있으면 주소만 알려 준다. 코드를 고치면 저절로 반영된다. 멈췄을 때만 `--restart`.
