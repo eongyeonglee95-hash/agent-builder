@@ -126,7 +126,7 @@ def candidate_confirmed(ticker, name, asset_class: str, asset_map: dict[str, dic
 
 def check_candidates(defaults: dict[str, dict], targets: dict, account_ids: list[str],
                      accounts: dict[str, dict] | None = None) -> ConstraintResult:
-    """신규 매수 후보(보유 없는 자산군을 살 기본 종목)에도 제도 제약을 적용한다 (SAFE-02, ARCHITECTURE_REVIEW §4 P0).
+    """신규 매수 후보(보유 없는 자산군을 살 기본 종목)에도 제도 제약을 적용한다 (SAFE-02, docs/archive/ARCHITECTURE_REVIEW.md §4 P0).
     연금저축/IRP 계좌가 있으면 레버리지·인버스 이름의 후보를 거부하고, 종목코드 형식(6자리)도 검사한다."""
     from tools.strategy import TICKER_RE
     accts = load_accounts() if accounts is None else accounts

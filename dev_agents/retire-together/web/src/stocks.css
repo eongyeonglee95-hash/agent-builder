@@ -1,4 +1,4 @@
-/* 주식 영역 (예전 카드형 화면) — 담당: 주식 세션. 공통 스타일은 styles.css·workspaces.css. docs/WORK_AREAS.md */
+/* 주식 영역 (예전 카드형 화면) — 담당: 주식 세션. 공통 스타일은 styles.css·workspaces.css. docs/archive/WORK_AREAS.md */
 /* workspaces.css에서 옮김 */
 .portfolio-hero{display:grid;grid-template-columns:1.1fr 1fr;gap:30px;position:relative;overflow:hidden;background:#20364a;border-radius:13px;padding:34px 38px;color:#f5f7f6;margin-bottom:22px}
 .portfolio-hero:after{content:'';position:absolute;width:370px;height:370px;border:1px solid #ffffff09;border-radius:100%;right:-105px;top:-150px;pointer-events:none}

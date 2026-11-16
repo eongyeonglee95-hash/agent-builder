@@ -1,4 +1,4 @@
-"""compute_rebalance 단위 테스트 — docs/AGENT_DESIGN.md 완료 기준 1·3·4·6 + 규칙."""
+"""compute_rebalance 단위 테스트 — docs/archive/AGENT_HISTORY.md 완료 기준 1·3·4·6 + 규칙."""
 from pathlib import Path
 
 import pandas as pd

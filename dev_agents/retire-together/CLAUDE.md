@@ -1,49 +1,44 @@
 # RetireTogether (둘이서은퇴)
 
-부부 연금·현금 주머니를 규칙대로 굴리는 은퇴 가계 노트. 현재 목표는 원래 컨셉에 가까운 제품 화면과 안전한 리밸런싱 흐름을 함께 완성하는 것.
+부부 연금·현금 주머니를 규칙대로 굴리는 은퇴 가계 노트. 경로와 명령은 모두 이 폴더(`dev_agents/retire-together/`) 기준.
 
-위치: 2026-11-02부터 저장소 `dev_agents/retire-together/`. 이 문서의 경로와 아래 실행 명령은 모두 이 폴더 기준이며, 명령은 이 폴더 안에서 실행한다. 저장소 루트는 여러 에이전트의 작업공간이다(루트 `CLAUDE.md`).
-
-## 현재 작업 기준 — 2026-10-27 사용자 승인
-- **진행 중인 세션 간 인계**: `docs/DEV_HANDOFF.md`를 읽고 수신 확인을 남긴다. Codex가 사용자 추가 요청(내 정보·배우자 정보·수동 자산 등록)을 `web/`·`backend/`에서 구현 중. 기존 Claude는 SAFE/엔진·투자 규칙 경로를 유지하고 겹치는 파일 수정 전 인계한다.
-- 사용자가 Codex 검토 내용을 Claude의 기존 작업에 반영하고 충돌 없이 원래 컨셉대로 진행하도록 요청했다.
-- 시각 기준(2026-10-28 사용자 확정으로 변경): 화면 표준은 Tailwind CSS + shadcn/ui, 테마 토큰은 `web/src/theme.css`(근거 `docs/research/UI_REFERENCES.md`). 2026-11-07 사용자 변경: 첫 진입은 메인 대시보드(concept.jpg 기반), 엑셀 워크북은 '표로 보기'로 연다. 비로그인은 먼저 Google 로그인을 거친다. 새 화면에 토큰 밖의 색·글자 크기를 쓰지 않는다. 작업 순서·담당·완료 조건의 원본은 `docs/AGENT_DESIGN.md` §0. 상세 검토 근거는 `docs/ARCHITECTURE_REVIEW.md`.
-- 목표 스택: `web/` React·TypeScript·Vite + Python·FastAPI. 기존 `app/` Streamlit은 전환 중 비교 도구. 기존 계산 로직은 검증을 보강해 재사용한다.
-- 현재 진행 중인 투자 출처·저자 리서치는 유지한다. 전략 비율·종목·투자 규칙 결정과 UI/구조 전환은 별개다. 새 비율이나 종목을 이 전환의 일부로 임의 반영하지 않는다.
-- 동시 작업 전 §0의 담당 경로와 협업 메모를 확인한다. 기존 세션의 작업을 복제하거나 다른 작업자의 변경을 되돌리지 않는다. 준비/전달/수신 확인/구현 완료를 구분한다.
-
-- **작업 영역**: 리밸런싱·주식·부동산·은퇴를 세션별로 나눠 작업한다. 자기 영역 파일만 고치고 공통 파일은 작게, 고치기 전 DEV_HANDOFF에 한 줄 — 영역별 파일·포트는 `docs/WORK_AREAS.md`.
-- **개발 서버는 하나만** (2026-11-02 사용자 결정, 여러 세션 동시 작업): 주소는 늘 http://127.0.0.1:5180 (API 8010). `scripts/dev-web.sh`를 실행하면 이미 떠 있을 때 주소만 알려 주고 끝난다 — 새 포트로 따로 띄우지 않는다. 서버 코드(backend/·tools/·rules/)와 화면은 고치면 저절로 반영되므로 다시 띄울 필요가 없다. 정말 멈췄을 때만 `scripts/dev-web.sh --restart`. 브라우저 테스트는 세션마다 다른 `RETIRE_E2E_PORT`를 쓴다.
-
-## 시작할 때 반드시 읽을 것
-1. `docs/MASTER_CONTEXT.md` — 단일 출발점. 제품 철학과 책임 분리 원칙
-2. `docs/AGENT_DESIGN.md` — 현재 실행 계획·협업(§0), Agent 정의(§1), 이전 PoC 기록(§2). 현재 범위는 §0이 우선한다
-3. `docs/BACKLOG.md` — 할 일 한곳(기능 영역별). 다음 작업은 여기서 고르고, 끝나면 줄을 지운다
-4. 화면을 만들거나 고칠 때 `docs/DESIGN_SYSTEM.md` — 토큰·숫자 표기·컴포넌트·점검표. 견본은 앱 주소 `#design`
-5. 작업 영역에 따라 `docs/REBALANCING_RULES.md`, `docs/CALCULATION_RULES.md`, `docs/TAX_RULES.md`
+## 시작할 때
+- `docs/BACKLOG.md`에서 할 일을 고른다. 이것만 읽고 시작한다.
+- 다른 문서는 그 일에 필요할 때만 연다(아래 문서 지도).
+- 작업 세션은 하나다(2026-11-16 결정). 인계·영역 나누기·수신 확인 절차는 없다.
 
 ## 지켜야 할 원칙
-- 숫자 → 코드/DB. LLM은 계산하지 않는다. 모든 공식은 `CALCULATION_RULES.md`를 순수 함수로 구현하고 pytest 단위 테스트를 둔다
-- 규칙 → `docs/*_RULES.md` (wiki). 코드에 규칙을 하드코딩하지 말고 문서/YAML에서 읽는다
-- 판단 조건(임계치·한도·제도 제약) → deterministic logic
-- 설명/대화/기억 → Agent. 예측·추천 표현 금지("오를 것", "이 ETF가 좋다")
-- 전략과 종목은 사용자가 정한다. Agent는 전략을 바꾸거나 추천하지 않는다
-- 사용자 결정(수락/거절/사유, 가정값 변경)은 `docs/DECISIONS.md`에 기록
-- 문서를 고치면 `docs/CHANGELOG.md`에 한 줄 남긴다
-- Agent 허용 도구는 `tools/`의 커스텀 도구만. Bash·파일 편집 등 SDK 기본 도구는 비활성
-- 전략 비율·종목 매핑 숫자는 `rules/*.yaml`이 원천. 문서에 숫자를 복사하지 않는다
+- 숫자는 코드가 계산한다. LLM은 계산하지 않는다. 공식은 `docs/CALCULATION_RULES.md`대로 순수 함수 + pytest.
+- 규칙은 문서·YAML에서 읽는다. 전략 비율·종목 매핑 숫자는 `rules/*.yaml`이 원천이라 문서에 복사하지 않는다.
+- 임계치·한도·제도 제약은 deterministic 코드로 판단한다.
+- 설명·대화·기억은 Agent가 맡는다. 예측·추천 표현은 쓰지 않는다("오를 것", "이 ETF가 좋다"). 전략·종목은 사용자가 정한다.
+- Agent가 쓸 수 있는 도구는 `tools/`의 커스텀 도구뿐이다(SDK 기본 도구는 끔).
+- 사용자 결정(수락·거절·가정값 변경)은 `docs/DECISIONS.md`에 적는다.
+- 변경 기록은 커밋 메시지로 남긴다. CHANGELOG는 폐지했다(옛 기록은 `docs/archive/`).
+- 화면은 `docs/DESIGN_SYSTEM.md`를 따른다. 색·글자 크기는 `web/src/theme.css` 토큰만 쓴다. 견본은 `#design`.
+- 첫 화면은 메인 대시보드(`concept.jpg` 구조), 엑셀 워크북은 "표로 보기". 비로그인은 먼저 Google 로그인(2026-11-07).
+- 대시보드 구조(총자산/두 주머니 → 도넛/은퇴 목표/알림 → 전략/소득)를 지킨다. 디자인 참고·색 개선 요청을 레이아웃 교체나 소개·온보딩 추가로 넓히지 않는다. 구조가 다른 제안은 별도 시안으로 먼저 보여 주고 사용자가 고른 뒤 반영한다(2026-11-07).
 
-## 저장소 구조 (목표)
-- `docs/` 기획·규칙 문서. `docs/wiki/` 리서치 위키 — 쓰고 갱신하는 절차는 `/wiki-research` 스킬
-- `web/` 목표 React 화면, `backend/` 목표 API·서비스·저장소 (현재 계획, 착수 여부는 AGENT_DESIGN §0)
-- `app/` 기존 Streamlit 화면 (전환 중 비교용)
-- `agent/` 메인 Agent와 프롬프트
-- `tools/` parse_balance / tag_assets / load_strategy / compute_rebalance / explain_inputs / build_order_sheet / record_decision
-- `rules/` 전략 YAML, 자산군↔종목 매핑 YAML, 계좌 목록 YAML(소유자·증권사·계좌종류)
-- `data/` 샘플 CSV·캡처, 결정 기록
-- `tests/` 계산 함수 단위 테스트
+## 구조
+- `web/` React·TypeScript·Vite 화면 / `backend/` FastAPI
+- `tools/` 계산·등록 도구(Agent 도구 겸용) / `agent/` 메인 Agent / `rules/` 전략·자산 매핑·계좌 YAML
+- `tests/` pytest, `web/e2e/` 브라우저 테스트 / `data/` 실제 잔고(git 제외, `data/fixtures/`만 포함)
+- `app/` 예전 Streamlit 화면. 정리하기로 했다(2026-11-16 결정). 새 기능을 넣지 않는다.
 
-## 기술
-현재 실행 코드: Python 3.12 + uv, Claude Agent SDK, pandas, PyYAML, pytest, Streamlit. 전환 목표: TypeScript·React·Vite + Python·FastAPI·Pydantic, 로컬 SQLite. 전환을 완료했다고 보고하지 않는다.
-실행: `uv run pytest` / 등록 `uv run python -m tools.register --account <id> --images <png...> --out <csv>` / 드라이런 `uv run python -m tools.cli --holdings <csv> --pool me_pension [--new-cash 3000000 --new-cash-account <id>] [--live]` / Agent `uv run python -m agent ["질문"] [--owner me --live]`(등록 잔고로 대화, 기록은 y/n 확인) / 화면 `scripts/dev.sh`(기존 서버 내리고 PYTHONPATH=. 로 띄움 — tools/ 변경도 자동 반영. `uv run streamlit run app/main.py`로 직접 띄우면 tools/를 고친 뒤 서버를 다시 띄워야 한다).
-tools/: strategy(load_strategy) · assets(tag_assets, 제약 검증, 계좌·풀) · market(종목코드·현재가) · rebalance(compute_rebalance 순수 함수) · explain(왜 지금 템플릿) · order_sheet · decisions · parse_balance(CSV·캡처) · cli. 자동주문(KIS API)은 후속 단계 — 지금은 드라이런만. 현재 범위와 순서는 `docs/AGENT_DESIGN.md` §0.
+## 실행
+- 개발 서버: `scripts/dev-web.sh` → http://127.0.0.1:5180 (API 8010). 이미 떠 있으면 주소만 알려 준다. 코드를 고치면 저절로 반영된다. 멈췄을 때만 `--restart`.
+- 검사: `uv run pytest -q` · `npm --prefix web run build` · `npm --prefix web run test:e2e`
+- Agent 대화: `uv run python -m agent ["질문"]`
+- 설치·구글 시트 연결은 `docs/LOCAL_DEVELOPMENT.md`, `docs/GOOGLE_SHEETS.md`
+
+## 문서 지도 (필요할 때만)
+| 문서 | 언제 |
+|---|---|
+| `docs/BACKLOG.md` | 늘. 할 일 한곳. 끝나면 줄을 지운다 |
+| `docs/MASTER_CONTEXT.md` | 제품 의도·자산 구조(두 주머니·4층)를 확인할 때 |
+| `docs/DESIGN_SYSTEM.md` | 화면을 만들거나 고칠 때 |
+| `docs/REBALANCING_RULES.md` · `CALCULATION_RULES.md` · `TAX_RULES.md` | 그 계산을 고칠 때 |
+| `docs/AGENT_DESIGN.md` | Agent·도구 계약을 고칠 때 |
+| `docs/DECISIONS.md` | 예전 결정을 확인하거나 새 결정을 적을 때 |
+| `docs/wiki/` | 리서치. 쓰는 절차는 `/wiki-research` |
+| `docs/archive/` | 옛 인계·검토·계획 기록. 작업할 때는 읽지 않는다 |

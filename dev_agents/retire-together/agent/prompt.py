@@ -1,6 +1,6 @@
 """시스템 프롬프트 — 고정 원칙 + REBALANCING_RULES §4·§5(설명 재료·결정 반영)를 실행할 때 읽어 붙인다.
 
-AGENT_DESIGN §2 기술: 컨텍스트 주입은 §4와 결정 기록만. TAX_RULES·CALCULATION_RULES는 넣지 않는다
+docs/archive/AGENT_HISTORY.md 기술: 컨텍스트 주입은 §4와 결정 기록만. TAX_RULES·CALCULATION_RULES는 넣지 않는다
 (공식을 보여 주면 LLM이 계산을 시도한다). 결정 기록은 read_decisions 도구로 읽는다.
 """
 from __future__ import annotations

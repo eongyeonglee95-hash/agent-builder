@@ -1,4 +1,4 @@
-/* 리밸런싱 영역 (예전 카드형 화면) — 담당: 리밸런싱 세션. 공통 스타일은 styles.css. docs/WORK_AREAS.md */
+/* 리밸런싱 영역 (예전 카드형 화면) — 담당: 리밸런싱 세션. 공통 스타일은 styles.css. docs/archive/WORK_AREAS.md */
 /* styles.css에서 옮김 */
 .strategy-tabs{display:flex;gap:4px;flex-wrap:wrap;background:#f5f7f9;border-radius:5px;padding:3px;margin-bottom:20px}
 .strategy-tabs button{flex:1;padding:6px 4px;min-height:30px;font-size:10px;color:#8c96a4;border-radius:4px;white-space:nowrap}

@@ -1,7 +1,7 @@
 """parse_balance — 보유 내역 입력. (1) CSV 읽기 (2) 앱 캡처 이미지 → 표 (Claude 비전, Agent SDK).
 
 캡처 파싱은 처음 등록할 때와 수량이 바뀔 때만 쓴다. 매번의 현재가는 tools.market.fetch_prices.
-검사 칸은 종목명·수량·현재가 세 개 (docs/AGENT_DESIGN.md 완료 기준 2).
+검사 칸은 종목명·수량·현재가 세 개 (docs/archive/AGENT_HISTORY.md 완료 기준 2).
 """
 from __future__ import annotations
 

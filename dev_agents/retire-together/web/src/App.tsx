@@ -4,7 +4,7 @@ import { ArrowDownToLine, ArrowRight, Bell, CalendarDays, Check, ChevronDown, Ch
 import strategies from 'virtual:retire-strategies'
 import { AS_OF, classInfo, downloadDemoCsv, getSnapshot, money, ownerLabels, assetOwnerLabel, assetSourceLabel, type Asset, type Owner, type Page } from './model'
 import { Brand, CheckItem, IncomeChart, Modal, PanelHeading, StatCard, StrategyStack } from './components'
-import { RebalancePage } from './rebalance-page'   // 리밸런싱 영역 — docs/WORK_AREAS.md
+import { RebalancePage } from './rebalance-page'   // 리밸런싱 영역 — docs/archive/WORK_AREAS.md
 import { useLocalData } from './local-data'
 import { PropertyPlan } from './property'
 import { StockWorkspace } from './stocks'
