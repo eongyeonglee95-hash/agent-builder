@@ -63,7 +63,7 @@ def parse_listings(html: str) -> list[dict]:
             continue
         # 매매 총액을 그대로 사용. 분양가·프리미엄·옵션을 다시 더하지 않는다.
         result[code] = {"id": code, "name": parts[0], "price": won, "area": area, "supply_area": supply,
-                        "floor_direction": size[3], "checked_on": checked_on, "url": url}
+                        "floor_direction": re.sub(r"\s*,\s*", " · ", size[3].strip()), "checked_on": checked_on, "url": url}
     return sorted(result.values(), key=lambda r: (r["price"], r["id"]))
 
 

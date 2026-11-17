@@ -28,6 +28,7 @@ def test_parse_total_price_deduplicates_ads_and_preserves_source_date():
     assert len(rows) == 2 and rows[0]["price"] == 620_000_000
     assert rows[0]["area"] == 84.99 and rows[0]["supply_area"] == 115.22
     assert rows[0]["checked_on"] == "2026-10-17"
+    assert rows[0]["floor_direction"] == "8층/35층 · 남서향"
     assert "region_cd=2714010200" in rows[0]["url"]
     assert parse_listings(listing(checked="26.15.32.")) == []
     assert parse_listings(listing().replace("offer_gbn=P", "offer_gbn=J")) == []
