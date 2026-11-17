@@ -25,7 +25,7 @@ def anchors(html: str):
             yield url, parse_qs(parsed.query), body
 
 
-def find_complexes(html: str, names: list[str], bcode: str, category: str) -> list[dict]:
+def find_complexes(html: str, names: list[str], bcode: str, category: str, kind: str = "P") -> list[dict]:
     """같은 법정동, 같은 이름의 단지만. 브랜드 부분 일치로 옆 단지를 섞지 않는다."""
     keys = {_norm(n) for n in names if n}
     found = {}
@@ -36,19 +36,19 @@ def find_complexes(html: str, names: list[str], bcode: str, category: str) -> li
         name = re.sub(r"\s*\(\d+\)\s*$", "", plain(body)).strip()
         if (re.fullmatch(r"A\d{7}", code) and _norm(name) in keys
                 and q.get("region_cd") == [bcode] and q.get("offerings_gbn") == [category]
-                and q.get("offer_gbn") == ["P"]):
+                and q.get("offer_gbn") == [kind]):
             found[code] = {"code": code, "name": name, "category": category}
     return list(found.values())
 
 
-def parse_listings(html: str) -> list[dict]:
+def parse_listings(html: str, kind: str = "P") -> list[dict]:
     result = {}
     for url, q, body in anchors(html):
         code = q.get("offerings_cd", [""])[0]
-        if not urlparse(url).path.endswith("/OfferingsDetail.neo") or not code.isdigit() or q.get("offer_gbn") != ["P"]:
+        if not urlparse(url).path.endswith("/OfferingsDetail.neo") or not code.isdigit() or q.get("offer_gbn") != [kind]:
             continue
         parts = [plain(p) for p in re.findall(r"<p\b[^>]*>(.*?)</p>", body, re.S | re.I)]
-        price = re.search(r"매매\s+([\d,]+)만", plain(body))
+        price = re.search({"P": r"매매\s+([\d,]+)만", "L": r"전세\s+([\d,]+)만", "M": r"월세\s+([\d,]+)\s*/\s*([\d,]+)만"}[kind], plain(body))
         size = next((re.search(r"([\d.]+)\s*/\s*([\d.]+)㎡\s*,\s*(.*)", p) for p in parts if "㎡" in p), None)
         checked = re.search(r"확인\s+(\d{2})\.(\d{2})\.(\d{2})", plain(body))
         if not price or not size or not parts or not checked:
@@ -57,13 +57,16 @@ def parse_listings(html: str) -> list[dict]:
             checked_on = dt.date(2000 + int(checked[1]), int(checked[2]), int(checked[3])).isoformat()
             supply, area = float(size[1]), float(size[2])
             won = int(price[1].replace(",", "")) * 10_000
-            if not 0 < area <= supply <= 2000 or won <= 0:
+            monthly = int(price[2].replace(",", "")) * 10_000 if kind == "M" else None
+            if not 0 < area <= supply <= 2000 or won < 0 or (kind != "M" and won == 0) or (monthly is not None and monthly <= 0):
                 continue
         except ValueError:
             continue
         # 매매 총액을 그대로 사용. 분양가·프리미엄·옵션을 다시 더하지 않는다.
         result[code] = {"id": code, "name": parts[0], "price": won, "area": area, "supply_area": supply,
                         "floor_direction": re.sub(r"\s*,\s*", " · ", size[3].strip()), "checked_on": checked_on, "url": url}
+        if monthly is not None:
+            result[code]["monthly"] = monthly
     return sorted(result.values(), key=lambda r: (r["price"], r["id"]))
 
 

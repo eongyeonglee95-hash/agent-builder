@@ -6,6 +6,12 @@ from backend import property_market as market
 from tools.property_market import BASE, area_options, find_complexes, last_page, parse_listings
 
 
+@pytest.fixture(autouse=True)
+def temporary_cache(tmp_path, monkeypatch):
+    from backend import storage
+    monkeypatch.setattr(storage, "DB_PATH", tmp_path / "property.sqlite3")
+
+
 def directory(name="검증아파트", code="A1234567", bcode="2714010200"):
     return f'<div class="nc_list"><a href="{BASE}OfferingsList.neo?complex_cd={code}&region_cd={bcode}&offerings_gbn=AT&offer_gbn=P">{name} <font>(3)</font></a></div>'
 
@@ -51,7 +57,6 @@ def test_bounded_pagination_partial_failure_and_area_filter(monkeypatch):
             raise HTTPException(503, "source unavailable")
         return listing() + listing("1235", area="106.17") + f'<a href="{BASE}OfferingsList.neo?page=2">2</a>'
     monkeypatch.setattr(market, "_html", html)
-    monkeypatch.setattr(market, "_cache", {})
     data = market.listings("2714010200", "검증아파트", 84)
     assert data["partial"] and data["summary"] == {"low": 620_000_000, "high": 620_000_000, "count": 1}
     assert len(calls) == 4
@@ -64,3 +69,47 @@ def test_changed_markup_is_failure_not_zero_ads(monkeypatch):
     with pytest.raises(HTTPException) as e:
         market._public_complex("2714010200", "검증아파트", None)
     assert e.value.status_code == 503
+
+
+def test_rent_types_preserve_deposit_monthly_pairs_and_do_not_mix_sale():
+    lease = listing().replace('offer_gbn=P', 'offer_gbn=L').replace('매매 62,000만', '전세 45,000만')
+    monthly = listing().replace('offer_gbn=P', 'offer_gbn=M').replace('매매 62,000만', '월세 10,000 / 120만')
+    assert parse_listings(lease, 'L')[0]['price'] == 450_000_000
+    row = parse_listings(monthly, 'M')[0]
+    assert row['price'] == 100_000_000 and row['monthly'] == 1_200_000
+    assert parse_listings(monthly, 'P') == []
+    assert parse_listings(monthly.replace('월세 10,000 / 120만', '월세 0 / 120만'), 'M')[0]['price'] == 0
+
+
+def test_weekly_cache_survives_process_memory_and_expiry_failure_keeps_old_date(monkeypatch):
+    now = [1_000_000.0]
+    calls = []
+    monkeypatch.setattr(market.time, 'time', lambda: now[0])
+    def fetch(bcode, name, jibun, kind):
+        calls.append(kind)
+        return {'status': 'matched', 'fetched_at': '2026-11-17T00:00:00Z', 'listings': [], 'partial': False}
+    monkeypatch.setattr(market, '_public_complex', fetch)
+    first = market.public_complex('2714010200', '검증', None)
+    now[0] += 6 * 86400
+    market._locks.clear()
+    assert market.public_complex('2714010200', '검증', None) == first
+    assert calls == ['P']
+    market.public_complex('2714010200', '검증', None, 'L')
+    assert calls == ['P', 'L']
+    now[0] += 86400
+    market.public_complex('2714010200', '검증', None)
+    assert calls == ['P', 'L', 'P']
+    now[0] += 7 * 86400
+    def fail(*args):
+        raise HTTPException(503, 'failed')
+    monkeypatch.setattr(market, '_public_complex', fail)
+    stale = market.public_complex('2714010200', '검증', None)
+    assert stale['stale'] is True and stale['fetched_at'] == first['fetched_at']
+
+
+def test_monthly_summary_uses_one_actual_listing_not_independent_minima(monkeypatch):
+    monkeypatch.setattr(market, 'public_complex', lambda *args: {'listings': [
+        {'price': 100_000_000, 'monthly': 1_200_000, 'area': 84},
+        {'price': 300_000_000, 'monthly': 800_000, 'area': 84},
+    ]})
+    assert market.listings('2714010200', '검증', 84, kind='M')['rent_offer'] == {'deposit': 300_000_000, 'monthly': 800_000}

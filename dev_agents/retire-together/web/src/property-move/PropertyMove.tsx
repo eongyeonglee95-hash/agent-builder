@@ -7,7 +7,7 @@ import { DeleteHome, HomeMarket, HomeWizard, KeySetup, sourceLabel, TENURE, type
 import { CandidateForm, FundsForm, LIVING_FIELDS } from './Forms'
 import { TradePrice, TradeReport, usePriceCheck, useTrades } from './Market'
 import { AnalysisHero } from './AnalysisHero'
-import { HomeSaleSummary, PublicListings, usePublicListings } from './HomeListings'
+import { HomeSaleSummary, HomeListingSummary, usePublicListings } from './HomeListings'
 import { dateToday, emptyLiving, type Budget, type Candidate, type Living, type MovePlan, type MoveState, type TrackEntry } from './types'
 import './property-move.css'
 
@@ -45,7 +45,7 @@ function HomeLine({ home: h, hidden, family, owner, onEdit, onMarket }: { home: 
       <div className="property-move-price-cell property-move-equity-cell"><span>{owner === 'together' ? '부동산 순자산' : '선택한 소유자 순자산'}</span><strong>{show(m.equity_mine)}</strong><small>대출·반환 보증금 차감</small></div>
       <button className="property-move-icon-button" aria-label={`${h.asset.name} 상세 ${expanded ? '접기' : '보기'}`} aria-expanded={expanded} onClick={() => setExpanded(v => !v)}><ChevronDown size={18} className={expanded ? 'rotated' : ''}/></button>
     </div>
-    <PublicListings market={listings} hidden={hidden} onManual={onMarket}/>
+    <HomeListingSummary sale={listings} address={dt?.address} name={h.asset.name} area={dt?.area_m2} hidden={hidden} onManual={onMarket}/>
     {expanded && <div className="property-move-home-detail">
       <div className="property-move-home-facts"><div className="property-move-section-head"><h3>우리 집 거래 정보</h3><button className="property-move-link" onClick={onEdit}>집 정보 수정 <ChevronRight size={13}/></button></div><p className="property-move-note"><MapPin size={13}/>{dt?.address?.road || '주소를 등록하면 실거래가를 연결할 수 있어요.'}{dt ? ` · ${TENURE[dt.tenure]}` : ''}</p>
         <div className="property-move-value-comparison"><div><span>내 매입가 · 전체</span><strong>{show(dt?.purchase_price ?? null)}</strong><i style={{ height: !hidden && dt?.purchase_price ? `${Math.max(5, dt.purchase_price / Math.max(dt.purchase_price, h.full_value, 1) * 76)}px` : '6px' }}/></div><div><span>등록 시세 · 전체</span><strong>{show(h.full_value)}</strong><i style={{ height: !hidden ? `${Math.max(5, h.full_value / Math.max(dt?.purchase_price || 0, h.full_value, 1) * 76)}px` : '6px' }}/></div></div>
@@ -191,7 +191,6 @@ export function PropertyMove({ owner, family, hidden, onChanged, onDemo }: Props
   const reachNow = priced.filter(b => b.gap === 0).length, reachLater = priced.filter(b => b.future_gap === 0).length
   return <div className="property-move">
     {error && <div className="property-move-error" role="alert">{error} <button className="property-move-link" onClick={refresh}>다시 불러오기</button></div>}
-    <AnalysisHero data={data} hidden={hidden} onEdit={candidate => setDialog({ type: 'candidate', candidate })} onAdd={() => setDialog({ type: 'candidate' })} onDetails={id => setDetailsRequest(old => ({ id, sequence: (old?.sequence ?? 0) + 1 }))}/>
     <section className="property-move-funds-card" aria-label="갈아타기 자금">
       <div className="property-move-funds-own"><span>준비한 자기자금</span><strong>{show(f.own_funds)}</strong><small>{!selectedHomes.length && !homes.homes.length ? '우리 집을 등록하면 매도 후 자금을 계산해요' : !selectedHomes.length ? '팔고 갈 집 선택 필요 · 첫 집이면 모아둔 돈만' : p.cash === null ? `매도 후 ${show(f.sale_net)} · 모아둔 돈 입력 필요` : `매도 후 ${show(f.sale_net)} + 모아둔 돈 ${show(p.cash)}`}{p.new_loan > 0 ? ` · 대출 가정 ${show(p.new_loan)} 별도` : ''}</small></div>
       <div className="property-move-funds-saving"><span>앞으로 모을 돈</span><strong>{p.target_month && f.months != null ? show(f.future_savings) : '—'}</strong><small>{p.target_month && f.months != null ? `매달 ${show(p.monthly_saving)} · ${p.target_month.replace('-', '.')}까지 ${f.months}개월` : '이사 시점·매달 모을 돈 미입력'}</small></div>
@@ -209,6 +208,7 @@ export function PropertyMove({ owner, family, hidden, onChanged, onDemo }: Props
       {!candidates.length && <div className="property-move-empty"><Target size={28}/><div><strong>마음에 둔 아파트부터 하나씩.</strong><p>후보를 더하면 같은 자금으로 더 필요한 돈을 나란히 비교하고, 줄마다 격차를 추적해요.</p></div></div>}
       <p className="property-move-note">더 필요한 돈은 등록한 후보의 계획 매수가와 자금 계획 기준입니다. 호가는 직접 확인한 기록이며 자동 갱신되지 않아요.</p>
     </section>
+    <details className="property-move-section"><summary>가격 기록 더보기</summary><AnalysisHero data={data} hidden={hidden} onEdit={candidate => setDialog({ type: 'candidate', candidate })} onAdd={() => setDialog({ type: 'candidate' })} onDetails={id => setDetailsRequest(old => ({ id, sequence: (old?.sequence ?? 0) + 1 }))}/></details>
     <button className="property-move-link property-move-demo-link" onClick={onDemo}>가상 예시 화면 보기 <ArrowRight size={13}/></button>
     {dialog && <Modal title={dialog.type === 'candidate' ? dialog.candidate ? '비교 아파트 수정' : '비교할 아파트 추가' : dialog.type === 'funds' ? '갈아타기 자금 계획' : dialog.type === 'market' ? `${dialog.home?.asset.name} 시세·호가` : dialog.type === 'delete' ? '집 삭제' : dialog.home ? '집 정보' : '우리 집 등록'} onClose={() => setDialog(null)}>
       {dialog.type === 'candidate' ? <CandidateForm initial={dialog.candidate} onSave={async c => { const exists = p.candidates.some(old => old.id === c.id); await save({ ...p, candidates: exists ? p.candidates.map(old => old.id === c.id ? c : old) : [...p.candidates, c], target_id: null }) }} onDelete={dialog.candidate ? async () => { const rest = p.candidates.filter(c => c.id !== dialog.candidate?.id); await save({ ...p, candidates: rest, target_id: null }) } : undefined}/>

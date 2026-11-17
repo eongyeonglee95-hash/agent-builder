@@ -27,6 +27,8 @@ async function fixture(page: Page, request: APIRequestContext) {
   })
   await page.route('**/api/property/trades?**', route => route.fulfill({ json: { configured: true, trades: [] } }))
   await page.goto('/#property')
+  await page.getByRole('navigation', { name: '부동산 메뉴' }).getByRole('button', { name: '내 부동산' }).click()
+  await page.getByText('가격 기록 더보기', { exact: true }).click()
   await expect(page.getByRole('region', { name: '관심 부동산 분석', exact: true })).toBeVisible()
   return data
 }
@@ -81,6 +83,7 @@ test('히어로 편집·상세 진입과 가구 범위, 금액 숨김에 차트/
   await page.evaluate(() => { location.hash = '#assets' })
   await page.getByRole('button', { name: '금액 숨기기', exact: true }).click()
   await page.evaluate(() => { location.hash = '#property' })
+  await page.getByRole('navigation', { name: '부동산 메뉴' }).getByRole('button', { name: '내 부동산' }).click()
   await expect(hero.locator('.property-hero-chart-hidden')).toBeVisible()
   await expect(hero.locator('.property-hero-chart-svg')).toHaveCount(0)
   await expect(hero).not.toContainText('남향 고층')

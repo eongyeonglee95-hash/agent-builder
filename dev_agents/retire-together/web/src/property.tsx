@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, type ReactNode, type ComponentProps } from 'react'
+import { PropertyObservatory } from './property-observatory'
 import { ArrowRight, Check, CirclePlus, ChevronRight, Compass, Heart, House, MapPin, MoveRight, SlidersHorizontal, Sprout, Target } from 'lucide-react'
 import { PanelHeading } from './components'
 import { money, type Family, type Owner } from './model'
@@ -15,7 +16,7 @@ function Neighborhood({ theme = 'river', floors = [8, 12, 9] }: { theme?: string
   return <div className={`neighborhood ${theme}`} aria-hidden="true"><span className="neighborhood-sun"/><span className="neighborhood-cloud cloud-one"/><span className="neighborhood-cloud cloud-two"/><div className="building-row">{floors.map((floor, i) => <div className={`building building-${i}`} key={i} style={{ height: `${floor * 7 + 18}px` }}>{Array.from({ length: floor > 10 ? 18 : 12 }, (_, k) => <i key={k}/>)}</div>)}</div><span className="neighborhood-tree tree-one"/><span className="neighborhood-tree tree-two"/><span className="neighborhood-ground"/></div>
 }
 
-export function PropertyPlan({ value, registered, isDemo, onPreview, onDemo, onRegister, owner, family, hidden, onChanged }: {
+function PropertyContent({ value, registered, isDemo, onPreview, onDemo, onRegister, owner, family, hidden, onChanged }: {
   value: string; registered: boolean; isDemo: boolean; onPreview: () => void; onDemo: () => void; onRegister: () => void
   owner: Owner; family: Family | null; hidden: boolean; onChanged: () => void
 }) {
@@ -43,4 +44,8 @@ export function PropertyPlan({ value, registered, isDemo, onPreview, onDemo, onR
     </section>
     <div className="property-source-note"><span><MapPin size={17}/>동네의 변화도, 놓치지 않도록.</span><p>실거래가 · 전세가 · 분양 · 교통 · 정비사업 뉴스는 출처와 기준일을 확인할 수 있도록 연결할 예정입니다.</p></div>
   </div>
+}
+
+export function PropertyPlan({ ledger, ...props }: ComponentProps<typeof PropertyContent> & { ledger?: ReactNode }) {
+  return <PropertyObservatory owner={props.owner} hidden={props.hidden}><PropertyContent {...props}/>{ledger}</PropertyObservatory>
 }

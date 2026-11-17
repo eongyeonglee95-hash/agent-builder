@@ -16,6 +16,7 @@ test.beforeEach(async ({ page, request }) => {
 
 test('빈 장부에서 기존 집 등록 흐름을 열고 저장한다', async ({ page, request }) => {
   await page.goto('/#property')
+  await page.getByRole('navigation', { name: '부동산 메뉴' }).getByRole('button', { name: '내 부동산' }).click()
   await expect(page.getByRole('heading', { name: '우리 집을 모두 팔면' })).toBeVisible()
   await expect(page.locator('.property-move-funds-own strong')).toHaveText('—')
   await page.getByRole('button', { name: '우리 집 등록', exact: true }).click()
@@ -46,6 +47,7 @@ test('기존 가격 자료·자금 계산과 단순 등록·수정·화면 폭',
     address: { road: '검증시 검증구 햇살로 1', jibun: '검증시 검증구 검증동 1', building: '검증용 햇살아파트', sigungu_code: '11110', apartment: true }, new_loans: [{ name: '검증용 주택대출', amount: 200000000 }] } })).json()
   await request.put(`/api/property/${h.asset.id}/listings`, { data: { detail_version: h.detail.version, listings: [{ price: 850000000, floor: '고층', memo: '검증용', checked_on: today }, { price: 870000000, floor: '12층', memo: '검증용', checked_on: today }] } })
   await page.goto('/#property')
+  await page.getByRole('navigation', { name: '부동산 메뉴' }).getByRole('button', { name: '내 부동산' }).click()
   const homeLine = page.locator('.property-move-home-line')
   await expect(homeLine).toContainText('8억 2,000만원')
   await expect(homeLine).toContainText('8억 5,000만원 ~ 8억 7,000만원')
@@ -155,6 +157,7 @@ test('거래 조회 실패·무거래·미연결 상태에서 가격을 지어�
     await page.unroute('**/api/property/trades?**')
     await page.route('**/api/property/trades?**', route => mode === 'error' ? route.fulfill({ status: 503, json: { detail: '검증용 조회 실패' } }) : route.fulfill({ json: { configured: mode !== 'unconfigured', trades: [] } }))
     await page.goto('/#property')
+  await page.getByRole('navigation', { name: '부동산 메뉴' }).getByRole('button', { name: '내 부동산' }).click()
     await page.reload()
     await expect(page.locator('.property-move-home-line')).toContainText(mode === 'error' ? '조회 실패' : mode === 'empty' ? '최근 12개월 일치 거래 미확인' : '실거래 연결 설정 필요')
   }
@@ -165,27 +168,39 @@ test('전체 매도 합계·공개 매물·이름 검색 후 평형만 등록하
   await request.post('/api/property', { data: { request_id: crypto.randomUUID(), name: '검증용 햇살아파트', owner: 'joint', share_percent: 50, value: 800000000, area_m2: 84, address, new_loans: [{ name: '검증용 담보대출', amount: 200000000 }] } })
   await request.post('/api/property', { data: { request_id: crypto.randomUUID(), name: '검증용 두 번째 집', owner: 'partner', value: 500000000, area_m2: 59, tenure: 'jeonse', deposit: 100000000 } })
   const before = (await (await request.get('/api/property')).json()).homes
-  await page.route('**/api/property/market/listings?**', route => route.fulfill({ json: {
-    status: 'matched', source: '부동산뱅크', source_url: 'https://neonet.co.kr', fetched_at: '2026-11-02T08:00:00Z', partial: false,
-    summary: { low: 900000000, high: 920000000, count: 2 }, listings: [900000000, 920000000].map((price, i) => ({ id: `${i}`, name: '검증용 햇살아파트 101동', price, area: 84.99, supply_area: 112.4, floor_direction: '12층/25층 · 남향', checked_on: '2026-11-01', url: `https://neonet.co.kr/?fixture=${i}` })),
-  } }))
+  await page.route('**/api/property/market/listings?**', route => {
+    const kind = new URL(route.request().url()).searchParams.get('kind')
+    const prices = kind === 'L' ? [600000000] : kind === 'M' ? [100000000] : [900000000, 920000000]
+    return route.fulfill({ json: {
+      status: 'matched', source: '부동산뱅크', source_url: 'https://neonet.co.kr', fetched_at: '2026-11-02T08:00:00Z', partial: false,
+      summary: { low: prices[0], high: prices.at(-1), count: prices.length }, rent_offer: kind === 'M' ? { deposit: 100000000, monthly: 1200000 } : null,
+      listings: prices.map((price, i) => ({ id: `${i}`, name: '검증용 햇살아파트 101동', price, ...(kind === 'M' ? { monthly: 1200000 } : {}), area: 84.99, supply_area: 112.4, floor_direction: '12층/25층 · 남향', checked_on: '2026-11-01', url: `https://neonet.co.kr/?fixture=${i}` })),
+    } })
+  })
   await page.route('**/api/property/market/areas?**', route => route.fulfill({ json: { sources: ['국토교통부 최근 12개월 거래', '부동산뱅크 매물'], warnings: [], areas: [{ area: 59.98, min: 59.98, max: 59.98, supply_pyeong: [] }, { area: 84.99, min: 84.92, max: 84.99, supply_pyeong: [34] }] } }))
   await page.addInitScript(`window.daum = { Postcode: class {
     constructor(options) { this.options = options }
     embed(box) { const button = document.createElement('button'); button.type = 'button'; button.textContent = '검증용 단지 검색 결과'; button.onclick = () => this.options.oncomplete({ roadAddress: '검증시 검증구 햇살로 1', jibunAddress: '검증시 검증구 검증동 1', buildingName: '검증용 햇살아파트', bcode: '1111010100', sigunguCode: '11110', zonecode: '12345', apartment: 'Y' }); box.append(button) }
   }};`)
   await page.goto('/#property')
+  await page.getByRole('navigation', { name: '부동산 메뉴' }).getByRole('button', { name: '내 부동산' }).click()
   const total = page.getByLabel('전체 매도 합계')
   await expect(total.locator('.property-sale-net strong')).toHaveText('10억원')
   await expect(total).toContainText('13억원')
   await expect(total).toContainText('2억원')
   await expect(total).toContainText('1억원')
   await expect(total).toContainText('매도세금·중개비 차감 전')
+  await expect(page.locator('.property-public-listings')).toHaveCount(0)
+  await page.getByRole('button', { name: '최근 매매 호가 더보기', exact: true }).first().click()
   const ads = page.locator('.property-public-listings').first()
   await expect(ads.locator('.property-public-row')).toHaveCount(2)
   await expect(ads).toContainText('9억원')
   await expect(ads).toContainText('전용 84.99㎡')
   await expect(ads).toContainText('26.11.01 확인')
+  await page.getByRole('button', { name: '월세 더보기', exact: true }).first().click()
+  await expect(ads).toContainText('1억원 / 월 120만원')
+  await page.getByRole('button', { name: '월세 접기', exact: true }).first().click()
+  await expect(page.locator('.property-public-listings')).toHaveCount(0)
   expect((await (await request.get('/api/property')).json()).homes).toEqual(before)
   await page.getByRole('button', { name: '비교할 아파트 추가', exact: true }).click()
   const modal = page.getByRole('dialog')

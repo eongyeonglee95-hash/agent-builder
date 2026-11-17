@@ -54,6 +54,29 @@ def test_rules_file_has_large_area_threshold():
     assert rules["large_area_m2"] == 135 and rules["months"] == 12
 
 
+def test_watch_failure_is_local_to_district_and_shared_requests_are_reused(monkeypatch):
+    from fastapi import HTTPException
+    from backend import property_move as move
+    monkeypatch.setattr(move.prop, "market_key", lambda: "test-key")
+    monkeypatch.setattr(move, "load_watch_rules", lambda: {"months": 2, "large_area_m2": 135})
+    monkeypatch.setattr(move, "read_plan", lambda owner: {"candidates": [
+        {"id": str(i), "name": str(i), "address": {"sigungu_code": code, "jibun": "서울특별시 강남구 개포동 185"}}
+        for i, code in enumerate(["11680", "11680", "11710", "11710"])
+    ]})
+    calls = []
+    def fetch(code, ym, key):
+        calls.append((code, ym))
+        if code == "11680":
+            raise HTTPException(503, "upstream unavailable")
+        return []
+    monkeypatch.setattr(move.prop, "_month_trades", fetch)
+    result = move.watch("together")
+    assert len(calls) == 3  # one failed district request, two months for the other
+    assert [r["summary"] for r in result["watch"][:2]] == [None, None]
+    assert all(r["missing"] == "실거래 조회 실패" for r in result["watch"][:2])
+    assert all(r["summary"]["count"] == 0 for r in result["watch"][2:])
+
+
 def test_watch_endpoint_groups_members_and_reports_unconfigured(tmp_path, monkeypatch):
     from uuid import uuid4
     from fastapi.testclient import TestClient

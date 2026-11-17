@@ -2,6 +2,8 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { ChevronDown, Download, Plus, RefreshCw, Trash2 } from 'lucide-react'
 import { Amount } from '@/components/ui/amount'
 import { Button } from '@/components/ui/button'
+import { ObservationRow } from '@/components/ui/observation-row'
+import { SectionMenu } from '@/components/ui/section-menu'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
@@ -81,6 +83,7 @@ function sampleRows(paid: string, setPaid: (v: string) => void): Cell[][] {
 }
 
 export function DesignSystem() {
+  const [section, setSection] = useState('brief')
   const [paid, setPaid] = useState('300000')
   const [open, setOpen] = useState(false)
   const [toast, setToast] = useState('')
@@ -146,6 +149,8 @@ export function DesignSystem() {
         </div>
       </Section>
 
+      <Section id="property-observation" title="단지 비교 행"><div className="overflow-hidden rounded-md border border-grey-200"><ObservationRow title="견본 아파트" subtitle="전용 84㎡" metrics={[{ label: '기록 호가', value: <Amount value={900000000} fmt="manwon"/>, detail: '2026.11.17' }, { label: '최근 실거래', value: <Amount value={880000000} fmt="manwon"/>, detail: '2026.10.01 · 8층' }, { label: '중간값', value: <Amount value={870000000} fmt="manwon"/>, detail: '12건' }, { label: '추가 자금', value: <Amount value={200000000} fmt="manwon"/> }]}/></div></Section>
+      <Section id="property-menu" title="화면 안의 메뉴" note="부동산 관측실처럼 다른 작업으로 이동할 때 사용해요."><SectionMenu label="메뉴 견본" value={section} onChange={setSection} items={[{ id: 'brief', label: '브리핑' }, { id: 'watch', label: '관심 단지' }, { id: 'journal', label: '주간·월간' }]}/></Section>
       <Section id="button" title="버튼" note="한 화면에 진한 주 버튼은 하나. 나머지는 테두리(outline)나 조용한(ghost). 파란 버튼은 없어요 — 파랑은 하락.">
         <div className="flex flex-wrap items-center gap-2">
           <Button>저장</Button>
