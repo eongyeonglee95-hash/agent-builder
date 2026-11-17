@@ -1,3 +1,4 @@
+import type React from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -8,7 +9,9 @@ import { api } from '../local-data'
 
 // 리밸런싱 시트 (2026-11-02 사용자 "리밸런싱 탭이 한눈에 안 들어온다" → 아티팩트 시안 'A 고도화' 채택).
 // 묶음마다 카드 하나: 한 문장 판정 + 줄이기 → 늘리기(자산군별 금액) + 접힌 종목별 주문 + 결정.
-// 원칙은 카드 오른쪽 위에서 고르고, 바꾸기 전에 서버가 저장 없이 다시 계산한 비교를 보여 준다(/portfolio/preview).
+// 2026-11-17 사용자 "계좌별로 한 줄, 앞쪽에서 계좌가 구분되게" → 시안 2(줄 배경색)+3(왼쪽 색 패널) 합침.
+// 왼쪽 계좌색 패널(이름·잔고·원칙 고르기) + 오른쪽 같은 색 옅은 배경(문장·줄이기/늘리기·결정). 원칙 4칸 버튼은 고르기 하나로.
+// 원칙을 고르면 바꾸기 전에 서버가 저장 없이 다시 계산한 비교를 보여 준다(/portfolio/preview).
 // 숫자·문장은 전부 서버(backend/plan.py)가 만든다. 화면은 만원 단위 표시만 한다.
 
 type Amount = { asset_class: string; label: string; amount: number }
@@ -21,7 +24,6 @@ type Pool = { pool_id: string; label: string; mode: string; strategy_id: string;
 type EmptyPool = { pool_id: string; label: string; mode: string; strategy_id: string }
 type Card = { id: string; short: string; ready: boolean; classes: { asset_class: string; label: string; target_pct: number }[] }
 type Preview = { name: string; strategy_id: string; current: Plan | null; proposed: Plan; notes: string[] }
-type Option = { strategy_id: string; name: string; ready: boolean; reason?: string; plan?: Plan; notes?: string[] }
 
 const COLOR: Record<string, string> = { stock: 'var(--cls-stock)', long_bond: 'var(--cls-long-bond)', mid_bond: 'var(--cls-mid-bond)', gold: 'var(--cls-gold)', commodity: 'var(--cls-commodity)', cash: 'var(--cls-cash)' }
 const man = (n: number) => `${Math.round(n / 10_000).toLocaleString('ko-KR')}만원`
@@ -32,6 +34,18 @@ const jong = (w: string) => { const c = w.trim().slice(-1).charCodeAt(0) - 0xac0
 const ro = (w: string) => w + (jong(w) && jong(w) !== 8 ? '으로' : '로')
 const eul = (w: string) => w + (jong(w) ? '을' : '를')
 const eun = (w: string) => w + (jong(w) ? '은' : '는')
+// 계좌 순서대로 theme.css --acct-1..4 를 돌려 쓴다
+const acct = (i: number) => ({ '--a': `var(--acct-${i % 4 + 1})`, '--a-tint': `var(--acct-${i % 4 + 1}-tint)` }) as React.CSSProperties
+// 계좌 한 줄: 왼쪽 진한 패널 + 오른쪽 옅은 배경
+function AccountLine({ index, name, sub, principle, children, label }: { index: number; name: string; sub: string; principle: React.ReactNode; children: React.ReactNode; label: string }) {
+  return <section aria-label={label} style={acct(index)} className="grid overflow-hidden rounded-xl bg-[var(--a-tint)] md:grid-cols-[232px_minmax(0,1fr)]">
+    <div className="flex flex-col gap-3 bg-[var(--a)] px-5 py-4 text-white">
+      <div className="flex flex-col gap-0.5"><b className="text-lg font-bold">{name}</b><span className="text-sm text-white/75">{sub}</span></div>
+      {principle}
+    </div>
+    <div className="min-w-0">{children}</div>
+  </section>
+}
 const ALL_CLASSES: [string, string][] = [['stock', '주식'], ['long_bond', '장기채'], ['mid_bond', '중기채'], ['gold', '금'], ['commodity', '원자재'], ['cash', '현금·달러']]
 
 export function RebalancePlan({ owner, live, rev, onChanged, onError, onRegister, embedded }: {
@@ -82,15 +96,16 @@ export function RebalancePlan({ owner, live, rev, onChanged, onError, onRegister
         <p className="text-sm text-grey-600">{live ? '현재가 반영' : '등록한 잔고·가격 기준'} · 주문은 증권사 앱에서</p>
       </div>
 
-      {pools.map(p => <PoolCard key={p.pool_id} pool={p} cards={cards} input={input} busy={busy} rev={rev} cash={cash[p.pool_id] ?? 0}
+      {pools.map((p, i) => <PoolCard key={p.pool_id} index={i} pool={p} cards={cards} input={input} busy={busy} cash={cash[p.pool_id] ?? 0}
         onCash={v => setCash(c => ({ ...c, [p.pool_id]: v }))} run={run} onError={onError} onCustom={() => setCustomOpen(true)}/>)}
 
-      {empty.map(p => <section key={p.pool_id} className="flex flex-wrap items-center gap-4 rounded-xl border border-grey-200 bg-white px-5 py-3">
-        <div className="flex min-w-40 flex-col"><b className="text-lg font-bold">{short(p.label)}</b><span className="text-sm text-grey-600">잔고 없음 · {p.mode === 'buy_only' ? '사기만' : '사고팔기'}</span></div>
-        <p className="flex-1 text-lg text-grey-700">잔고를 등록하면 비교할 수 있어요.</p>
-        <Button variant="outline" onClick={onRegister}>잔고 등록</Button>
-        <PrincipleSelect pool={p} cards={cards} disabled={busy} onPick={id => run(async () => { await api('/workbook/portfolio/follow', 'POST', { pool_id: p.pool_id, strategy_id: id }); return `${eun(short(p.label))} 이제 ${eul(cards.find(c => c.id === id)?.short ?? id)} 따라가요.` })} onCustom={() => setCustomOpen(true)}/>
-      </section>)}
+      {empty.map((p, i) => <AccountLine key={p.pool_id} index={pools.length + i} label={short(p.label)} name={short(p.label)} sub={`잔고 없음 · ${p.mode === 'buy_only' ? '사기만' : '사고팔기'}`}
+        principle={<PrincipleSelect pool={p} cards={cards} disabled={busy} onPick={id => run(async () => { await api('/workbook/portfolio/follow', 'POST', { pool_id: p.pool_id, strategy_id: id }); return `${eun(short(p.label))} 이제 ${eul(cards.find(c => c.id === id)?.short ?? id)} 따라가요.` })} onCustom={() => setCustomOpen(true)}/>}>
+        <div className="flex h-full flex-wrap items-center gap-4 px-5 py-4">
+          <p className="flex-1 text-lg font-semibold text-grey-600">잔고를 등록하면 비교할 수 있어요.</p>
+          <Button variant="outline" className="bg-white" onClick={onRegister}>잔고 등록</Button>
+        </div>
+      </AccountLine>)}
 
       <p className="text-sm text-grey-600">여기서는 기록만 남기고 자동 주문은 하지 않아요. 종목코드는 예시이며 추천이 아닙니다.</p>
     </div>
@@ -102,7 +117,7 @@ function PrincipleSelect({ pool, cards, disabled, onPick, onCustom, shown }: { p
   // shown: 비교 중인 원칙(아직 저장 전). '따르는 중'은 늘 실제로 따르는 원칙에만 붙인다
   const value = shown ?? pool.strategy_id
   return <Select value={value} disabled={disabled} onValueChange={v => v === '__custom' ? onCustom() : v !== value && onPick(v)}>
-    <SelectTrigger className="h-10 min-w-36 gap-2 text-base" aria-label={`${short(pool.label)} 따르는 원칙`}>
+    <SelectTrigger className="h-10 w-full min-w-36 gap-2 bg-white text-base text-grey-900" aria-label={`${short(pool.label)} 따르는 원칙`}>
       <span className="text-sm text-grey-600">원칙</span><SelectValue>{<b className="font-semibold">{cards.find(c => c.id === value)?.short ?? value}</b>}</SelectValue>{shown && <span className="text-sm text-grey-600">비교 중</span>}
     </SelectTrigger>
     <SelectContent align="end">
@@ -141,8 +156,8 @@ function TargetBar({ targets }: { targets: Plan['targets'] }) {
   </span>
 }
 
-function PoolCard({ pool, cards, input, busy, rev, cash, onCash, run, onError, onCustom }: {
-  pool: Pool; cards: Card[]; input: { owner: string; live: boolean }; busy: boolean; rev: number; cash: number; onCash: (v: number) => void
+function PoolCard({ index, pool, cards, input, busy, cash, onCash, run, onError, onCustom }: {
+  index: number; pool: Pool; cards: Card[]; input: { owner: string; live: boolean }; busy: boolean; cash: number; onCash: (v: number) => void
   run: (fn: () => Promise<string>) => Promise<void>; onError: (m: string) => void; onCustom: () => void
 }) {
   const [showOrders, setShowOrders] = useState(false)
@@ -161,19 +176,14 @@ function PoolCard({ pool, cards, input, busy, rev, cash, onCash, run, onError, o
   }
   const currentShort = cards.find(c => c.id === pool.strategy_id)?.short ?? pool.strategy_id
 
-  return <section className="overflow-hidden rounded-xl border border-grey-200 bg-white">
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-grey-100 px-5 py-3">
-      <div className="flex flex-1 flex-col"><b className="text-lg font-bold">{name}</b>
-        <span className="text-sm text-grey-600">{pool.total_value != null ? won(pool.total_value) : ''} · {pool.mode === 'buy_only' ? '사기만' : '사고팔기'}</span></div>
-      {plan && !pool.error
-        ? <PrincipleButtons pool={pool} plan={plan} cards={cards} input={input} cash={cash} rev={rev} shown={preview?.strategy_id} disabled={busy || previewing} onPick={pick} onCustom={onCustom}/>
-        : <PrincipleSelect pool={pool} shown={preview?.strategy_id} cards={cards} disabled={busy || previewing} onPick={pick} onCustom={onCustom}/>}
-    </div>
+  return <AccountLine index={index} label={name} name={name}
+    sub={`${pool.total_value != null ? `${man(pool.total_value)} · ` : ''}${pool.mode === 'buy_only' ? '사기만' : '사고팔기'}`}
+    principle={<PrincipleSelect pool={pool} shown={preview?.strategy_id} cards={cards} disabled={busy || previewing} onPick={pick} onCustom={onCustom}/>}>
 
     {preview ? <div className="flex flex-col gap-3 px-5 py-4">
       <p className="text-2xl font-bold">{ro(preview.name)} 바꾸면, 이번 달 할 일이 이렇게 달라져요.</p>
       <div className="grid gap-3 sm:grid-cols-2">
-        {([['지금', currentShort, preview.current, false], ['바꾸면', preview.name, preview.proposed, true]] as const).map(([tag, label, p, strong]) => p && <div key={tag} className={cn('flex flex-col gap-3 rounded-lg p-5', strong ? 'border-2 border-grey-900' : 'border border-grey-200')}>
+        {([['지금', currentShort, preview.current, false], ['바꾸면', preview.name, preview.proposed, true]] as const).map(([tag, label, p, strong]) => p && <div key={tag} className={cn('flex flex-col gap-3 rounded-lg p-5', strong ? 'border-2 border-grey-900 bg-white' : 'border border-grey-200 bg-white')}>
           <span className="text-sm text-grey-600">{tag} · {label}</span>
           <TargetBar targets={p.targets}/>
           <p className="text-lg">{p.kind === 'move' ? <><b className="font-bold">{man(p.reduce_total)}</b>을 옮겨요.</> : <b className="font-bold">{p.title}</b>}</p>
@@ -182,11 +192,11 @@ function PoolCard({ pool, cards, input, busy, rev, cash, onCash, run, onError, o
             : p.line}</p>
         </div>)}
       </div>
-      {preview.notes.length > 0 && <div className="flex flex-col gap-1 rounded-lg bg-grey-50 px-4 py-3 text-base">
+      {preview.notes.length > 0 && <div className="flex flex-col gap-1 rounded-lg bg-white px-4 py-3 text-base">
         <b className="font-semibold">꼭 알아둘 것</b>{preview.notes.map(n => <span key={n}>{n}</span>)}</div>}
       <div className="flex flex-wrap items-center gap-2">
         <Button size="lg" disabled={busy} onClick={() => run(async () => { await api('/workbook/portfolio/follow', 'POST', { pool_id: pool.pool_id, strategy_id: preview.strategy_id }); setPreview(null); return `${eun(name)} 이제 ${eul(preview.name)} 따라가요.` })}>{ro(preview.name)} 바꾸기</Button>
-        <Button size="lg" variant="outline" onClick={() => setPreview(null)}>{currentShort} 그대로</Button>
+        <Button size="lg" variant="outline" className="bg-white" onClick={() => setPreview(null)}>{currentShort} 그대로</Button>
         <span className="text-sm text-grey-600">바꾸면 결정 기록에 남아요.</span>
       </div>
     </div>
@@ -208,20 +218,20 @@ function PoolCard({ pool, cards, input, busy, rev, cash, onCash, run, onError, o
       {(plan.kind === 'buy_needs_cash' || (pool.mode === 'buy_only' && cash > 0)) && <label className="flex flex-wrap items-center gap-2 text-base text-grey-700">이번 달 넣을 돈
         <input inputMode="numeric" defaultValue={cash ? cash.toLocaleString('ko-KR') : ''} placeholder="예: 3,000,000" aria-label={`${name} 이번 달 납입`}
           onBlur={e => onCash(Number(e.target.value.replace(/[^\d]/g, '')) || 0)} onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
-          className="h-11 w-44 rounded-md border border-grey-300 px-3 text-right text-base tabular-nums"/>원
+          className="h-11 w-44 rounded-md border border-grey-300 bg-white px-3 text-right text-base tabular-nums"/>원
         <span className="text-sm text-grey-600">넣으면 살 종목을 다시 계산해요.</span></label>}
 
       {trades.length > 0 && <div className="flex flex-col gap-3">
-        <div className="flex flex-wrap items-center gap-2 border-t border-grey-200 pt-3">
-          <Button variant="outline" onClick={() => setShowOrders(s => !s)} aria-expanded={showOrders}>
+        <div className="flex flex-wrap items-center gap-2 border-t border-black/10 pt-3">
+          <Button variant="outline" className="bg-white" onClick={() => setShowOrders(s => !s)} aria-expanded={showOrders}>
             종목별 주문 보기 <span className="text-sm text-grey-600">팔기 {plan.sell_count} · 사기 {plan.buy_count}</span>{showOrders ? <ChevronUp className="size-4"/> : <ChevronDown className="size-4"/>}</Button>
           {plan.amount_only > 0 && <span className="text-sm text-grey-600">{plan.amount_only}종목은 확인 전이라 금액만</span>}
           <span className="hidden flex-1 lg:block"/>
           <Button disabled={busy} onClick={() => run(async () => { await api('/workbook/decision', 'POST', { ...input, cash: cash ? { [pool.pool_id]: { amount: cash } } : {}, pool_id: pool.pool_id, action: 'accept', reason }); setReason(''); return '기록했어요. 증권사 앱에서 주문하세요.' })}>직접 주문할게요</Button>
-          <Button variant="outline" disabled={busy} onClick={() => run(async () => { await api('/workbook/decision', 'POST', { ...input, cash: cash ? { [pool.pool_id]: { amount: cash } } : {}, pool_id: pool.pool_id, action: 'hold', reason }); setReason(''); return '이번엔 넘긴다고 기록했어요.' })}>이번엔 넘기기</Button>
-          <input value={reason} onChange={e => setReason(e.target.value)} placeholder="사유 (선택)" aria-label={`${name} 결정 사유`} className="h-9 w-full min-w-40 rounded-md lg:w-56 border border-grey-300 px-3 text-base"/>
+          <Button variant="outline" className="bg-white" disabled={busy} onClick={() => run(async () => { await api('/workbook/decision', 'POST', { ...input, cash: cash ? { [pool.pool_id]: { amount: cash } } : {}, pool_id: pool.pool_id, action: 'hold', reason }); setReason(''); return '이번엔 넘긴다고 기록했어요.' })}>이번엔 넘기기</Button>
+          <input value={reason} onChange={e => setReason(e.target.value)} placeholder="사유 (선택)" aria-label={`${name} 결정 사유`} className="h-9 w-full min-w-40 rounded-md lg:w-56 border border-grey-300 bg-white px-3 text-base"/>
         </div>
-        {showOrders && <ul className="flex flex-col border-t border-grey-200">
+        {showOrders && <ul className="flex flex-col rounded-lg bg-white px-3">
           {trades.map((o, i) => <li key={i} className="grid grid-cols-[40px_minmax(0,1fr)_72px_120px] items-center gap-2 border-b border-grey-100 py-2.5">
             <b className={cn('text-sm font-semibold', o.side === '매도' ? 'text-down' : 'text-up')}>{o.side === '매도' ? '팔기' : '사기'}</b>
             <span className={cn('truncate text-base', !o.qty && 'text-grey-600')}>{o.ticker_name ?? '종목 지정 필요'}</span>
@@ -233,68 +243,7 @@ function PoolCard({ pool, cards, input, busy, rev, cash, onCash, run, onError, o
       {pool.last_decision && <p className="text-sm text-grey-600">지난 기록 {pool.last_decision.date}: {pool.last_decision.decision.replace(name, '').trim()}{pool.last_decision.reason ? ` — ${pool.last_decision.reason}` : ''}</p>}
       </div>
     </div>}
-  </section>
-}
-
-// 원칙 버튼 (2026-11-02 사용자 "늘리는 것보다 버튼을 고도화") — 원칙마다 버튼 하나에 '그 원칙이면 이번 달 할 일'을 한 줄로.
-// 따르는 원칙은 진하게, 다른 버튼을 누르면 카드 안에 비교(저장 전). 숫자는 서버가 같은 잔고로 계산한 값(/portfolio/alternatives), 순위·추천 없음.
-const ORDER = ['all_weather', 'k_all_weather', 'park_gomhee', 'custom']
-// 원칙 비중을 버튼 오른쪽 작은 도넛으로 (2026-11-02 사용자 "오른쪽에 아주 작은 비중으로 도식화해서 어떤 앤지"). 비율 없으면 빈 점선 원
-function MiniDonut({ classes, label }: { classes: Card['classes']; label: string }) {
-  const parts = classes.filter(c => c.target_pct > 0)
-  if (!parts.length) return <span aria-hidden="true" className="size-8 shrink-0 rounded-full border border-dashed border-grey-300"/>
-  let at = 0
-  const stops = parts.map(c => { const from = at; at += c.target_pct; return `${COLOR[c.asset_class] ?? 'var(--grey-400)'} ${from}% ${at}%` }).join(', ')
-  return <span role="img" aria-label={`${label} 비중: ${parts.map(c => `${c.label} ${c.target_pct}%`).join(', ')}`}
-    title={parts.map(c => `${c.label} ${c.target_pct}%`).join(' · ')}
-    className="size-8 shrink-0 rounded-full" style={{ background: `conic-gradient(${stops})`, mask: 'radial-gradient(circle, transparent 42%, #000 43%)', WebkitMask: 'radial-gradient(circle, transparent 42%, #000 43%)' }}/>
-}
-function summary(p: Plan): string {
-  return p.kind === 'move' ? `옮길 돈 ${man(p.reduce_total)}` : p.kind === 'buy' ? `살 돈 ${man(p.increase_total)}`
-    : p.kind === 'buy_needs_cash' ? '납입 때 맞추기' : p.kind === 'in_range' ? '할 일 없음' : '주문표 보류'
-}
-function PrincipleButtons({ pool, plan, cards, input, cash, rev, shown, disabled, onPick, onCustom }: {
-  pool: Pool; plan: Plan; cards: Card[]; input: { owner: string; live: boolean }; cash: number; rev: number; shown?: string
-  disabled: boolean; onPick: (id: string) => void; onCustom: () => void
-}) {
-  const [options, setOptions] = useState<Option[] | null>(null)
-  useEffect(() => {
-    let alive = true
-    setOptions(null)
-    api<{ options: Option[] }>('/workbook/portfolio/alternatives', 'POST', { pool_id: pool.pool_id, owner: input.owner, live: input.live, cash })
-      .then(d => { if (alive) setOptions(d.options) }).catch(() => { if (alive) setOptions([]) })
-    return () => { alive = false }
-  }, [pool.pool_id, pool.strategy_id, input.owner, input.live, cash, rev])
-  const name = (id: string) => cards.find(c => c.id === id)?.short ?? id
-  const items = ORDER.filter(id => cards.some(c => c.id === id)).map(id => {
-    if (id === pool.strategy_id) return { id, state: 'current' as const, sub: summary(plan) }
-    const o = options?.find(x => x.strategy_id === id)
-    if (!o) return { id, state: 'loading' as const, sub: '계산 중…' }
-    if (!o.ready || !o.plan) return { id, state: id === 'custom' ? 'custom' as const : 'off' as const, sub: id === 'custom' ? '비율 넣기' : '비율 미정' }
-    return { id, state: 'other' as const, sub: summary(o.plan) }
-  })
-  return <div role="group" aria-label={`${short(pool.label)} 따를 원칙`} className="grid w-full grid-cols-2 gap-1.5 sm:w-auto sm:grid-cols-4">
-    {items.map(it => {
-      const comparing = shown === it.id
-      return <button key={it.id} type="button" aria-pressed={it.state === 'current'}
-        disabled={disabled || it.state === 'off' || it.state === 'loading'}
-        onClick={() => it.state === 'custom' ? onCustom() : it.state === 'current' ? onPick(pool.strategy_id) : onPick(it.id)}
-        title={it.state === 'current' ? '지금 따르는 원칙' : it.state === 'other' ? '누르면 바꿨을 때를 비교해요 (저장 전)' : undefined}
-        className={cn('flex min-h-12 min-w-36 items-center gap-2.5 rounded-lg border py-1.5 pl-3 pr-2 text-left transition-colors disabled:cursor-not-allowed',
-          it.state === 'current' ? 'border-grey-900 bg-grey-900 text-white'
-            : comparing ? 'border-grey-900 bg-white ring-1 ring-grey-900'
-            : it.state === 'off' ? 'border-dashed border-grey-300 bg-white text-grey-500'
-            : 'border-grey-300 bg-white hover:border-grey-500 hover:bg-grey-50')}>
-        <span className="flex min-w-0 flex-1 flex-col">
-        <span className="flex w-full items-center justify-between gap-2 text-base font-semibold">{name(it.id)}
-          {it.state === 'current' && <span className="text-xs font-normal text-grey-300">따르는 중</span>}
-          {comparing && <span className="text-xs font-normal text-grey-600">비교 중</span>}</span>
-        <span className={cn('text-sm tabular-nums', it.state === 'current' ? 'text-grey-200' : 'text-grey-600')}>{it.sub}</span>
-        </span>
-        <MiniDonut classes={cards.find(c => c.id === it.id)?.classes ?? []} label={name(it.id)}/>
-      </button>
-    })}
-  </div>
+  </AccountLine>
 }
 
 function CustomDialog({ open, onOpenChange, card, run }: { open: boolean; onOpenChange: (o: boolean) => void; card?: Card; run: (fn: () => Promise<string>) => Promise<void> }) {

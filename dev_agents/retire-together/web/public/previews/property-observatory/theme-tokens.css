@@ -35,6 +35,11 @@
   /* 자산군 9색 — 지금 화면 값 유지(출처 없음, 바꿀지는 사용자 결정). model.ts classInfo 가 이 토큰을 읽는다 — 색을 바꿀 땐 여기만 */
   --cls-stock: #5985ec; --cls-long-bond: #42b3aa; --cls-mid-bond: #8ed2c8; --cls-gold: #e6ba69; --cls-commodity: #d397b5; --cls-cash: #a1acc2;
   --cls-property: #a08cce; --cls-mixed: #bdc6d4; --cls-debt: #ce968a;
+  /* 리밸런싱 계좌 구분색 — 왼쪽 패널(진한 색)·줄 배경(옅은 색). 자산군 막대 색과 겹치지 않게, 테마(brand-mode)와 무관하게 고정 (2026-11-17 사용자 시안 2+3 합침) */
+  --acct-1: #0f5c4a; --acct-1-tint: #e3f0ea;
+  --acct-2: #2f4a7a; --acct-2-tint: #e8edf6;
+  --acct-3: #8a6a2e; --acct-3-tint: #f5efe3;
+  --acct-4: #5b4a7a; --acct-4-tint: #efebf5;
   /* 입력 칸(사람이 넣는 값) 옅은 노랑 — 엑셀 입력 셀 관례, 워크북 납입·사유 칸 */
   --input-soft: #fffdf3;
   /* 엑셀 보기 — 유일한 강조색 초록은 선택 테두리와 현재 시트 탭에만 */
