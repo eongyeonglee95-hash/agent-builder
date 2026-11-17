@@ -82,6 +82,7 @@ assets:
     asset_class: stock
     role: core
     status: confirmed
+    stock_group: kr
   아마존닷컴 (AMZN):
     ticker: ''
     asset_class: stock
