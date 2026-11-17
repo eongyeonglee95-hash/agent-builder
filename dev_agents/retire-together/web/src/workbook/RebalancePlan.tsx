@@ -38,9 +38,10 @@ const eun = (w: string) => w + (jong(w) ? '은' : '는')
 const acct = (i: number) => ({ '--a': `var(--acct-${i % 4 + 1})`, '--a-tint': `var(--acct-${i % 4 + 1}-tint)` }) as React.CSSProperties
 // 계좌 한 줄: 왼쪽 진한 패널 + 오른쪽 옅은 배경
 function AccountLine({ index, name, sub, principle, children, label }: { index: number; name: string; sub: string; principle: React.ReactNode; children: React.ReactNode; label: string }) {
-  return <section aria-label={label} style={acct(index)} className="grid overflow-hidden rounded-xl bg-[var(--a-tint)] md:grid-cols-[232px_minmax(0,1fr)]">
-    <div className="flex flex-col gap-3 bg-[var(--a)] px-5 py-4 text-white">
-      <div className="flex flex-col gap-0.5"><b className="text-lg font-bold">{name}</b><span className="text-sm text-white/75">{sub}</span></div>
+  return <section aria-label={label} style={acct(index)} className="grid overflow-hidden rounded-2xl bg-[var(--a-tint)] md:grid-cols-[240px_minmax(0,1fr)]">
+    <div className="flex flex-col gap-3 bg-[var(--a)] px-5 py-5 text-white">
+      <div className="flex flex-col gap-1"><b className="text-base font-semibold text-white/90">{name}</b>
+        <span className={cn('tabular-nums tracking-tight', sub === '잔고 없음' ? 'text-lg font-semibold text-white/60' : 'text-2xl font-bold')}>{sub}</span></div>
       {principle}
     </div>
     <div className="min-w-0">{children}</div>
@@ -175,6 +176,7 @@ function PoolCard({ index, pool, cards, input, busy, cash, onCash, run, onError,
 }) {
   const [showOrders, setShowOrders] = useState(false)
   const [reason, setReason] = useState('')
+  const [askReason, setAskReason] = useState(false)
   const [preview, setPreview] = useState<Preview | null>(null)
   const [previewing, setPreviewing] = useState(false)
   const plan = pool.plan
@@ -240,9 +242,11 @@ function PoolCard({ index, pool, cards, input, busy, cash, onCash, run, onError,
             종목별 주문 보기 <span className="text-sm text-grey-600">팔기 {plan.sell_count} · 사기 {plan.buy_count}</span>{showOrders ? <ChevronUp className="size-4"/> : <ChevronDown className="size-4"/>}</Button>
           {plan.amount_only > 0 && <span className="text-sm text-grey-600">{plan.amount_only}종목은 확인 전이라 금액만</span>}
           <span className="hidden flex-1 lg:block"/>
-          <Button disabled={busy} onClick={() => run(async () => { await api('/workbook/decision', 'POST', { ...input, cash: cash ? { [pool.pool_id]: { amount: cash } } : {}, pool_id: pool.pool_id, action: 'accept', reason }); setReason(''); return '기록했어요. 증권사 앱에서 주문하세요.' })}>직접 주문할게요</Button>
-          <Button variant="outline" className="bg-white" disabled={busy} onClick={() => run(async () => { await api('/workbook/decision', 'POST', { ...input, cash: cash ? { [pool.pool_id]: { amount: cash } } : {}, pool_id: pool.pool_id, action: 'hold', reason }); setReason(''); return '이번엔 넘긴다고 기록했어요.' })}>이번엔 넘기기</Button>
-          <input value={reason} onChange={e => setReason(e.target.value)} placeholder="사유 (선택)" aria-label={`${name} 결정 사유`} className="h-9 w-full min-w-40 rounded-md lg:w-56 border border-grey-300 bg-white px-3 text-base"/>
+          {askReason
+            ? <input autoFocus value={reason} onChange={e => setReason(e.target.value)} placeholder="사유 (선택)" aria-label={`${name} 결정 사유`} className="h-9 w-full rounded-md border border-grey-300 bg-white px-3 text-base lg:w-48"/>
+            : <button type="button" onClick={() => setAskReason(true)} className="px-1 text-sm text-grey-600 underline underline-offset-4 hover:text-grey-900">사유 남기기</button>}
+          <Button variant="outline" className="bg-white" disabled={busy} onClick={() => run(async () => { await api('/workbook/decision', 'POST', { ...input, cash: cash ? { [pool.pool_id]: { amount: cash } } : {}, pool_id: pool.pool_id, action: 'hold', reason }); setReason(''); setAskReason(false); return '이번엔 넘긴다고 기록했어요.' })}>이번엔 넘기기</Button>
+          <Button disabled={busy} onClick={() => run(async () => { await api('/workbook/decision', 'POST', { ...input, cash: cash ? { [pool.pool_id]: { amount: cash } } : {}, pool_id: pool.pool_id, action: 'accept', reason }); setReason(''); setAskReason(false); return '기록했어요. 증권사 앱에서 주문하세요.' })}>직접 주문할게요</Button>
         </div>
         {showOrders && <ul className="flex flex-col rounded-lg bg-white px-3">
           {trades.map((o, i) => <li key={i} className="grid grid-cols-[40px_minmax(0,1fr)_72px_120px] items-center gap-2 border-b border-grey-100 py-2.5">

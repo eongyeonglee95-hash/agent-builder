@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { ArrowDownToLine, FileText, Info, RefreshCw, ShieldCheck } from 'lucide-react'
+import { ArrowDownToLine, ChevronDown, FileText, Info, RefreshCw, ShieldCheck } from 'lucide-react'
 import { api } from './local-data'
 import { classInfo, type Owner } from './model'
-import { PanelHeading } from './components'
 
 type Pool = { id: string; label: string; owner: 'me' | 'partner'; mode: 'rebalance' | 'buy_only'; strategy_id: string; accounts: { id: string; label: string }[] }
 type Preview = {
@@ -26,6 +25,8 @@ export function RebalancePreview({ owner }: { owner: Owner }) {
   const [result, setResult] = useState<Preview | null>(null)
   const fileRevision = useRef(0)
   const [revision, setRevision] = useState(0)
+  // 2026-11-18 사용자 "오픈된 사이트처럼" → 위 계좌 카드가 주 화면, 이 CSV 계산은 접어 두는 보조 도구
+  const [open, setOpen] = useState(false)
   const selected = pools.find(p => p.id === poolId)
   useEffect(() => {
     const controller = new AbortController()
@@ -59,8 +60,11 @@ export function RebalancePreview({ owner }: { owner: Owner }) {
     } catch (e) { setError(e instanceof Error ? e.message : '계산하지 못했습니다.') }
     finally { setBusy(false) }
   }
-  return <section className="panel engine-panel" aria-label="종목 잔고로 리밸런싱 계산">
-    <PanelHeading title="종목 잔고로 계산해 보세요" detail="계좌에 정한 전략을 기준으로 검토용 주문표를 계산해요."><span className="outline-tag">드라이런</span></PanelHeading>
+  return <section className={`panel engine-panel${open ? ' open' : ''}`} aria-label="종목 잔고로 리밸런싱 계산">
+    <button type="button" className="engine-toggle" aria-expanded={open} onClick={() => setOpen(o => !o)}>
+      <span><h2>종목 잔고로 계산해 보세요</h2><small>증권사에서 받은 종목 잔고 CSV로 검토용 주문표를 따로 계산해요. 저장되지 않아요.</small></span><ChevronDown size={20}/>
+    </button>
+    {open && <>
     <p className="form-intro">수량과 가격이 있는 종목 잔고 CSV를 올려 주세요. 위의 수동 자산 총액과 별도로 계산하며, 등록한 자산 금액은 바뀌지 않습니다.</p>
     {loading ? <p role="status">계좌 설정을 불러오고 있어요…</p> : !pools.length ? <div className="empty-state"><FileText size={28}/><h3>계산할 연금저축 계좌가 없어요</h3><p>기존 계좌 설정에서 활성화된 연금저축 계좌를 먼저 확인해 주세요.</p><button className="secondary-button" onClick={() => setRevision(v => v + 1)}>다시 불러오기</button></div> : <form onSubmit={submit} onChange={() => setResult(null)}>
       <fieldset disabled={busy} className="engine-fields">
@@ -96,5 +100,6 @@ export function RebalancePreview({ owner }: { owner: Owner }) {
       <div className="engine-checks">{result.constraints.map(c => <span key={c.name}>{c.passed ? '✓' : '✗'} {c.name}</span>)}</div>
       <div className="info-note"><ShieldCheck size={18}/><p>잔고 시점의 가격을 사용한 검토용 결과입니다. 수량이 미확정이면 종목·가격 확인이 필요합니다. 실제 주문 전 최신 가격과 계좌 제한을 증권사에서 확인해 주세요.</p></div>
     </div>}
+    </>}
   </section>
 }

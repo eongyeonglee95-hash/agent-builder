@@ -134,6 +134,7 @@ for (const width of [1440, 1024, 390, 360]) {
 
 test('CSV 계산은 잘못된 계좌를 차단하고 계좌 전환 시 파일을 비운다', async ({ page }) => {
   await page.goto('/#rebalance')
+  await page.getByRole('button', { name: /종목 잔고로 계산해 보세요/ }).click()
   await page.locator('[name="as_of"]').fill('2026-01-01')
   await page.getByLabel('종목 잔고 CSV', { exact: true }).setInputFiles({
     name: 'synthetic.csv', mimeType: 'text/csv',
@@ -153,6 +154,7 @@ test('유효한 종목 CSV를 올리면 서버 계산 결과가 표시되고 입
   const options = await (await request.get('/api/rebalance/options')).json()
   const selected = options[0]
   await page.goto('/#rebalance')
+  await page.getByRole('button', { name: /종목 잔고로 계산해 보세요/ }).click()
   await page.locator('[name="as_of"]').fill('2026-01-01')
   const csv = 'account_id,ticker_name,ticker,qty,price\n' + selected.accounts.map((a: { id: string }) => `${a.id},TIGER 미국S&P500,360750,100,15000`).join('\n')
   await page.getByLabel('종목 잔고 CSV', { exact: true }).setInputFiles({ name: 'synthetic-valid.csv', mimeType: 'text/csv', buffer: Buffer.from(csv) })
