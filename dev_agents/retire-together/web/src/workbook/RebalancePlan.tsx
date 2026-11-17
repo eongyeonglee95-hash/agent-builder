@@ -46,6 +46,19 @@ function AccountLine({ index, name, sub, principle, children, label }: { index: 
     <div className="min-w-0">{children}</div>
   </section>
 }
+// 운용 방식 고르기 (2026-11-18 사용자 "사고팔기/사기만도 옵션으로") — 누르면 바로 저장·결정 기록, 다시 계산
+function ModeToggle({ pool, disabled, run }: { pool: { pool_id: string; label: string; mode: string }; disabled: boolean; run: (fn: () => Promise<string>) => Promise<void> }) {
+  const name = short(pool.label)
+  return <div role="group" aria-label={`${name} 운용 방식`} className="grid grid-cols-2 gap-0.5 rounded-lg bg-white/15 p-0.5">
+    {([['rebalance', '사고팔기'], ['buy_only', '사기만']] as const).map(([m, l]) => {
+      const on = (pool.mode === 'buy_only' ? 'buy_only' : 'rebalance') === m
+      return <button key={m} type="button" aria-pressed={on} disabled={disabled}
+        title={m === 'rebalance' ? '팔고 사서 목표 비율에 맞춰요' : '팔지 않고 넣는 돈으로 모자란 것만 사요'}
+        onClick={() => !on && run(async () => { await api('/workbook/portfolio/mode', 'POST', { pool_id: pool.pool_id, mode: m }); return `${eun(name)} 이제 ${l}로 운용해요.` })}
+        className={cn('h-8 rounded-md text-sm font-semibold transition-colors disabled:cursor-not-allowed', on ? 'bg-white text-grey-900' : 'text-white/80 hover:bg-white/10')}>{l}</button>
+    })}
+  </div>
+}
 const ALL_CLASSES: [string, string][] = [['stock', '주식'], ['long_bond', '장기채'], ['mid_bond', '중기채'], ['gold', '금'], ['commodity', '원자재'], ['cash', '현금·달러']]
 
 export function RebalancePlan({ owner, live, rev, onChanged, onError, onRegister, embedded }: {
@@ -99,8 +112,8 @@ export function RebalancePlan({ owner, live, rev, onChanged, onError, onRegister
       {pools.map((p, i) => <PoolCard key={p.pool_id} index={i} pool={p} cards={cards} input={input} busy={busy} cash={cash[p.pool_id] ?? 0}
         onCash={v => setCash(c => ({ ...c, [p.pool_id]: v }))} run={run} onError={onError} onCustom={() => setCustomOpen(true)}/>)}
 
-      {empty.map((p, i) => <AccountLine key={p.pool_id} index={pools.length + i} label={short(p.label)} name={short(p.label)} sub={`잔고 없음 · ${p.mode === 'buy_only' ? '사기만' : '사고팔기'}`}
-        principle={<PrincipleSelect pool={p} cards={cards} disabled={busy} onPick={id => run(async () => { await api('/workbook/portfolio/follow', 'POST', { pool_id: p.pool_id, strategy_id: id }); return `${eun(short(p.label))} 이제 ${eul(cards.find(c => c.id === id)?.short ?? id)} 따라가요.` })} onCustom={() => setCustomOpen(true)}/>}>
+      {empty.map((p, i) => <AccountLine key={p.pool_id} index={pools.length + i} label={short(p.label)} name={short(p.label)} sub="잔고 없음"
+        principle={<><ModeToggle pool={p} disabled={busy} run={run}/><PrincipleSelect pool={p} cards={cards} disabled={busy} onPick={id => run(async () => { await api('/workbook/portfolio/follow', 'POST', { pool_id: p.pool_id, strategy_id: id }); return `${eun(short(p.label))} 이제 ${eul(cards.find(c => c.id === id)?.short ?? id)} 따라가요.` })} onCustom={() => setCustomOpen(true)}/></>}>
         <div className="flex h-full flex-wrap items-center gap-4 px-5 py-4">
           <p className="flex-1 text-lg font-semibold text-grey-600">잔고를 등록하면 비교할 수 있어요.</p>
           <Button variant="outline" className="bg-white" onClick={onRegister}>잔고 등록</Button>
@@ -177,8 +190,8 @@ function PoolCard({ index, pool, cards, input, busy, cash, onCash, run, onError,
   const currentShort = cards.find(c => c.id === pool.strategy_id)?.short ?? pool.strategy_id
 
   return <AccountLine index={index} label={name} name={name}
-    sub={`${pool.total_value != null ? `${man(pool.total_value)} · ` : ''}${pool.mode === 'buy_only' ? '사기만' : '사고팔기'}`}
-    principle={<PrincipleSelect pool={pool} shown={preview?.strategy_id} cards={cards} disabled={busy || previewing} onPick={pick} onCustom={onCustom}/>}>
+    sub={pool.total_value != null ? man(pool.total_value) : ''}
+    principle={<><ModeToggle pool={pool} disabled={busy || previewing} run={run}/><PrincipleSelect pool={pool} shown={preview?.strategy_id} cards={cards} disabled={busy || previewing} onPick={pick} onCustom={onCustom}/></>}>
 
     {preview ? <div className="flex flex-col gap-3 px-5 py-4">
       <p className="text-2xl font-bold">{ro(preview.name)} 바꾸면, 이번 달 할 일이 이렇게 달라져요.</p>

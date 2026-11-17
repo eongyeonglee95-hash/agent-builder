@@ -108,3 +108,17 @@ def test_custom_save_rejects_bad_ratios_and_leaves_file(env):
     assert c.post("/api/workbook/portfolio/custom", json={"targets": {"stock": 120}}).status_code == 422
     assert c.post("/api/workbook/portfolio/custom", json={"targets": {}}).status_code == 422
     assert (tmp / "strategies.yaml").read_text(encoding="utf-8") == before
+
+
+def test_mode_changes_only_that_line_keeps_comments_and_records(env):
+    c, tmp = env
+    r = c.post("/api/workbook/portfolio/mode", json={"pool_id": "me_pf_pool", "mode": "buy_only"})
+    assert r.status_code == 200 and r.json()["changed"]
+    text = (tmp / "accounts.yaml").read_text(encoding="utf-8")
+    assert "# 처음엔 올웨더" in text and "# 계좌 목록 머리 주석" in text
+    pools = yaml.safe_load(text)["pools"]
+    assert pools["me_pf_pool"]["mode"] == "buy_only" and pools["other_pool"]["mode"] == "buy_only"
+    assert "테스트 연금 운용 방식 변경: 사고팔기 → 사기만" in (tmp / "DECISIONS.md").read_text(encoding="utf-8")
+    assert c.post("/api/workbook/portfolio/mode", json={"pool_id": "me_pf_pool", "mode": "buy_only"}).json()["changed"] is False
+    assert c.post("/api/workbook/portfolio/mode", json={"pool_id": "nope", "mode": "rebalance"}).status_code == 404
+    assert c.post("/api/workbook/portfolio/mode", json={"pool_id": "me_pf_pool", "mode": "sell_all"}).status_code == 422

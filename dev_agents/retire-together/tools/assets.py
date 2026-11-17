@@ -255,8 +255,8 @@ def set_pool_mode(account_id: str, mode: str, path: Path = ACCOUNTS_PATH) -> str
     return pid
 
 
-def set_pool_strategy(pool_id: str, strategy_id: str, path: Path = ACCOUNTS_PATH) -> str:
-    """묶음이 따라갈 전략을 바꾼다. pools 아래 그 묶음의 strategy 한 줄만 고쳐 다른 줄·주석은 그대로 둔다. 이전 전략 id 반환."""
+def _set_pool_line(pool_id: str, key: str, value: str, path: Path) -> None:
+    """pools 아래 그 묶음의 `key:` 한 줄만 고쳐 다른 줄·주석은 그대로 둔다. 저장 뒤 다시 읽어 안 맞으면 되돌린다."""
     original = path.read_text(encoding="utf-8")
     lines = original.splitlines(keepends=True)
     try:
@@ -265,14 +265,28 @@ def set_pool_strategy(pool_id: str, strategy_id: str, path: Path = ACCOUNTS_PATH
     except StopIteration:
         raise KeyError(f"묶음 '{pool_id}'이(가) 없어요") from None
     end = next((i for i in range(start + 1, len(lines)) if not lines[i].startswith("    ")), len(lines))
-    idx = next((i for i in range(start + 1, end) if lines[i].startswith("    strategy:")), None)
-    previous = load_pools(path)[pool_id].get("strategy") or "all_weather"
+    idx = next((i for i in range(start + 1, end) if lines[i].startswith(f"    {key}:")), None)
     if idx is None:
-        lines.insert(start + 1, f"    strategy: {strategy_id}\n")
+        lines.insert(start + 1, f"    {key}: {value}\n")
     else:
-        lines[idx] = f"    strategy: {strategy_id}\n"
+        lines[idx] = f"    {key}: {value}\n"
     path.write_text("".join(lines), encoding="utf-8")
-    if load_pools(path).get(pool_id, {}).get("strategy") != strategy_id:
+    if load_pools(path).get(pool_id, {}).get(key) != value:
         path.write_text(original, encoding="utf-8")
-        raise ValueError("묶음 전략을 저장하지 못했어요")
+        raise ValueError(f"묶음 {key}을(를) 저장하지 못했어요")
+
+
+def set_pool_strategy(pool_id: str, strategy_id: str, path: Path = ACCOUNTS_PATH) -> str:
+    """묶음이 따라갈 전략을 바꾼다(그 줄만). 이전 전략 id 반환."""
+    previous = load_pools(path)[pool_id].get("strategy") or "all_weather"
+    _set_pool_line(pool_id, "strategy", strategy_id, path)
+    return previous
+
+
+def set_pool_mode_line(pool_id: str, mode: str, path: Path = ACCOUNTS_PATH) -> str:
+    """묶음 운용 방식(rebalance | buy_only)을 바꾼다(그 줄만, 주석 유지). 이전 모드 반환."""
+    if mode not in ("rebalance", "buy_only"):
+        raise ValueError("운용 방식은 rebalance 또는 buy_only")
+    previous = load_pools(path)[pool_id].get("mode") or "rebalance"
+    _set_pool_line(pool_id, "mode", mode, path)
     return previous

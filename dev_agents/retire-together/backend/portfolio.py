@@ -3,6 +3,7 @@
 
 - GET  /api/workbook/portfolios        : 고를 수 있는 포트폴리오(목표 비율·예시 종목·확인 상태)와 묶음별 지금 전략
 - POST /api/workbook/portfolio/follow  : 묶음이 따라갈 포트폴리오를 바꾼다 (accounts.yaml pools.<id>.strategy 한 줄)
+- POST /api/workbook/portfolio/mode    : 묶음 운용 방식(사고팔기/사기만)을 바꾼다 (pools.<id>.mode 한 줄, 2026-11-18 사용자)
 - POST /api/workbook/portfolio/custom  : '직접 설정' 비율 저장 (strategies.yaml custom.targets 한 줄). pool_id를 주면 바로 따라감
 
 전략·비율은 사용자가 정한다. 이 API는 사용자가 누른 것만 저장하고, 바꾼 내용은 DECISIONS.md에 남긴다.
@@ -19,7 +20,7 @@ from pydantic import Field
 from backend import registration
 from backend.storage import InputModel
 from backend.workbook import _short, decisions_path
-from tools.assets import candidate_confirmed, load_asset_map, load_class_defaults, load_pools, set_pool_strategy
+from tools.assets import candidate_confirmed, load_asset_map, load_class_defaults, load_pools, set_pool_mode_line, set_pool_strategy
 from tools.decisions import record_decision
 from tools.strategy import ASSET_CLASSES, CLASS_LABELS, load_strategy, set_custom_targets, strategies_path
 
@@ -122,6 +123,28 @@ def follow(pool_id: str, strategy_id: str) -> dict:
 @router.post("/portfolio/follow")
 def follow_api(data: FollowInput):
     return follow(data.pool_id, data.strategy_id)
+
+
+MODE_NAMES = {"rebalance": "사고팔기", "buy_only": "사기만"}
+
+
+class ModeInput(InputModel):
+    pool_id: Annotated[str, Field(min_length=1, max_length=80)]
+    mode: Literal["rebalance", "buy_only"]
+
+
+@router.post("/portfolio/mode")
+def mode_api(data: ModeInput):
+    pools = load_pools(registration.accounts_path())
+    if data.pool_id not in pools:
+        raise HTTPException(404, "이 묶음이 없어요.")
+    previous = pools[data.pool_id].get("mode") or "rebalance"
+    if previous == data.mode:
+        return {"changed": False, "line": None}
+    set_pool_mode_line(data.pool_id, data.mode, registration.accounts_path())
+    label = pools[data.pool_id].get("label") or data.pool_id
+    line = _record(f"{_short(label)} 운용 방식 변경: {MODE_NAMES[previous]} → {MODE_NAMES[data.mode]}", "리밸런싱 시트에서 사용자가 선택")
+    return {"changed": True, "line": line}
 
 
 def _what_if(data: PreviewInput, strategy_ids: list[str]) -> tuple[dict, object, list[dict]]:

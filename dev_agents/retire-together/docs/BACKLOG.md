@@ -77,7 +77,6 @@
 ### RB-SETTINGS · P1 · 예전 Streamlit 설정 화면에만 있던 4가지를 웹으로
 2026-11-16 Streamlit(`app/`)을 지우면서 웹에 없던 기능. 그전까지는 YAML을 직접 고친다(코드는 커밋 `1c4315f`의 `app/pages.py` 참고).
 - [ ] 1. 묶음 만들기·계좌를 묶음에 넣기·계좌 사용 켜기/끄기 — `tools/assets.save_accounts` (REG-POOL-LINK와 같은 API를 쓴다)
-- [ ] 2. 묶음 운용 방식 바꾸기(리밸런싱 / 매수만) — `tools/assets.set_pool_mode`
 - [ ] 3. 자산군 기본 종목 고르기(후보 중 선택 → `confirmed`) — `asset_map.yaml class_defaults`, RB-PROPOSED 2단계와 합친다
 - [ ] 4. 등록된 종목의 자산군·역할(핵심/위성) 꼬리표 고치기 — `tools/assets.upsert_asset_tags`, 자산 시트에서
 
