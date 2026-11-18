@@ -7,8 +7,6 @@ import { Brand, CheckItem, IncomeChart, Modal, PanelHeading, StatCard, StrategyS
 import { RebalancePage } from './rebalance-page'   // 리밸런싱 영역 — docs/archive/WORK_AREAS.md
 import { useLocalData } from './local-data'
 import { PropertyPlan } from './property'
-import { PropertyRecords } from './property-move/PropertyRecords'
-import { openPropertyMenu } from './property-observatory'
 import { StockWorkspace } from './stocks'
 import { HomeDashboard } from './home/HomeDashboard'
 import { ClassicHome } from './home/ClassicHome'
@@ -24,7 +22,7 @@ import './shell-theme.css'   // 사이드바 다듬기 + 다크 테마(사이드
 
 type ModalKind = 'about' | 'goal' | 'family' | 'import' | 'strategy' | 'house' | 'tax' | 'notifications' | 'help' | 'profile' | 'delete' | 'manual' | 'sheets' | null
 const pageNames: Record<Page, string> = { home: '우리의 오늘', assets: '우리 자산', pension: '연금', stocks: '주식', property: '부동산', rebalance: '리밸런싱' }
-// 사이드바 묶음 (2026-11-07 사용자): '우리 자산' 아래 연금(리밸런싱·수령·세금)·주식·부동산(갈아타기 계획)
+// 사이드바 묶음 (2026-11-07 사용자): '우리 자산' 아래 연금(리밸런싱·수령·세금)·주식·부동산
 const assetNav = [{ id: 'pension', label: '연금', icon: Landmark }, { id: 'stocks', label: '주식', icon: TrendingUp }, { id: 'property', label: '부동산', icon: House }] as const
 // 메뉴 오른쪽 금액은 짧게 (억/만). 이름(링크 이름)에는 넣지 않는다
 const shortAmount = (v: number) => v <= 0 ? '' : v >= 1e8 ? `${(v / 1e8).toFixed(2)}억` : `${Math.round(v / 1e4).toLocaleString()}만`
@@ -115,7 +113,6 @@ export default function App() {
         <div className="nav-tree">{assetNav.map(item => <div key={item.id}>
           <a href={`#${item.id}`} className={`nav-item ${page === item.id ? 'active' : ''}`} aria-current={page === item.id ? 'page' : undefined} onClick={e => { e.preventDefault(); go(item.id) }}><item.icon size={17}/><span>{item.label}</span><small className="nav-amount" aria-hidden="true">{hidden ? '••' : shortAmount(item.id === 'pension' ? snapshot.retirement : item.id === 'stocks' ? stockTotal : snapshot.property)}</small></a>
           {item.id === 'pension' && <><a href="#rebalance" className={`nav-sub ${page === 'rebalance' ? 'active' : ''}`} aria-current={page === 'rebalance' ? 'page' : undefined} onClick={e => { e.preventDefault(); go('rebalance') }}><span>리밸런싱</span>{largestDeviation !== null && <small className="nav-badge" aria-hidden="true">{largestDeviation.toFixed(1)}%p</small>}</a><button className="nav-sub" onClick={() => { setModal('tax'); setMenuOpen(false) }}><span>수령 · 세금</span><small aria-hidden="true">준비 중</small></button></>}
-          {item.id === 'property' && <button className="nav-sub" onClick={() => { setIsDemo(false); openPropertyMenu('plan'); go('property') }}><span>갈아타기 계획</span></button>}
         </div>)}</div>
       </nav>
       <div className="sidebar-bottom"><button className="nav-item settings-link" onClick={() => { location.hash = 'sheet-summary'; setMenuOpen(false) }}><FileText size={18}/><span>표로 보기</span></button><div id="theme-slot"/><button className="nav-item settings-link" onClick={() => { setModal('profile'); setMenuOpen(false) }}><Settings size={18}/><span>내 정보 · 설정</span></button><button className="family-profile" onClick={() => { setModal('family'); setMenuOpen(false) }}><span className="avatar-pair"><span>나</span><span>짝</span></span><span><strong>우리 가족</strong><small>함께 만드는 은퇴 계획</small></span><ChevronRight size={16}/></button></div>
@@ -125,16 +122,16 @@ export default function App() {
         <AccountMenu onProfile={() => setModal('profile')} onFamily={() => setModal('family')} onNotifications={() => setModal('notifications')} dataMode={{ isDemo, asOf, onChange: setIsDemo }}/>
         <AssetConnectionButton onClick={() => setModal('sheets')}/>
       </div></header>
-      <main id="main-content" className={page === 'home' ? 'ux-home' : undefined} tabIndex={-1}>
+      <main id="main-content" className={page === 'home' ? 'ux-home' : page === 'property' ? 'ux-property' : undefined} tabIndex={-1}>
         {!isDemo && local.loading && <div className="loading-strip" role="status">저장된 정보를 불러오고 있어요…</div>}
         {!isDemo && local.error && <div className="form-error" role="alert"><Info size={17}/><span>{local.error}</span><button onClick={local.refresh}>다시 시도</button></div>}
 
         {page === 'home' ? <>{photoPreview && <div className="home-preview-notice"><span>사진형 비교 시안</span><a href="/#home">기본 홈으로 돌아가기</a></div>}<HomeView snapshot={snapshot} owner={owner} scope={scopeLabel} hidden={hidden} isDemo={isDemo} loading={local.loading} error={local.error} strategies={strategies} largestDeviation={largestDeviation} retirementCard={retirementCard()} checklist={checklist()} onOwner={setOwner} onHide={() => setHidden(!hidden)} onAdd={beginRegistration} onAssets={openAssets} onEdit={editAmount} onProfile={() => setModal('profile')} onDemo={() => setIsDemo(true)} onPension={() => go('pension')} onRebalance={() => go('rebalance')} onStrategy={() => setModal('strategy')}/></> : <>
-          {!((page === 'rebalance' || page === 'pension') && !isDemo) && <><div className="page-heading"><div><span className="eyebrow">OUR NEXT CHAPTER</span><h1>{pageNames[page]}</h1>{page !== 'property' && <p>{page === 'assets' ? '두 사람의 자산, 같은 기준으로 투명하게.' : page === 'pension' ? '앞으로의 시간을, 우리의 속도로 준비해요.' : page === 'stocks' ? '일반 증권 계좌의 주식을 살펴봐요. 연금 계좌 종목은 연금에서 봐요.' : '시장의 방향보다, 우리가 정한 원칙을 따라가요.'}</p>}</div><label className="owner-select"><Users size={16}/><select aria-label="자산 소유자 선택" value={owner} onChange={e => setOwner(e.target.value as Owner)}>{Object.entries(ownerLabels).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select><ChevronDown size={14}/></label></div>
+          {!((page === 'rebalance' || page === 'pension' || page === 'property') && !isDemo) && <><div className="page-heading"><div><span className="eyebrow">OUR NEXT CHAPTER</span><h1>{pageNames[page]}</h1>{page !== 'property' && <p>{page === 'assets' ? '두 사람의 자산, 같은 기준으로 투명하게.' : page === 'pension' ? '앞으로의 시간을, 우리의 속도로 준비해요.' : page === 'stocks' ? '일반 증권 계좌의 주식을 살펴봐요. 연금 계좌 종목은 연금에서 봐요.' : '시장의 방향보다, 우리가 정한 원칙을 따라가요.'}</p>}</div><label className="owner-select"><Users size={16}/><select aria-label="자산 소유자 선택" value={owner} onChange={e => setOwner(e.target.value as Owner)}>{Object.entries(ownerLabels).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select><ChevronDown size={14}/></label></div>
           {(page !== 'property' || isDemo) && <div className="demo-notice"><Info size={16}/><span>{isDemo ? '화면을 살펴보기 위한 예시 데이터입니다. 실제 계좌와 연결되어 있지 않습니다.' : '직접 등록한 금액입니다. 증권사 자동 연동 전이며, 자산별 기준일을 확인해 주세요.'}</span></div>}</>}
           {(page === 'assets' || page === 'stocks') && !isDemo && <HoldingsPanel key={`${owner}:${page}`} owner={owner} hidden={hidden} stockOnly={page === 'stocks'} onRegister={beginRegistration} onChanged={local.refresh}/>}
           {page === 'stocks' && <StockWorkspace key={`${owner}:${isDemo}`} assets={snapshot.assets.filter(isStock)} isDemo={isDemo} hidden={hidden} onDemo={() => setIsDemo(true)} onRegister={beginRegistration} onSelect={setSelectedAsset}/>}
-          {page === 'property' && <PropertyPlan ledger={<PropertyRecords assets={snapshot.assets.filter(a => a.pocket === 'property')} hidden={hidden} onSelect={setSelectedAsset}/>} owner={owner} family={family} hidden={hidden} onChanged={local.refresh} onRegister={beginRegistration} value={display(snapshot.property)} registered={snapshot.assets.some(a => a.pocket === 'property')} isDemo={isDemo} onPreview={() => setModal('house')} onDemo={() => setIsDemo(true)}/>}
+          {page === 'property' && <PropertyPlan onOwner={setOwner} owner={owner} family={family} hidden={hidden} onChanged={local.refresh} onRegister={beginRegistration} value={display(snapshot.property)} registered={snapshot.assets.some(a => a.pocket === 'property')} isDemo={isDemo} onPreview={() => setModal('house')} onDemo={() => setIsDemo(true)}/>}
           {(page === 'assets' || page === 'stocks') && ledger}
 
           {page === 'assets' && !isDemo && <AccountManager hidden={hidden} groups={snapshot.account_groups ?? []} onAddDetail={addDetail} onSelect={setSelectedAsset} onRefresh={local.refresh}/>}

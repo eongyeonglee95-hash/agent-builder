@@ -1,4 +1,4 @@
-import { useContext, useState, type ReactNode, type ComponentProps } from 'react'
+import { useContext, useState, type ComponentProps } from 'react'
 import { PropertyObservatory, PropertyPageContext } from './property-observatory'
 import { ArrowRight, Check, CirclePlus, ChevronRight, Compass, Heart, House, MapPin, MoveRight, SlidersHorizontal, Sprout, Target } from 'lucide-react'
 import { PanelHeading } from './components'
@@ -47,6 +47,6 @@ function PropertyContent({ value, registered, isDemo, onPreview, onDemo, onRegis
   </div>
 }
 
-export function PropertyPlan({ ledger, ...props }: ComponentProps<typeof PropertyContent> & { ledger?: ReactNode }) {
-  return <PropertyObservatory owner={props.owner} hidden={props.hidden}><PropertyContent {...props}/>{ledger}</PropertyObservatory>
+export function PropertyPlan(props: ComponentProps<typeof PropertyContent> & { onOwner: (owner: Owner) => void }) {
+  return <PropertyObservatory onOwner={props.onOwner} owner={props.owner} hidden={props.hidden}><PropertyContent {...props}/></PropertyObservatory>
 }

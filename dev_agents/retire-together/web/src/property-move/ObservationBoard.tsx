@@ -9,15 +9,16 @@ import { ObservationRow } from '../components/ui/observation-row'
 import { day } from '../lib/format'
 import type { MoveState } from './types'
 
-type Area = { area: number; count: number; median: number; latest: { price: number; date: string; area: number; floor: number | null } }
-type Watch = { configured: boolean; months?: number; watch: { id: string; name: string; missing?: string; summary: { count: number; excluded_large: number; areas: Area[] } | null }[] }
+export type Area = { area: number; count: number; median: number; monthly?: import('./types').Monthly[]; latest: { price: number; date: string; area: number; floor: number | null } }
+export type Watch = { configured: boolean; months?: number; large_area_m2?: number; watch: { id: string; name: string; missing?: string; summary: { count: number; excluded_large: number; areas: Area[] } | null }[] }
 type Load<T> = { data: T | null; loading: boolean; error: boolean }
 type Place = { name: string; distance_m: number }
 type Places = { radius_m: number; fetched_at: Record<string, string>; items: { id: string; places: { department: Place | null; park_large: Place | null; hospital_tertiary: Place | null; hospital_general: Place | null; parks_within: number | null } | null }[] }
 
-function useRead<T>(path: string, revision: number) {
+export function useRead<T>(path: string, revision: number, enabled = true) {
   const [state, setState] = useState<Load<T>>({ data: null, loading: true, error: false })
   useEffect(() => {
+    if (!enabled) { setState({ data: null, loading: false, error: false }); return }
     const controller = new AbortController()
     let active = true
     setState({ data: null, loading: true, error: false })
@@ -27,11 +28,11 @@ function useRead<T>(path: string, revision: number) {
       .catch(() => { if (active) setState({ data: null, loading: false, error: true }) })
       .finally(() => clearTimeout(timer))
     return () => { active = false; clearTimeout(timer); controller.abort() }
-  }, [path, revision])
+  }, [path, revision, enabled])
   return state
 }
 
-function NearbyPlaces({ owner, id }: { owner: Owner; id: string }) {
+export function NearbyPlaces({ owner, id }: { owner: Owner; id: string }) {
   const result = useRead<Places>(`/property-move/places?owner=${owner}`, 0)
   if (result.loading) return <p role="status" className="text-xs text-grey-600">입지 조회 중…</p>
   if (result.error) return <p className="text-xs text-grey-600">입지 조회 실패</p>

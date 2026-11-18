@@ -34,15 +34,15 @@ export function PublicListings({ market, hidden, onManual }: { market: ReturnTyp
   const [all, setAll] = useState(false)
   return <div className="property-public-listings">
     <div className="property-public-heading"><h3>매물 목록 <span>{data?.summary ? `광고 ${data.summary.count}건${data.partial ? ' · 일부 조회' : ''}` : ''}</span></h3><div><button type="button" className="property-move-link" onClick={onManual}>직접 기록·시세 관리</button>{data && <a className="property-move-link" href={data.source_url} target="_blank" rel="noreferrer">{data.source} ↗</a>}</div></div>
-    {market.loading ? <p className="property-move-note" role="status">같은 전용면적의 공개 매물을 불러오고 있어요.</p>
+    {market.loading ? <p className="property-move-note" role="status">매물 조회 중…</p>
       : market.error ? <p className="property-move-note">{market.error} <button type="button" className="property-move-link" onClick={market.retry}>다시 조회</button></p>
-      : !market.ready ? <p className="property-move-note">집 정보에서 단지 주소와 전용면적을 선택하면 공개 매물을 연결해요.</p>
-      : !data?.listings.length ? <p className="property-move-note">{data?.status === 'unmatched' ? '공개 매물 출처에서 이 단지를 정확히 연결하지 못했어요.' : '이 출처에서 같은 전용면적의 매물을 확인하지 못했어요.'}</p>
+      : !market.ready ? <p className="property-move-note">주소·전용면적을 등록해 주세요.</p>
+      : !data?.listings.length ? <p className="property-move-note">{data?.status === 'unmatched' ? '단지 연결 확인 필요' : '같은 전용면적의 매물 없음'}</p>
       : <>
         <div className="property-public-rows">{data.listings.slice(0, all ? undefined : 3).map(l => <a href={l.url} target="_blank" rel="noreferrer" className="property-public-row" key={l.id} aria-label={`${l.name} 매물 원문`}><strong>{hidden ? '••••' : l.monthly != null ? `${money(l.price)} / 월 ${money(l.monthly)}` : money(l.price)}</strong><span>{l.name}<small>전용 {l.area}㎡ · {l.floor_direction}</small></span><time dateTime={l.checked_on}>{l.checked_on.slice(2).replaceAll('-', '.')} 확인 ↗</time></a>)}</div>
         {data.listings.length > 3 && <button type="button" className="property-move-link property-public-more" onClick={() => setAll(v => !v)}>{all ? '접기' : `조회한 매물 ${data.listings.length}건 모두 보기`}</button>}
       </>}
-    {data && <p className="property-move-note property-public-source">{new Date(data.fetched_at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })} 조회{data.partial ? ' · 일부 페이지만 조회했어요. 전체는 출처에서 확인해 주세요.' : ''}{data.stale ? ' · 갱신 실패, 이전 자료' : ''}</p>}
+    {data && <p className="property-move-note property-public-source">{new Date(data.fetched_at).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })} 조회{data.partial ? ' · 일부 조회' : ''}{data.stale ? ' · 갱신 실패, 이전 자료' : ''}</p>}
   </div>
 }
 

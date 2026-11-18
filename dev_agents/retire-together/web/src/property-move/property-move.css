@@ -85,3 +85,8 @@
 
 /* 내 부동산: 갈아타기 후보 한 줄 (2026-11-18) */
 .property-move-candidate-strip{display:flex;flex-wrap:wrap;align-items:center;gap:4px 16px;margin-top:12px;padding:10px 16px;border:1px solid var(--border);border-radius:6px;background:var(--card);font-size:var(--text-sm);color:var(--muted-foreground)}.property-move-candidate-strip b{color:var(--foreground);font-weight:600}.property-move-candidate-strip>span:first-child{color:var(--foreground);font-weight:600}.property-move-candidate-strip>button{margin-left:auto}
+
+/* Omit unset planning metrics without reserving empty columns. */
+.property-move-funds-card{display:flex;flex-wrap:wrap}.property-move-funds-card>div{flex:1;min-width:160px}.property-move-funds-card>.property-move-funds-actions{flex:0 1 auto}
+@media(min-width:951px){.property-move-candidate-row:not(:has(.property-move-future-cell)){grid-template-columns:minmax(120px,1.2fr) repeat(4,minmax(78px,1fr)) 28px}}
+@media(max-width:650px){.property-move-funds-card>div{flex-basis:100%}}

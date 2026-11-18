@@ -380,7 +380,9 @@ def trades(sigungu: Annotated[str, Query(pattern=r"^\d{5}$")], name: Annotated[s
            jibun: Annotated[str, Query(max_length=200)] | None = None):
     if not market_key():
         return {"configured": False, "trades": []}
-    return {"configured": True, "months": months, "trades": recent_trades(sigungu, name, area, months, dong, jibun)[:30]}
+    from tools.property_watch import monthly_series
+    rows = recent_trades(sigungu, name, area, months, dong, jibun)
+    return {"configured": True, "months": months, "trades": rows[:30], "monthly": monthly_series(rows)}
 
 
 @router.post("/{asset_id}/refresh")

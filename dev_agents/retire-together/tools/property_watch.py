@@ -28,6 +28,15 @@ def _median(xs: list[int]) -> int:
     return xs[n // 2] if n % 2 else (xs[n // 2 - 1] + xs[n // 2]) // 2
 
 
+def monthly_series(rows: list[dict]) -> list[dict]:
+    """계약월별 조회 거래 수와 가격 중간값. 없는 달의 가격을 보간하지 않는다."""
+    groups: dict[str, list[int]] = {}
+    for row in rows:
+        groups.setdefault(row["date"][:7], []).append(row["price"])
+    return [{"month": month, "count": len(prices), "median": _median(prices)}
+            for month, prices in sorted(groups.items())]
+
+
 def summarize(rows: list[dict], *, large_area_m2: float) -> dict:
     """평형(전용 ㎡ 정수)별 거래 수·중간값·최근 거래. large_area_m2 초과 거래는 기준에서 빼고 건수만 센다."""
     kept = [r for r in rows if r["area"] <= large_area_m2]
@@ -38,5 +47,40 @@ def summarize(rows: list[dict], *, large_area_m2: float) -> dict:
     for area, rs in sorted(groups.items()):
         last = max(rs, key=lambda r: (r["date"], r["floor"] or 0))
         areas.append({"area": area, "count": len(rs), "median": _median([r["price"] for r in rs]),
+                      "monthly": monthly_series(rs),
                       "latest": {"price": last["price"], "date": last["date"], "area": last["area"], "floor": last["floor"]}})
     return {"count": len(kept), "excluded_large": len(rows) - len(kept), "areas": areas}
+
+
+def research_snapshot(candidates: list[dict], watch: dict, *, today) -> dict:
+    """Saved-candidate screening only; never a claim about the whole market or fair value."""
+    def month(offset):
+        n = today.year * 12 + today.month - 1 + offset
+        return f"{n // 12}-{n % 12 + 1:02d}"
+    recent, previous = [month(i) for i in (-3, -2, -1)], [month(i) for i in (-6, -5, -4)]
+    rows = []
+    for c in candidates:
+        found = next((w for w in watch.get("watch", []) if w["id"] == c["id"]), {})
+        summary = found.get("summary")
+        selected_area = int(c["area_m2"]) if c.get("area_m2") is not None else None
+        area = next((a for a in (summary or {}).get("areas", []) if a["area"] == selected_area), None)
+        available = bool(watch.get("configured") and summary is not None and selected_area is not None
+                         and selected_area <= watch.get("large_area_m2", 135))
+        monthly = {v["month"]: v for v in (area or {}).get("monthly", [])}
+        available = available and (area is None or "monthly" in area)
+        current_count = sum(monthly.get(m, {}).get("count", 0) for m in recent) if available else None
+        previous_count = sum(monthly.get(m, {}).get("count", 0) for m in previous) if available else None
+        current_price, previous_price = monthly.get(recent[-1], {}).get("median"), monthly.get(previous[-1], {}).get("median")
+        latest = (area or {}).get("latest")
+        asking = c.get("asking_low")
+        rows.append({"id": c["id"], "name": c["name"], "area": selected_area,
+                     "current_count": current_count, "previous_count": previous_count,
+                     "price_change": current_price - previous_price if current_price is not None and previous_price is not None else None,
+                     "latest": latest, "asking": asking, "asking_date": c.get("asking_date"),
+                     "asking_difference": asking - latest["price"] if asking is not None and latest else None,
+                     "missing": not available, "sparse": current_count is not None and current_count < 3})
+    return {"as_of": today.isoformat(), "recent": recent, "previous": previous, "rows": rows,
+            "summary": {"total": len(rows), "missing": sum(r["missing"] for r in rows),
+                        "volume_up": sum(r["current_count"] is not None and r["current_count"] > r["previous_count"] for r in rows),
+                        "price_down": sum(r["price_change"] is not None and r["price_change"] < 0 for r in rows),
+                        "asking_below_trade": sum(r["asking_difference"] is not None and r["asking_difference"] < 0 for r in rows)}}
