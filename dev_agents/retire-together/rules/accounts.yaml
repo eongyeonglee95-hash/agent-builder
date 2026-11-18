@@ -65,13 +65,13 @@ accounts:
 pools:
   me_pension_old:
     label: 연금저축(구) — 리밸런싱
-    strategy: park_gomhee
+    strategy: all_weather
     mode: rebalance
   me_pension_new:
     label: 연금저축(신) — 매수만
-    strategy: all_weather
-    mode: buy_only
+    strategy: park_gomhee
+    mode: rebalance
   me_irp:
     label: 내 IRP
     strategy: all_weather
-    mode: buy_only
+    mode: rebalance
