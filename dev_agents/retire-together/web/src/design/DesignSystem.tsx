@@ -13,7 +13,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { ReadGrid, type Cell } from '@/workbook/ReadGrid'
-import { MixRows } from '@/workbook/RebalancePlan'
+import { SecuritiesReport } from '@/workbook/SecuritiesReport'
+import { allocationReportExample } from './allocation-report-example'
+import { MixRows, StrategyAllocation } from '@/workbook/RebalancePlan'
 import { classInfo } from '../model'
 import { day, manwon, pct, pp, shares, won } from '@/lib/format'
 
@@ -106,7 +108,15 @@ export function DesignSystem() {
         <p className="mt-2 max-w-2xl text-base text-grey-700">새 화면은 여기 있는 토큰·컴포넌트만으로 만들어요. 규칙과 이유는 <code className="rounded bg-grey-100 px-1 text-sm">docs/DESIGN_SYSTEM.md</code>.</p>
       </div>
 
+      <Section id="allocation-report" title="자산배분 AI 보고서" note="합성 예시 · 핵심 판단 → 근거 → 조건별 비교 → 우선 행동. 실제 투자 판단이 아닙니다.">
+        <SecuritiesReport analysis={allocationReportExample} research={[]} accounts={[{label:'연금저축 · 합성 예시',strategy:'예시 전략',mode:'rebalance',findings:['목표와 현재 배분을 비교한 합성 예시예요.'],plan:{kind:'move',reduce_total:0,increase_total:0,leftover:0,mix:[{asset_class:'stock',label:'주식',current_pct:60,target_pct:40,sell:0,buy:0},{asset_class:'long_bond',label:'장기채',current_pct:40,target_pct:60,sell:0,buy:0}]}}]}/>
+      </Section>
       <Section id="rebalance" title="리밸런싱 비교표" note="계좌색 위 흰 비교표 · 현재/목표는 보조 정보 · 주문 금액 강조. 예시 데이터입니다.">
+          <div className="mb-4"><StrategyAllocation name="목표 배분 예시" targets={[
+            { asset_class: 'stock', label: '주식', target_pct: 50 },
+            { asset_class: 'long_bond', label: '장기채', target_pct: 30 },
+            { asset_class: 'gold', label: '금', target_pct: 20 },
+          ]}/></div>
           <MixRows mix={[
             { asset_class: 'stock', label: '주식 (국내·해외·배당·리츠)', current_pct: 70, target_pct: 30, sell: 16000000, buy: 0 },
             { asset_class: 'long_bond', label: '장기채', current_pct: 0, target_pct: 40, sell: 0, buy: 16000000 },

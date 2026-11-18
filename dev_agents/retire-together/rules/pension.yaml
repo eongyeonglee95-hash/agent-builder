@@ -55,3 +55,7 @@ national:
     under_20y: 0.50
     over_20y: 0.60
   survivor_overlap_rate: 0.30       # 본인 노령연금이 있으면 택1: 본인 노령연금 + 유족연금의 30%  /  유족연금만
+
+# 보고서 비교용 가정. 권장 납입액이 아니며 기존 납입 일정에 추가한다.
+report_scenarios:
+  extra_monthly: [100000, 300000, 500000]
