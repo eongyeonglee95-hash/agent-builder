@@ -8,6 +8,7 @@ import { ProfileForm } from '../forms'
 import type { Family } from '../model'
 import { useRetirementData, type Plan, type Result } from '../workbook/retirement'
 import { Pagoda } from './Pagoda'
+import { ExtraPensionSummary } from './ExtraPensionSummary'
 import { PlanDialog, type Editor } from './PlanDialog'
 import { SpendingGoal } from './SpendingGoal'
 import { SpendingBudgetDialog } from './SpendingBudgetDialog'
@@ -134,9 +135,12 @@ export function RetirementTower({ data, error, save, reload, owner, onOwnerChang
       <div className="tower-tower-card"><div className="tower-tower-heading"><div><h2>은퇴 후, 매달 받는 연금.</h2><span>{row ? `${year}년 기준` : scopeLabel} · 세전 · 오늘의 돈</span></div></div>
         <div className="tower-tower-view"><figure className="tower-sculpture"><Pagoda selected={selected} onSelect={openDetail} states={LAYERS.map(l => ({ label: `${l.name}, ${layerText(l.id)}` }))}/><figcaption><MousePointer2 size={13}/>각 층을 눌러 살펴보세요</figcaption><p className="tower-color-legend">색은 연금 종류를 나타내요</p>
             {/* 사용자(11-02): 4층 두 가지 보기는 요약 카드가 아니라 석탑 아래에. 숫자는 이 카드 기준(오늘 돈)으로 통일 — 그해의 돈 블록과 섞이지 않게 */}
-            {((layerCapital(4) ?? 0) > 0 || extraMonthly > 0) && <div className="tower-extra-choice" data-testid="pension-extra"><small>4층 추가연금은 합계에 넣지 않았어요 · 두 가지로 볼 수 있어요</small>
-              <div><span>월급으로 나눠 쓰면</span><b data-testid="pension-total-with-extra" data-won={hidden || total == null ? undefined : total + extraMonthly}>{extraMonthly > 0 ? <>월 {monthly(extraMonthly)}만 원<em>1~3층과 합치면 월 {monthly((total ?? 0) + extraMonthly)}만</em></> : layerText(4)}</b></div>
-              <div><span>목돈으로 두면</span><b>{big(layerCapital(4))} 그대로</b></div></div>}</figure>
+            {((layerCapital(4) ?? 0) > 0 || extraMonthly > 0) && <ExtraPensionSummary
+              monthly={extraMonthly > 0 ? `월 ${monthly(extraMonthly)}만 원` : layerText(4)}
+              capital={big(layerCapital(4))}
+              combined={extraMonthly > 0 ? total == null ? '—' : `월 ${monthly(total + extraMonthly)}만 원` : undefined}
+              combinedWon={hidden || total == null || extraMonthly <= 0 ? undefined : total + extraMonthly}
+            />}</figure>
           <div className="tower-layers" role="group" aria-label="연금층 선택">{[...LAYERS].reverse().map(l => <Popover.Root key={l.id} open={detailOpen && selected === l.id} onOpenChange={open => { if (!open) setDetailOpen(false) }}><Popover.Anchor asChild><div className="tower-layer-row" data-selected={selected === l.id}><button className="tower-layer-button" aria-pressed={selected === l.id} onClick={() => detailOpen && selected === l.id ? setDetailOpen(false) : openDetail(l.id)} aria-label={`${l.id}층 ${l.name} 살펴보기`}>
             <span className="tower-layer-name"><i style={{ background: `var(--tower-layer-${l.id})` }}/><small>{l.id}층</small>{l.name}<ChevronRight size={13}/></span>
             <span className="tower-layer-principal">{<>
@@ -188,7 +192,7 @@ export function RetirementTower({ data, error, save, reload, owner, onOwnerChang
       {selected === 3 && <button type="button" className="tower-detail-link" aria-label="개인연금 납입·수령 설정" onClick={() => { setDetailOpen(false); if (!hasPerson) setProfileOpen(true); else setSavingsOpen(true) }}><Settings2 size={13}/>미래 납입 계획</button>}
       {selected === 4 && <button type="button" className="tower-detail-link" onClick={() => { setDetailOpen(false); onAssets() }}><Wallet size={13}/>등록한 자산 보기</button>}
       {selected >= 3 && <button type="button" className="tower-detail-link" aria-label={`${currentLayer.name} 수령 설정`} onClick={() => { setDetailOpen(false); setEditorScope(null); if (!hasPerson) setProfileOpen(true); else setEditor('timing') }}><Settings2 size={13}/>수령 나이 바꾸기</button>}
-      {selected === 4 && <p className="tower-detail-note"><Info size={15}/>세제비적격 연금보험(일반·변액연금보험)과 ISA처럼 세액공제를 받지 않은 은퇴 자금이 여기에 들어가요. 받을 때 연금소득세가 없고 해지해도 토해 낼 공제가 없어요. 월 수령액은 3층과 같은 방식으로 계산하지만 기본 합계에는 넣지 않고, 요약 카드에 ‘월급으로 나눠 쓰면 / 목돈으로 두면’ 두 숫자로 따로 보여 줘요.</p>}
+      {selected === 4 && <p className="tower-detail-note"><Info size={15}/>세제비적격 연금보험(일반·변액연금보험)과 ISA처럼 세액공제를 받지 않은 은퇴 자금이 여기에 들어가요. 받을 때 연금소득세가 없고 해지해도 토해 낼 공제가 없어요. 월 수령액은 3층과 같은 방식으로 계산하지만 기본 합계에는 넣지 않고, ‘연금으로 받기 / 목돈으로 보유’로 구분해 보여 줘요.</p>}
       {selected !== 4 && currentStatus === '준비 정보 없음' && <p className="tower-detail-note">정보가 없다는 뜻이며, 실제 받을 연금이 0원이라는 뜻은 아니에요.</p>}
             </Popover.Content></Popover.Portal></Popover.Root>)}
 </div>
