@@ -37,33 +37,42 @@ const eul = (w: string) => w + (jong(w) ? '을' : '를')
 const eun = (w: string) => w + (jong(w) ? '은' : '는')
 // 계좌 순서대로 theme.css --acct-1..4 를 돌려 쓴다
 const acct = (i: number) => ({ '--a': `var(--acct-${i % 4 + 1})`, '--a-tint': `var(--acct-${i % 4 + 1}-tint)` }) as React.CSSProperties
-// 계좌 한 줄: 왼쪽 진한 패널 + 오른쪽 옅은 배경 (2026-11-18 사용자 시안 A '덜어내기')
-// 거의 안 바꾸는 설정(운용 방식·원칙)은 한 줄 글로 두고 '바꾸기'를 눌러야 펼친다. 잔고 없는 계좌는 얇은 줄(compact)
-function AccountLine({ index, name, balance, settings, editor, children, compact }: {
-  index: number; name: string; balance?: string; settings: string; editor: React.ReactNode; children: React.ReactNode; compact?: boolean
+// 계좌 한 줄: 왼쪽 진한 패널(계좌·잔고) + 오른쪽 옅은 배경. 오른쪽 맨 윗줄은 따르는 자산배분(원칙 이름 크게 + 목표 비중 + 운용 방식)
+// (2026-11-18 사용자 "설정한 올웨더 같은 자산배분 방법을 젤 윗줄에 눈에 띄게"). 바꾸기는 그 줄에서 펼친다. 잔고 없는 계좌는 얇은 줄(compact)
+function AccountLine({ index, name, balance, rule, mode, editor, children, compact }: {
+  index: number; name: string; balance?: string; rule: { name: string; classes: Card['classes'] }; mode: string; editor: React.ReactNode; children: React.ReactNode; compact?: boolean
 }) {
   const [editing, setEditing] = useState(false)
+  const parts = rule.classes.filter(c => c.target_pct > 0)
   return <section aria-label={name} style={acct(index)} className="grid overflow-hidden rounded-2xl bg-[var(--a-tint)] md:grid-cols-[208px_minmax(0,1fr)]">
-    <div className={cn('flex flex-col gap-1 bg-[var(--a)] px-4 text-white', compact ? 'py-3' : 'py-4')}>
+    <div className={cn('flex flex-col gap-1 bg-[var(--a)] px-4 text-white', compact ? 'justify-center py-3' : 'py-4')}>
       <b className={cn('font-semibold', compact ? 'text-base' : 'text-sm text-white/90')}>{name}</b>
-      {balance && <span className="text-2xl font-bold tabular-nums tracking-tight">{balance}</span>}
-      <span className="text-xs text-white/75">{settings} · <button type="button" aria-expanded={editing} onClick={() => setEditing(e => !e)}
-        className="text-white underline underline-offset-2">{editing ? '닫기' : '바꾸기'}</button></span>
-      {editing && <div className="mt-2 flex flex-col gap-2">{editor}</div>}
+      {balance ? <span className="text-2xl font-bold tabular-nums tracking-tight">{balance}</span> : <span className="text-sm text-white/75">잔고 없음</span>}
     </div>
-    <div className="min-w-0">{children}</div>
+    <div className="flex min-w-0 flex-col">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-black/10 px-5 py-2.5">
+        <b className="text-lg font-bold">{rule.name}</b>
+        {parts.length > 0 && <span className="flex flex-wrap gap-x-2.5 text-sm text-grey-700" aria-label={`${rule.name} 목표 비중`}>
+          {parts.map(c => <span key={c.asset_class} className="flex items-center gap-1 whitespace-nowrap"><i aria-hidden="true" className="inline-block size-2 rounded-full" style={{ background: COLOR[c.asset_class] ?? 'var(--grey-400)' }}/>{c.label} <b className="font-semibold tabular-nums text-grey-900">{c.target_pct}%</b></span>)}</span>}
+        <span className="text-sm text-grey-600">· {mode === 'buy_only' ? '사기만' : '사고팔기'}</span>
+        <span className="flex-1"/>
+        <button type="button" aria-expanded={editing} onClick={() => setEditing(e => !e)} className="text-sm text-grey-700 underline underline-offset-4 hover:text-grey-900">{editing ? '닫기' : '바꾸기'}</button>
+      </div>
+      {editing && <div className="flex flex-wrap items-center gap-2 border-b border-black/10 px-5 py-2.5">{editor}</div>}
+      <div className="flex-1">{children}</div>
+    </div>
   </section>
 }
 // 운용 방식 고르기 (2026-11-18 사용자 "사고팔기/사기만도 옵션으로") — 누르면 바로 저장·결정 기록, 다시 계산
 function ModeToggle({ pool, disabled, run }: { pool: { pool_id: string; label: string; mode: string }; disabled: boolean; run: (fn: () => Promise<string>) => Promise<void> }) {
   const name = short(pool.label)
-  return <div role="group" aria-label={`${name} 운용 방식`} className="grid grid-cols-2 gap-0.5 rounded-lg bg-white/15 p-0.5">
+  return <div role="group" aria-label={`${name} 운용 방식`} className="grid w-48 grid-cols-2 gap-0.5 rounded-lg border border-grey-300 bg-white p-0.5">
     {([['rebalance', '사고팔기'], ['buy_only', '사기만']] as const).map(([m, l]) => {
       const on = (pool.mode === 'buy_only' ? 'buy_only' : 'rebalance') === m
       return <button key={m} type="button" aria-pressed={on} disabled={disabled}
         title={m === 'rebalance' ? '팔고 사서 목표 비율에 맞춰요' : '팔지 않고 넣는 돈으로 모자란 것만 사요'}
         onClick={() => !on && run(async () => { await api('/workbook/portfolio/mode', 'POST', { pool_id: pool.pool_id, mode: m }); return `${eun(name)} 이제 ${l}로 운용해요.` })}
-        className={cn('h-8 rounded-md text-sm font-semibold transition-colors disabled:cursor-not-allowed', on ? 'bg-white text-grey-900' : 'text-white/80 hover:bg-white/10')}>{l}</button>
+        className={cn('h-8 rounded-md text-sm font-semibold transition-colors disabled:cursor-not-allowed', on ? 'bg-grey-900 text-white' : 'text-grey-700 hover:bg-grey-100')}>{l}</button>
     })}
   </div>
 }
@@ -103,8 +112,7 @@ export function RebalancePlan({ owner, live, rev, onChanged, onError, onRegister
   const total = pools.length + empty.length
   // 카드가 같은 말을 다시 하니 요약은 개수만 (잔고 없는 계좌는 얇은 줄이 스스로 말한다)
   const headline = ([[moveNow, '지금 옮길 계좌'], [viaCash, '납입 때 맞출 계좌']] as const).filter(([n]) => n > 0).map(([n, l]) => `${l} ${n}개`).join(' · ')
-  const modeName = (m: string) => m === 'buy_only' ? '사기만' : '사고팔기'
-  const ruleName = (id: string) => cards.find(c => c.id === id)?.short ?? id
+  const ruleOf = (id: string) => ({ name: cards.find(c => c.id === id)?.short ?? id, classes: cards.find(c => c.id === id)?.classes ?? [] })
 
   // 2026-11-02 사용자 "빈 곳이 너무 많다, 더 넓게" → 폭 제한을 넓히고(1600px) 카드 안 여백·간격을 줄였다
   return <div className={embedded ? '' : 'min-h-0 flex-1 overflow-y-auto bg-grey-100'}>
@@ -115,10 +123,10 @@ export function RebalancePlan({ owner, live, rev, onChanged, onError, onRegister
       </div>
 
       {pools.map((p, i) => <PoolCard key={p.pool_id} index={i} pool={p} cards={cards} input={input} busy={busy} cash={cash[p.pool_id] ?? 0}
-        onCash={v => setCash(c => ({ ...c, [p.pool_id]: v }))} run={run} onError={onError} onCustom={() => setCustomOpen(true)} settings={`${modeName(p.mode)} · ${ruleName(p.strategy_id)}`}/>)}
+        onCash={v => setCash(c => ({ ...c, [p.pool_id]: v }))} run={run} onError={onError} onCustom={() => setCustomOpen(true)} rule={ruleOf(p.strategy_id)}/>)}
 
-      {empty.map((p, i) => <AccountLine key={p.pool_id} compact index={pools.length + i} name={short(p.label)} settings={`${modeName(p.mode)} · ${ruleName(p.strategy_id)}`}
-        editor={<><ModeToggle pool={p} disabled={busy} run={run}/><PrincipleSelect pool={p} cards={cards} disabled={busy} onPick={id => run(async () => { await api('/workbook/portfolio/follow', 'POST', { pool_id: p.pool_id, strategy_id: id }); return `${eun(short(p.label))} 이제 ${eul(cards.find(c => c.id === id)?.short ?? id)} 따라가요.` })} onCustom={() => setCustomOpen(true)}/></>}>
+      {empty.map((p, i) => <AccountLine key={p.pool_id} compact index={pools.length + i} name={short(p.label)} rule={ruleOf(p.strategy_id)} mode={p.mode}
+        editor={<><ModeToggle pool={p} disabled={busy} run={run}/><div className="w-56"><PrincipleSelect pool={p} cards={cards} disabled={busy} onPick={id => run(async () => { await api('/workbook/portfolio/follow', 'POST', { pool_id: p.pool_id, strategy_id: id }); return `${eun(short(p.label))} 이제 ${eul(cards.find(c => c.id === id)?.short ?? id)} 따라가요.` })} onCustom={() => setCustomOpen(true)}/></div></>}>
         <div className="flex h-full flex-wrap items-center gap-3 px-5 py-3">
           <p className="flex-1 text-base text-grey-700">잔고가 없어요. 등록하면 비교해요.</p>
           <Button size="sm" variant="outline" className="bg-white" onClick={onRegister}>잔고 등록</Button>
@@ -197,8 +205,8 @@ function TargetBar({ targets }: { targets: Plan['targets'] }) {
   </span>
 }
 
-function PoolCard({ index, pool, cards, input, busy, cash, onCash, run, onError, onCustom, settings }: {
-  settings: string; index: number; pool: Pool; cards: Card[]; input: { owner: string; live: boolean }; busy: boolean; cash: number; onCash: (v: number) => void
+function PoolCard({ index, pool, cards, input, busy, cash, onCash, run, onError, onCustom, rule }: {
+  rule: { name: string; classes: Card['classes'] }; index: number; pool: Pool; cards: Card[]; input: { owner: string; live: boolean }; busy: boolean; cash: number; onCash: (v: number) => void
   run: (fn: () => Promise<string>) => Promise<void>; onError: (m: string) => void; onCustom: () => void
 }) {
   const [showOrders, setShowOrders] = useState(false)
@@ -219,8 +227,8 @@ function PoolCard({ index, pool, cards, input, busy, cash, onCash, run, onError,
   const currentShort = cards.find(c => c.id === pool.strategy_id)?.short ?? pool.strategy_id
 
   return <AccountLine index={index} name={name}
-    balance={pool.total_value != null ? man(pool.total_value) : undefined} settings={settings}
-    editor={<><ModeToggle pool={pool} disabled={busy || previewing} run={run}/><PrincipleSelect pool={pool} shown={preview?.strategy_id} cards={cards} disabled={busy || previewing} onPick={pick} onCustom={onCustom}/></>}>
+    balance={pool.total_value != null ? man(pool.total_value) : undefined} rule={rule} mode={pool.mode}
+    editor={<><ModeToggle pool={pool} disabled={busy || previewing} run={run}/><div className="w-56"><PrincipleSelect pool={pool} shown={preview?.strategy_id} cards={cards} disabled={busy || previewing} onPick={pick} onCustom={onCustom}/></div></>}>
 
     {preview ? <div className="flex flex-col gap-3 px-5 py-4">
       <p className="text-2xl font-bold">{ro(preview.name)} 바꾸면, 이번 달 할 일이 이렇게 달라져요.</p>
