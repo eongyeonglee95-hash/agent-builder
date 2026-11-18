@@ -17,7 +17,8 @@ import { api } from '../local-data'
 type Amount = { asset_class: string; label: string; amount: number }
 type Plan = { kind: 'blocked' | 'in_range' | 'move' | 'buy' | 'buy_needs_cash'; title?: string; title_head?: string | null; title_tail?: string; title_tone?: 'up' | 'down'; line?: string; reduce: Amount[]; increase: Amount[]
   reduce_total: number; increase_total: number; sell_count: number; buy_count: number; amount_only: number; leftover: number
-  targets: { asset_class: string; label: string; target_pct: number }[] }
+  targets: { asset_class: string; label: string; target_pct: number }[]
+  mix?: { asset_class: string; label: string; current_pct: number; target_pct: number; sell: number; buy: number }[] }
 type Order = { side: string; asset_class: string; ticker_name: string | null; qty: number | null; amount: number }
 type Pool = { pool_id: string; label: string; mode: string; strategy_id: string; total_value?: number; error?: string; plan?: Plan; orders?: Order[]
   accounts: { id: string; label: string }[]; new_cash_account?: string; last_decision?: { date: string; decision: string; reason: string } | null }
@@ -169,6 +170,27 @@ function FlowBars({ plan }: { plan: Plan }) {
   </div>
 }
 
+// 자산군마다 한 줄: 지금 비중(막대) · 목표(세로선) · 이번 달 팔기/사기 금액 (2026-11-18 사용자 "줄이기/늘리기 그래프는 펼쳐야 이해된다")
+// 숫자는 서버(plan.mix)가 계산한 값 그대로
+function MixRows({ mix, leftover }: { mix: NonNullable<Plan['mix']>; leftover: number }) {
+  const pct = (n: number) => `${n.toFixed(1)}%`
+  return <div className="flex flex-col gap-1.5">
+    <div className="grid grid-cols-[64px_minmax(0,1fr)_96px] sm:grid-cols-[88px_minmax(0,1fr)_128px_120px] items-center gap-3 text-xs text-grey-600">
+      <span>자산</span><span className="flex items-center gap-1.5">막대는 지금 비중 · <i aria-hidden="true" className="inline-block h-3 w-0.5 bg-grey-900"/> 목표</span><span className="hidden text-right sm:block">지금 → 목표</span><span className="text-right">이번 달</span>
+    </div>
+    {mix.map(m => <div key={m.asset_class} className="grid grid-cols-[64px_minmax(0,1fr)_96px] sm:grid-cols-[88px_minmax(0,1fr)_128px_120px] items-center gap-3 text-sm">
+      <span className="flex items-center gap-1.5 font-semibold"><i aria-hidden="true" className="inline-block size-2 shrink-0 rounded-full" style={{ background: COLOR[m.asset_class] ?? 'var(--grey-400)' }}/>{m.label}</span>
+      <span className="relative h-3 rounded-full bg-white" role="img" aria-label={`${m.label} 지금 ${pct(m.current_pct)}, 목표 ${pct(m.target_pct)}`}>
+        <span className="absolute inset-y-0 left-0 rounded-full" style={{ width: `${Math.min(100, m.current_pct)}%`, background: COLOR[m.asset_class] ?? 'var(--grey-400)' }}/>
+        <span aria-hidden="true" className="absolute -inset-y-1 w-0.5 bg-grey-900" style={{ left: `calc(${Math.min(100, m.target_pct)}% - 1px)` }}/>
+      </span>
+      <span className="hidden text-right tabular-nums text-grey-700 sm:block">{pct(m.current_pct)} → <b className="font-semibold text-grey-900">{pct(m.target_pct)}</b></span>
+      <span className={cn('text-right font-semibold tabular-nums', m.sell ? 'text-down' : m.buy ? 'text-up' : 'text-grey-500')}>{m.sell ? `팔기 ${man(m.sell)}` : m.buy ? `사기 ${man(m.buy)}` : '그대로'}</span>
+    </div>)}
+    {leftover > 0 && <p className="text-right text-sm text-grey-600">판 돈 중 <b className="font-semibold tabular-nums text-grey-800">{man(leftover)}</b>은 현금으로 남아요.</p>}
+  </div>
+}
+
 function TargetBar({ targets }: { targets: Plan['targets'] }) {
   return <span className="flex h-2.5 gap-0.5 overflow-hidden rounded-full" role="img" aria-label={targets.map(t => `${t.label} ${t.target_pct}%`).join(', ')}>
     {targets.map(t => <span key={t.asset_class} style={{ width: `${t.target_pct}%`, background: COLOR[t.asset_class] ?? 'var(--grey-400)' }}/>)}
@@ -225,12 +247,12 @@ function PoolCard({ index, pool, cards, input, busy, cash, onCash, run, onError,
 
     : <div className="flex flex-col gap-3 px-5 py-4">
       {/* 문장은 한 줄(진단)만 — 옮길 금액은 막대가 말한다. 막대가 없으면(납입 때 맞추기 등) 오른쪽에 할 일 */}
-      <div className="grid items-center gap-x-8 gap-y-3 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]">
+      <div className={cn('grid items-center gap-x-8 gap-y-3', !(plan.mix?.length && (plan.reduce.length || plan.increase.length)) && 'lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]')}>
         <p className="text-xl font-bold leading-snug">
           {plan.title_head ? <>{plan.title_head} <span className={plan.title_tone === 'up' ? 'text-up' : 'text-down'}>{plan.title_tail}</span></> : plan.title}
-          {plan.line && plan.kind !== 'move' && <span className={cn('mt-0.5 block', plan.kind === 'blocked' ? 'text-base font-normal text-grey-700' : 'text-base font-semibold text-grey-700')}>{plan.line}</span>}
+          {plan.line && <span className={cn('mt-0.5 block', plan.kind === 'blocked' ? 'text-base font-normal text-grey-700' : 'text-base font-semibold text-grey-700')}>{plan.line}</span>}
         </p>
-        {(plan.reduce.length > 0 || plan.increase.length > 0) ? <FlowBars plan={plan}/>
+        {(plan.reduce.length > 0 || plan.increase.length > 0) ? (plan.mix?.length ? <MixRows mix={plan.mix} leftover={plan.leftover}/> : <FlowBars plan={plan}/>)
           : (plan.kind === 'buy_needs_cash' || (pool.mode === 'buy_only' && cash > 0)) ? <label className="flex flex-wrap items-center gap-2 text-base text-grey-700">이번 달 넣을 돈
             <input inputMode="numeric" defaultValue={cash ? cash.toLocaleString('ko-KR') : ''} placeholder="예: 3,000,000" aria-label={`${name} 이번 달 납입`}
               onBlur={e => onCash(Number(e.target.value.replace(/[^\d]/g, '')) || 0)} onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}

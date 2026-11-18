@@ -64,6 +64,13 @@ def build(r: RebalanceResult, mode: str) -> dict:
            "amount_only": sum(1 for o in buys if not o.qty),
            "targets": [{"asset_class": c["asset_class"], "label": c["label"], "target_pct": round(c["target"] * 100, 2)} for c in r.classes if c["target"] > 0],
            "leftover": 0, "notes": []}
+    # 자산군마다 지금 → 목표 비중과 이번 달 팔/살 금액 (2026-11-18 사용자 "줄이기/늘리기 그래프가 아래를 펼쳐야 이해된다")
+    sell_by = {x["asset_class"]: x["amount"] for x in reduce}
+    buy_by = {x["asset_class"]: x["amount"] for x in increase}
+    out["mix"] = [{"asset_class": c["asset_class"], "label": c["label"],
+                   "current_pct": round(c["current"] * 100, 1), "target_pct": round(c["target"] * 100, 1),
+                   "sell": sell_by.get(c["asset_class"], 0), "buy": buy_by.get(c["asset_class"], 0)}
+                  for c in r.classes if c["target"] > 0 or c["current"] > 0]
     worst = max(r.classes, key=lambda c: abs(c["deviation_pp"]), default=None)
     if worst:
         more = worst["deviation_pp"] > 0
