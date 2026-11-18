@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { ReadGrid, type Cell } from '@/workbook/ReadGrid'
+import { MixRows } from '@/workbook/RebalancePlan'
 import { classInfo } from '../model'
 import { day, manwon, pct, pp, shares, won } from '@/lib/format'
 
@@ -105,7 +106,14 @@ export function DesignSystem() {
         <p className="mt-2 max-w-2xl text-base text-grey-700">새 화면은 여기 있는 토큰·컴포넌트만으로 만들어요. 규칙과 이유는 <code className="rounded bg-grey-100 px-1 text-sm">docs/DESIGN_SYSTEM.md</code>.</p>
       </div>
 
-      <Section id="color" title="색" note="회색은 토스 디자인 시스템 10단계. 빨강은 상승, 파랑은 하락에만 써요. 강조색은 엑셀 초록 하나, 시트 선택과 현재 탭에만.">
+      <Section id="rebalance" title="리밸런싱 비교표" note="계좌색 위 흰 비교표 · 현재/목표는 보조 정보 · 주문 금액 강조. 예시 데이터입니다.">
+          <MixRows mix={[
+            { asset_class: 'stock', label: '주식 (국내·해외·배당·리츠)', current_pct: 70, target_pct: 30, sell: 16000000, buy: 0 },
+            { asset_class: 'long_bond', label: '장기채', current_pct: 0, target_pct: 40, sell: 0, buy: 16000000 },
+            { asset_class: 'gold', label: '금', current_pct: 15, target_pct: 15, sell: 0, buy: 0 },
+          ]} leftover={0}/>
+        </Section>
+        <Section id="color" title="색" note="회색은 토스 디자인 시스템 10단계. 빨강은 상승, 파랑은 하락에만 써요. 강조색은 엑셀 초록 하나, 시트 선택과 현재 탭에만.">
         <h3 className="mb-2 text-sm font-semibold">회색</h3>
         <div className={grid}>{[50, 100, 200, 300, 400, 500, 600, 700, 800, 900].map(n => <Swatch key={n} token={`--grey-${n}`} note={({ 100: '화면 바탕', 200: '선', 300: '입력 테두리', 500: '비활성 글자', 600: '보조 글자', 900: '본문·주 버튼' } as Record<number, string>)[n]}/>)}</div>
         <h3 className="mb-2 mt-6 text-sm font-semibold">상승·하락</h3>

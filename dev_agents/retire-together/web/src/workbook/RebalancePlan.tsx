@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import { api } from '../local-data'
+import { manwon as man, won, pct as formatPct } from '@/lib/format'
 
 // 리밸런싱 시트 (2026-11-02 사용자 "리밸런싱 탭이 한눈에 안 들어온다" → 아티팩트 시안 'A 고도화' 채택).
 // 묶음마다 카드 하나: 한 문장 판정 + 줄이기 → 늘리기(자산군별 금액) + 접힌 종목별 주문 + 결정.
@@ -27,8 +28,6 @@ type Card = { id: string; short: string; ready: boolean; classes: { asset_class:
 type Preview = { name: string; strategy_id: string; current: Plan | null; proposed: Plan; notes: string[] }
 
 const COLOR: Record<string, string> = { stock: 'var(--cls-stock)', long_bond: 'var(--cls-long-bond)', mid_bond: 'var(--cls-mid-bond)', gold: 'var(--cls-gold)', commodity: 'var(--cls-commodity)', cash: 'var(--cls-cash)' }
-const man = (n: number) => `${Math.round(n / 10_000).toLocaleString('ko-KR')}만원`
-const won = (n: number) => `${n.toLocaleString('ko-KR')}원`
 const short = (label: string) => label.split(' — ')[0]
 // 한국어 조사: 받침 있으면 앞 것. 로/으로는 ㄹ 받침이면 '로'
 const jong = (w: string) => { const c = w.trim().slice(-1).charCodeAt(0) - 0xac00; return c >= 0 && c <= 11171 ? c % 28 : 0 }
@@ -44,7 +43,7 @@ function AccountLine({ index, name, balance, rule, mode, editor, children, compa
 }) {
   const [editing, setEditing] = useState(false)
   const parts = rule.classes.filter(c => c.target_pct > 0)
-  return <section aria-label={name} style={acct(index)} className="grid overflow-hidden rounded-2xl bg-[var(--a-tint)] md:grid-cols-[208px_minmax(0,1fr)]">
+  return <section aria-label={name} style={acct(index)} className="grid overflow-hidden rounded-2xl bg-[var(--a-tint)] md:grid-cols-[168px_minmax(0,1fr)]">
     <div className={cn('flex flex-col gap-1 bg-[var(--a)] px-4 text-white', compact ? 'justify-center py-3' : 'py-4')}>
       <b className={cn('font-semibold', compact ? 'text-base' : 'text-sm text-white/90')}>{name}</b>
       {balance ? <span className="text-2xl font-bold tabular-nums tracking-tight">{balance}</span> : <span className="text-sm text-white/75">잔고 없음</span>}
@@ -180,22 +179,33 @@ function FlowBars({ plan }: { plan: Plan }) {
 
 // 자산군마다 한 줄: 지금 비중(막대) · 목표(세로선) · 이번 달 팔기/사기 금액 (2026-11-18 사용자 "줄이기/늘리기 그래프는 펼쳐야 이해된다")
 // 숫자는 서버(plan.mix)가 계산한 값 그대로
-function MixRows({ mix, leftover }: { mix: NonNullable<Plan['mix']>; leftover: number }) {
-  const pct = (n: number) => `${n.toFixed(1)}%`
-  return <div className="flex flex-col gap-1.5">
-    <div className="grid grid-cols-[64px_minmax(0,1fr)_96px] sm:grid-cols-[88px_minmax(0,1fr)_128px_120px] items-center gap-3 text-xs text-grey-600">
-      <span>자산</span><span className="flex items-center gap-1.5">막대는 지금 비중 · <i aria-hidden="true" className="inline-block h-3 w-0.5 bg-grey-900"/> 목표</span><span className="hidden text-right sm:block">지금 → 목표</span><span className="text-right">이번 달</span>
+export function MixRows({ mix, leftover }: { mix: NonNullable<Plan['mix']>; leftover: number }) {
+  const pct = (n: number) => formatPct(n, { signed: false, digits: 1 })
+  return <div className="overflow-hidden rounded-md border border-grey-200 bg-white px-3 sm:px-4">
+    <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 border-b border-grey-200 py-3 text-xs text-grey-600 sm:grid-cols-[minmax(100px,1fr)_minmax(120px,2fr)_120px_152px]">
+      <span>자산</span><span className="hidden sm:block">현재 비중 · 세로선은 목표</span><span className="hidden text-right sm:block">현재 → 목표</span><span className="text-right">이번에 할 일</span>
     </div>
-    {mix.map(m => <div key={m.asset_class} className="grid grid-cols-[64px_minmax(0,1fr)_96px] sm:grid-cols-[88px_minmax(0,1fr)_128px_120px] items-center gap-3 text-sm">
-      <span className="flex items-center gap-1.5 font-semibold"><i aria-hidden="true" className="inline-block size-2 shrink-0 rounded-full" style={{ background: COLOR[m.asset_class] ?? 'var(--grey-400)' }}/>{m.label}</span>
-      <span className="relative h-3 rounded-full bg-white" role="img" aria-label={`${m.label} 지금 ${pct(m.current_pct)}, 목표 ${pct(m.target_pct)}`}>
-        <span className="absolute inset-y-0 left-0 rounded-full" style={{ width: `${Math.min(100, m.current_pct)}%`, background: COLOR[m.asset_class] ?? 'var(--grey-400)' }}/>
-        <span aria-hidden="true" className="absolute -inset-y-1 w-0.5 bg-grey-900" style={{ left: `calc(${Math.min(100, m.target_pct)}% - 1px)` }}/>
-      </span>
-      <span className="hidden text-right tabular-nums text-grey-700 sm:block">{pct(m.current_pct)} → <b className="font-semibold text-grey-900">{pct(m.target_pct)}</b></span>
-      <span className={cn('text-right font-semibold tabular-nums', m.sell ? 'text-down' : m.buy ? 'text-up' : 'text-grey-500')}>{m.sell ? `팔기 ${man(m.sell)}` : m.buy ? `사기 ${man(m.buy)}` : '그대로'}</span>
-    </div>)}
-    {leftover > 0 && <p className="text-right text-sm text-grey-600">판 돈 중 <b className="font-semibold tabular-nums text-grey-800">{man(leftover)}</b>은 현금으로 남아요.</p>}
+    {mix.map(m => {
+      const label = m.label.split(' (')[0]
+      const detail = m.label.includes(' (') ? m.label.slice(m.label.indexOf(' (') + 2).replace(/\)$/, '') : ''
+      return <div key={m.asset_class} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 border-b border-grey-100 py-3 last:border-0 sm:grid-cols-[minmax(100px,1fr)_minmax(120px,2fr)_120px_152px]">
+        <span className="min-w-0 text-sm font-semibold">
+          <span className="flex items-center gap-1.5"><i aria-hidden="true" className="inline-block size-2 shrink-0 rounded-full" style={{ background: COLOR[m.asset_class] ?? 'var(--grey-400)' }}/>{label}</span>
+          {detail && <span className="mt-1 block text-xs font-normal text-grey-600">{detail}</span>}
+          <span className="mt-1 block text-xs font-normal tabular-nums text-grey-600 sm:hidden">{pct(m.current_pct)} → {pct(m.target_pct)}</span>
+        </span>
+        <span className="relative hidden h-2 rounded-full bg-grey-100 sm:block" role="img" aria-label={`${m.label} 현재 ${pct(m.current_pct)}, 목표 ${pct(m.target_pct)}`}>
+          <span className="absolute inset-y-0 left-0 rounded-full" style={{ width: `${Math.min(100, m.current_pct)}%`, background: COLOR[m.asset_class] ?? 'var(--grey-400)' }}/>
+          <span aria-hidden="true" className="absolute -inset-y-1 w-0.5 bg-grey-900" style={{ left: `calc(${Math.min(100, m.target_pct)}% - 1px)` }}/>
+        </span>
+        <span className="hidden text-right text-sm tabular-nums text-grey-600 sm:block">{pct(m.current_pct)} → {pct(m.target_pct)}</span>
+        <span className={cn('flex items-center justify-end gap-2 whitespace-nowrap tabular-nums', m.sell ? 'text-down' : m.buy ? 'text-up' : 'text-grey-600')}>
+          <span className="text-xs">{m.sell ? '팔기' : m.buy ? '사기' : '그대로'}</span>
+          {(m.sell > 0 || m.buy > 0) && <b className="text-lg font-bold">{man(m.sell || m.buy)}</b>}
+        </span>
+      </div>
+    })}
+    {leftover > 0 && <p className="border-t border-grey-200 py-3 text-right text-sm text-grey-600">판 돈 중 <b className="font-semibold tabular-nums text-grey-800">{man(leftover)}</b>은 현금으로 남아요.</p>}
   </div>
 }
 
@@ -257,7 +267,7 @@ function PoolCard({ index, pool, cards, input, busy, cash, onCash, run, onError,
       {/* 문장은 한 줄(진단)만 — 옮길 금액은 막대가 말한다. 막대가 없으면(납입 때 맞추기 등) 오른쪽에 할 일 */}
       <div className={cn('grid items-center gap-x-8 gap-y-3', !(plan.mix?.length && (plan.reduce.length || plan.increase.length)) && 'lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]')}>
         <p className="text-xl font-bold leading-snug">
-          {plan.title_head ? <>{plan.title_head} <span className={plan.title_tone === 'up' ? 'text-up' : 'text-down'}>{plan.title_tail}</span></> : plan.title}
+          {plan.title_head ? <>{plan.title_head} <span>{plan.title_tail}</span></> : plan.title}
           {plan.line && <span className={cn('mt-0.5 block', plan.kind === 'blocked' ? 'text-base font-normal text-grey-700' : 'text-base font-semibold text-grey-700')}>{plan.line}</span>}
         </p>
         {(plan.reduce.length > 0 || plan.increase.length > 0) ? (plan.mix?.length ? <MixRows mix={plan.mix} leftover={plan.leftover}/> : <FlowBars plan={plan}/>)
