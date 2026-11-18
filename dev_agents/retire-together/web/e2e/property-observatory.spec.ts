@@ -32,53 +32,32 @@ test('내장 허용은 동일 출처 관측실 문서에만 적용한다', async
 })
 
 for (const width of [1280, 390, 360]) {
-  test(`부동산 5개 메뉴와 하위 보기 · ${width}px`, async ({ page }) => {
-    await page.setViewportSize({ width, height: 1000 })
-    const errors: string[] = []
-    page.on('pageerror', e => errors.push(e.message))
+  test(`부동산 3개 메뉴와 새 분석 화면 · ${width}px`, async ({ page }) => {
+    await page.setViewportSize({width,height:1000})
+    const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message))
     await page.goto('/#property')
-    const menu = page.getByRole('navigation', { name: '부동산 메뉴' })
-    const frame = page.frameLocator('iframe[title="부동산 관측실 화면"]')
-    await expect(menu.getByRole('button')).toHaveCount(5)
-    for (const label of ['내 부동산', '갈아타기 계획', '관심 단지', '매물·소식', '시장·리서치']) {
-      await menu.getByRole('button', { name: label, exact: true }).click()
-      await expect(menu.getByRole('button', { name: label, exact: true })).toHaveAttribute('aria-current', 'page')
-      expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1)
+    const menu=page.getByRole('navigation',{name:'부동산 메뉴'})
+    await expect(menu.getByRole('button')).toHaveCount(3)
+    for(const label of ['내 부동산','관심 단지','시장·리서치']){
+      await menu.getByRole('button',{name:label,exact:true}).click()
+      await expect(menu.getByRole('button',{name:label,exact:true})).toHaveAttribute('aria-current','page')
+      expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true)
     }
-    for (const [label, id] of [['시장 동향', 'market'], ['주간·월간', 'journal'], ['리서치 노트', 'research']]) {
-      await page.getByRole('group', { name: '부동산 보기' }).getByRole('button', { name: label }).click()
-      await expect.poll(() => frame.locator('html').evaluate(() => location.hash)).toBe('#' + id)
-    }
-    await menu.getByRole('button', { name: '관심 단지', exact: true }).click()
+    await menu.getByRole('button',{name:'관심 단지',exact:true}).click()
     await expect(page.getByLabel('관심 단지 검색')).toBeVisible()
-    await page.getByRole('button', { name: '지도', exact: true }).click()
-    await expect.poll(() => frame.locator('html').evaluate(() => location.hash)).toBe('#map')
-    await menu.getByRole('button', { name: '매물·소식' }).click()
-    await expect(frame.locator('#sg-source-panel')).toBeVisible()
-    await expect.poll(() => frame.locator('body').evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1)
-    await page.screenshot({ path: test.info().outputPath(`property-menu-${width}.png`), fullPage: true })
+    await expect(page.locator('iframe[title="부동산 관측실 화면"]')).toHaveCount(0)
     expect(errors).toEqual([])
   })
 }
 
-test('이전 팔로우 메뉴 복원과 통합 정보원 필터·저장 유지', async ({ page }) => {
-  await page.addInitScript(() => sessionStorage.setItem('property-menu', 'voices'))
+test('이전 팔로우 메뉴를 관심 단지로 복원하고 선택 메뉴를 유지한다',async({page})=>{
+  await page.addInitScript(()=>{if(!sessionStorage.getItem('property-menu'))sessionStorage.setItem('property-menu','voices')})
   await page.goto('/#property')
-  const menu = page.getByRole('navigation', { name: '부동산 메뉴' })
-  await expect(menu.getByRole('button', { name: '매물·소식' })).toHaveAttribute('aria-current', 'page')
-  const frame = page.frameLocator('iframe[title="부동산 관측실 화면"]')
-  await expect(frame.locator('.sg-table tbody tr')).toHaveCount(18)
-  await frame.locator('#sg-followed-only').check()
-  await frame.locator('#sg-source-panel summary').click()
-  await frame.getByLabel('유다로 팔로우').uncheck()
-  await expect(frame.locator('.sg-table tbody tr')).toHaveCount(0)
-  await expect(frame.locator('#sg-source-panel')).toHaveAttribute('open', '')
+  const menu=page.getByRole('navigation',{name:'부동산 메뉴'})
+  await expect(menu.getByRole('button',{name:'관심 단지',exact:true})).toHaveAttribute('aria-current','page')
+  await menu.getByRole('button',{name:'시장·리서치',exact:true}).click()
   await page.reload()
-  await frame.locator('#sg-source-panel summary').click()
-  await expect(frame.getByLabel('유다로 팔로우')).not.toBeChecked()
-  await frame.getByLabel('유다로 팔로우').check()
-  await frame.locator('#sg-followed-only').check()
-  await expect(frame.locator('.sg-table tbody tr')).toHaveCount(18)
+  await expect(menu.getByRole('button',{name:'시장·리서치',exact:true})).toHaveAttribute('aria-current','page')
 })
 
 test('관심 선택은 메뉴 이동·새로고침 뒤 유지되고 장부에 쓰지 않는다', async ({ page }) => {
