@@ -1,5 +1,5 @@
-import { useState, type ReactNode, type ComponentProps } from 'react'
-import { PropertyObservatory } from './property-observatory'
+import { useContext, useState, type ReactNode, type ComponentProps } from 'react'
+import { PropertyObservatory, PropertyPageContext } from './property-observatory'
 import { ArrowRight, Check, CirclePlus, ChevronRight, Compass, Heart, House, MapPin, MoveRight, SlidersHorizontal, Sprout, Target } from 'lucide-react'
 import { PanelHeading } from './components'
 import { money, type Family, type Owner } from './model'
@@ -20,6 +20,7 @@ function PropertyContent({ value, registered, isDemo, onPreview, onDemo, onRegis
   value: string; registered: boolean; isDemo: boolean; onPreview: () => void; onDemo: () => void; onRegister: () => void
   owner: Owner; family: Family | null; hidden: boolean; onChanged: () => void
 }) {
+  const view = useContext(PropertyPageContext)
   const [selected, setSelected] = useState(homes[0].id)
   const [saved, setSaved] = useState<string[]>([homes[0].id, homes[2].id])
   const [years, setYears] = useState(4)
@@ -28,7 +29,7 @@ function PropertyContent({ value, registered, isDemo, onPreview, onDemo, onRegis
   const needed = target.price + 35_000_000 - (600_000_000 - 100_000_000) - 200_000_000
   const projected = monthly * years * 12
   const gap = Math.max(0, needed - projected)
-  if (!isDemo) return <PropertyMove key={owner} owner={owner} family={family} hidden={hidden} onChanged={onChanged} onDemo={onDemo}/>
+  if (!isDemo) return <PropertyMove key={owner} view={view} owner={owner} family={family} hidden={hidden} onChanged={onChanged}/>
   return <div className="property-workspace">
     <section className="property-editorial"><div><span className="editorial-kicker"><Compass size={13}/>A PLACE FOR OUR NEXT CHAPTER</span><h2>다음 집을 꿈꾸는 일도,<br/><em>우리의 계획이 됩니다.</em></h2><p>살고 싶은 동네와, 함께 보내고 싶은 시간.<br/>지금의 집에서 다음 삶으로 이어지는 지도를 그려요.</p><button className="primary-button" onClick={onRegister}><CirclePlus size={14}/>자산 등록</button><div className="property-hero-status"><span/><span>{isDemo ? '가상 생활권 · 예시 가격으로 살펴보는 갈아타기' : '우리 집 자산 관리 · 갈아타기 기능은 고도화 예정'}</span></div></div><Neighborhood theme="hero" floors={[10, 14, 11]}/></section>
     <section className="property-next-chapter"><div className="chapter-number">01<span>지금, 그리고 다음</span></div><PanelHeading title="우리 집, 그다음 이야기" detail="얼마짜리 집보다, 어떤 일상을 원하는지부터."/><div className="home-journey-cards">

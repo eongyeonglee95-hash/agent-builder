@@ -55,9 +55,9 @@ export function HomeListingSummary({ sale, address, name, area, hidden, onManual
   const groups = [{ id: 'P', label: '최근 매매 호가', market: sale }, { id: 'L', label: '전세', market: lease }, { id: 'M', label: '월세', market: monthly }]
   const selected = groups.find(g => g.id === expanded)
   return <div className="border-t border-grey-200">
-    <div className="grid grid-cols-1 gap-4 bg-grey-50 p-4 sm:grid-cols-3">
+    <div className="grid grid-cols-1 gap-3 bg-grey-50 px-4 py-3 sm:grid-cols-3">
       {groups.map(({ id, label, market }) => <div key={id} className="min-w-0">
-        <div className="flex items-center justify-between gap-2"><span className="text-xs text-grey-600">{label}</span><Button variant="ghost" size="xs" aria-expanded={expanded === id} onClick={() => setExpanded(expanded === id ? null : id)}>{label} {expanded === id ? '접기' : '더보기'}</Button></div>
+        <div className="flex items-center justify-between gap-2"><span className="text-xs text-grey-600">{label}</span><Button variant="ghost" size="xs" aria-label={label + (expanded === id ? ' 접기' : ' 더보기')} aria-expanded={expanded === id} onClick={() => setExpanded(expanded === id ? null : id)}>{expanded === id ? '접기' : '더보기'}</Button></div>
         <div className="mt-1 text-base font-semibold">{market.loading ? '조회 중…' : id === 'M' ? market.data?.rent_offer ? <><Amount value={market.data.rent_offer.deposit} fmt="manwon" hidden={hidden}/><span className="mx-1 text-xs font-normal">/ 월</span><Amount value={market.data.rent_offer.monthly} fmt="manwon" hidden={hidden}/></> : '—' : <Amount value={market.data?.summary?.low} fmt="manwon" hidden={hidden}/>}</div>
         <div className="mt-1 text-xs text-grey-600">{market.error ? '조회 실패' : market.data ? `${market.data.status === 'matched' ? `${id === 'M' ? '월 최저' : '최저'} · 광고 ${market.data.listings.length}건` : '단지 미연결'} · ${day(market.data.fetched_at)} 조회${market.data.stale ? ' · 이전 자료' : ''}${market.data.partial ? ' · 일부 조회' : ''}` : '—'}</div>
       </div>)}
@@ -72,8 +72,8 @@ export function HomeSaleSummary({ homes, hidden, owner }: { homes: HomeList; hid
   const missing = homes.homes.some(h => h.detail?.value_source?.kind === 'none' || h.full_value <= 0)
   const review = homes.homes.filter(h => h.detail?.value_source?.kind === 'purchase' || (Date.now() - Date.parse(h.asset.as_of)) / 86_400_000 > 90).length
   return <div className="property-sale-summary" aria-label="전체 매도 합계">
-    <div className="property-sale-net"><span>{owner === 'together' ? '우리 집을 모두 팔면 남는 금액' : '선택한 소유자 지분을 팔면 남는 금액'}</span><strong>{missing ? '시세 확인 필요' : show(homes.total.equity)}</strong><small>등록 시세 기준 · 매도세금·중개비 차감 전</small></div>
-    <dl><div><dt>매도금액 합계 · {homes.homes.length}채</dt><dd>{missing ? '미확인 시세 포함' : show(homes.total.value)}</dd></div><div><dt>− 연결 대출</dt><dd>{show(homes.total.loans)}</dd></div><div><dt>− 반환할 보증금</dt><dd>{show(homes.total.deposit)}</dd></div></dl>
-    {(missing || review > 0) && <p>{missing ? '시세가 없는 집이 있어 전체 매도 합계를 확정할 수 없어요.' : `${review}채는 매입가 또는 90일이 지난 등록 시세를 사용해요.`} 아래 실거래·호가를 확인하고 시세를 갱신해 주세요.</p>}
+    <div className="property-sale-net"><span>{owner === 'together' ? '순자산' : '선택 지분 순자산'}</span><strong>{missing ? '시세 확인 필요' : show(homes.total.equity)}</strong><small>등록 시세 기준 · 세금·중개비 제외</small></div>
+    <dl><div><dt>등록 시세 · {homes.homes.length}채</dt><dd>{missing ? '미확인 시세 포함' : show(homes.total.value)}</dd></div><div><dt>대출</dt><dd>{show(homes.total.loans)}</dd></div><div><dt>반환 보증금</dt><dd>{show(homes.total.deposit)}</dd></div></dl>
+    {(missing || review > 0) && <p>{missing ? '시세 미등록' : `시세 확인 필요 ${review}채 · 매입가 또는 90일 경과`}</p>}
   </div>
 }

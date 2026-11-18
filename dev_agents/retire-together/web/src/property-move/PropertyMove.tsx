@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
-import { ArrowRight, ChevronDown, ChevronRight, House, MapPin, Plus, SlidersHorizontal, Target, X } from 'lucide-react'
+import { ChevronDown, ChevronRight, House, Plus, SlidersHorizontal, Target, X } from 'lucide-react'
 import { Modal } from '../components'
+import { Button } from '../components/ui/button'
+import { ObservationRow } from '../components/ui/observation-row'
+import { day } from '../lib/format'
 import { api } from '../local-data'
 import { money, type Family, type Owner } from '../model'
 import { DeleteHome, HomeMarket, HomeWizard, KeySetup, sourceLabel, TENURE, type Home, type HomeList } from '../property-entry'
@@ -11,7 +14,7 @@ import { HomeSaleSummary, HomeListingSummary, usePublicListings } from './HomeLi
 import { dateToday, emptyLiving, type Budget, type Candidate, type Living, type MovePlan, type MoveState, type TrackEntry } from './types'
 import './property-move.css'
 
-type Props = { owner: Owner; family: Family | null; hidden: boolean; onChanged: () => void; onDemo: () => void }
+type Props = { owner: Owner; family: Family | null; hidden: boolean; onChanged: () => void }
 type Dialog = { type: 'home' | 'market' | 'delete'; home: Home | null; start?: 'value' } | { type: 'candidate'; candidate?: Candidate } | { type: 'funds' }
 const display = (n: number | null | undefined, hidden: boolean) => hidden ? '••••' : n == null ? '—' : money(n)
 const basis = { manual: '직접 입력', trade: '선택한 실거래', asking: '기록한 호가' }
@@ -26,34 +29,40 @@ const pickPrice = (c: Candidate, latest?: { price: number; date: string }): Trac
 
 function HomeLine({ home: h, hidden, family, owner, onEdit, onMarket }: { home: Home; hidden: boolean; family: Family | null; owner: Owner; onEdit: () => void; onMarket: () => void }) {
   const [expanded, setExpanded] = useState(false)
+  const [tab, setTab] = useState('listings')
   const dt = h.detail, m = h.metrics
   const market = useTrades(dt?.address, h.asset.name, dt?.area_m2)
   const listings = usePublicListings(dt?.address, h.asset.name, dt?.area_m2)
   const asking = listings.data?.summary ?? h.asking
   const show = (n: number | null) => display(n, hidden)
-  const askingDate = dt?.listings?.map(l => l.checked_on).sort().at(-1)
   const stale = (Date.now() - Date.parse(h.asset.as_of)) / 86_400_000 > 90
-  const gainKnown = dt?.value_source?.kind !== 'purchase' && dt?.value_source?.kind !== 'none' && m.gain !== null
-  return <article className="property-move-home-item">
-    <div className="property-move-home-line">
-      <button className="property-move-home-identity" onClick={() => setExpanded(v => !v)} aria-expanded={expanded}>
-        <span className="property-move-home-symbol"><House size={22}/></span><span><strong>{h.asset.name}</strong><small>{dt?.area_m2 ? `전용 ${dt.area_m2}㎡` : '면적 미입력'} · {h.asset.owner === 'joint' ? `공동 · 나 ${h.asset.share_percent}%` : h.asset.owner === 'me' ? family?.me.name || '나' : family?.partner?.name || '배우자'}</small></span>
-      </button>
-      <div className="property-move-price-cell"><span>등록 시세 · 집 전체</span><strong>{dt?.value_source?.kind === 'none' ? '확인 필요' : show(h.full_value)}</strong><small>{dt?.value_source?.kind === 'trade' ? `실거래로 등록 · ${h.asset.as_of.replaceAll('-', '.')}` : sourceLabel(dt?.value_source)}{stale && ' · 90일 경과'}</small></div>
-      <div className="property-move-price-cell"><span>최근 실거래 · 집 전체</span><TradePrice market={market} hidden={hidden}/>{market.trades[0] && market.trades[0].name.replaceAll(' ', '') !== h.asset.name.replaceAll(' ', '') && <small>거래 신고명 · {market.trades[0].name}</small>}</div>
-      <div className="property-move-price-cell"><span>현재 매도 호가 · 집 전체</span><strong>{asking ? `${show(asking.low)}${asking.high !== asking.low && !hidden ? ` ~ ${show(asking.high)}` : ''}` : listings.loading ? '조회 중…' : '—'}</strong><small>{listings.data?.summary ? `공개 매물 광고 ${asking!.count}건${listings.data.partial ? ' · 일부 조회' : ''}` : h.asking ? `직접 기록 ${h.asking.count}건 · ${askingDate ?? '확인일 미입력'}` : listings.error ? '공개 매물 조회 실패' : '확인한 매물 없음'}</small></div>
-      <div className="property-move-price-cell property-move-equity-cell"><span>{owner === 'together' ? '부동산 순자산' : '선택한 소유자 순자산'}</span><strong>{show(m.equity_mine)}</strong><small>대출·반환 보증금 차감</small></div>
-      <button className="property-move-icon-button" aria-label={`${h.asset.name} 상세 ${expanded ? '접기' : '보기'}`} aria-expanded={expanded} onClick={() => setExpanded(v => !v)}><ChevronDown size={18} className={expanded ? 'rotated' : ''}/></button>
-    </div>
-    <HomeListingSummary sale={listings} address={dt?.address} name={h.asset.name} area={dt?.area_m2} hidden={hidden} onManual={onMarket}/>
-    {expanded && <div className="property-move-home-detail">
-      <div className="property-move-home-facts"><div className="property-move-section-head"><h3>우리 집 거래 정보</h3><button className="property-move-link" onClick={onEdit}>집 정보 수정 <ChevronRight size={13}/></button></div><p className="property-move-note"><MapPin size={13}/>{dt?.address?.road || '주소를 등록하면 실거래가를 연결할 수 있어요.'}{dt ? ` · ${TENURE[dt.tenure]}` : ''}</p>
-        <div className="property-move-value-comparison"><div><span>내 매입가 · 전체</span><strong>{show(dt?.purchase_price ?? null)}</strong><i style={{ height: !hidden && dt?.purchase_price ? `${Math.max(5, dt.purchase_price / Math.max(dt.purchase_price, h.full_value, 1) * 76)}px` : '6px' }}/></div><div><span>등록 시세 · 전체</span><strong>{show(h.full_value)}</strong><i style={{ height: !hidden ? `${Math.max(5, h.full_value / Math.max(dt?.purchase_price || 0, h.full_value, 1) * 76)}px` : '6px' }}/></div></div>
-        <dl className="property-move-fact-list"><div><dt>매입가 대비 변화 · 전체</dt><dd>{gainKnown ? `${!hidden && m.gain! > 0 ? '+' : ''}${show(m.gain)}${!hidden && m.gain_rate !== null ? ` (${(m.gain_rate * 100).toFixed(1)}%)` : ''}` : '시세·매입가 확인 필요'}</dd></div><div><dt>연결 대출 {owner !== 'together' && '· 선택 지분'}</dt><dd>{show(m.loans_mine)}</dd></div><div><dt>돌려줄 보증금</dt><dd>{show(m.deposit_mine)}</dd></div><div><dt>등록 시세 기준일</dt><dd>{h.asset.as_of}</dd></div></dl>
-        <button className="property-move-button" onClick={onMarket}>실거래 반영·호가 관리 <ArrowRight size={14}/></button><p className="property-move-note">순자산은 매도세금·비용 차감 전입니다. 아래 자금 계획에서 비용을 반영하세요.</p>
-      </div><div><TradeReport market={market} hidden={hidden} purchase={dt?.purchase_price}/>{market.configured === false && <KeySetup onDone={market.retry}/>}</div>
+  const latest = market.trades[0]
+  return <ObservationRow
+    title={<button className="flex w-full items-center justify-between gap-2 text-left" aria-label={`${h.asset.name} 상세 ${expanded ? '접기' : '보기'}`} aria-expanded={expanded} aria-controls={`home-detail-${h.asset.id}`} onClick={() => setExpanded(v => !v)}>{h.asset.name}<ChevronDown className={`size-4 shrink-0 ${expanded ? 'rotate-180' : ''}`}/></button>}
+    subtitle={<>{dt?.area_m2 ? `전용 ${dt.area_m2}㎡` : '면적 미입력'} · {h.asset.owner === 'joint' ? `공동 · 나 ${h.asset.share_percent}%` : h.asset.owner === 'me' ? family?.me.name || '나' : family?.partner?.name || '배우자'}</>}
+    metrics={[
+      { label: '등록 시세', value: dt?.value_source?.kind === 'none' ? '확인 필요' : show(h.full_value), detail: `${day(h.asset.as_of)}${stale ? ' · 갱신 필요' : ''}` },
+      { label: '최근 실거래', value: latest ? show(latest.price) : market.loading ? '조회 중' : '—', detail: latest ? `${day(latest.date)} · ${latest.floor ?? '—'}층` : market.error ? '조회 실패' : undefined },
+      { label: '매매 호가', value: asking ? show(asking.low) : listings.loading ? '조회 중' : '—', detail: listings.data?.summary ? `최저 · 광고 ${asking!.count}건${listings.data.stale ? ' · 이전 자료' : ''}` : h.asking ? '직접 기록' : listings.error ? '조회 실패' : undefined },
+      { label: owner === 'together' ? '순자산' : '선택 지분 순자산', value: show(m.equity_mine), detail: '등록 시세 기준' },
+    ]}>
+    {expanded && <div id={`home-detail-${h.asset.id}`} className="mt-4 space-y-4 border-t border-grey-200 pt-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex gap-1" role="group" aria-label={`${h.asset.name} 상세 보기`}>{[{ id: 'listings', label: '매물' }, { id: 'history', label: '거래 기록' }, { id: 'info', label: '집 정보' }].map(item => <Button key={item.id} size="sm" variant={tab === item.id ? 'secondary' : 'ghost'} aria-pressed={tab === item.id} onClick={() => setTab(item.id)}>{item.label}</Button>)}</div>
+        <Button size="sm" variant="outline" onClick={onEdit}>정보 수정</Button>
+      </div>
+      {tab === 'listings' && <HomeListingSummary sale={listings} address={dt?.address} name={h.asset.name} area={dt?.area_m2} hidden={hidden} onManual={onMarket}/>}
+      {tab === 'history' && <><TradeReport market={market} hidden={hidden} purchase={dt?.purchase_price}/>{market.configured === false && <KeySetup onDone={market.retry}/>}<Button size="sm" variant="outline" onClick={onMarket}>시세·호가 관리</Button></>}
+      {tab === 'info' && <div className="space-y-4">
+        <p className="text-xs text-grey-600">{dt?.address?.road || '주소 미등록'}{dt ? ` · ${TENURE[dt.tenure]}` : ''}</p>
+        <dl className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">{[
+          ['매입가 · 전체', show(dt?.purchase_price ?? null)], ['대출', show(m.loans_mine)],
+          ['반환 보증금', show(m.deposit_mine)], ['시세 기준', sourceLabel(dt?.value_source)],
+        ].map(([label, value]) => <div key={label}><dt className="text-xs text-grey-600">{label}</dt><dd className="mt-1 font-semibold">{value}</dd></div>)}</dl>
+        <Button size="sm" variant="outline" onClick={onMarket}>시세·호가 관리</Button>
+      </div>}
     </div>}
-  </article>
+  </ObservationRow>
 }
 
 function PriceAnalysis({ candidate: c, hidden }: { candidate: Candidate; hidden: boolean }) {
@@ -156,7 +165,7 @@ function CandidateLine({ candidate: c, budget, track, hidden, busy, revealKey, o
   </article>
 }
 
-export function PropertyMove({ owner, family, hidden, onChanged, onDemo }: Props) {
+export function PropertyMove({ owner, family, hidden, onChanged, view = 'move' }: Props & { view?: 'move' | 'plan' }) {
   const [homes, setHomes] = useState<HomeList | null>(null)
   const [data, setData] = useState<MoveState | null>(null)
   const [error, setError] = useState('')
@@ -191,25 +200,26 @@ export function PropertyMove({ owner, family, hidden, onChanged, onDemo }: Props
   const reachNow = priced.filter(b => b.gap === 0).length, reachLater = priced.filter(b => b.future_gap === 0).length
   return <div className="property-move">
     {error && <div className="property-move-error" role="alert">{error} <button className="property-move-link" onClick={refresh}>다시 불러오기</button></div>}
-    <section className="property-move-funds-card" aria-label="갈아타기 자금">
+    {view === 'plan' && <section className="property-move-funds-card" aria-label="갈아타기 자금">
       <div className="property-move-funds-own"><span>준비한 자기자금</span><strong>{show(f.own_funds)}</strong><small>{!selectedHomes.length && !homes.homes.length ? '우리 집을 등록하면 매도 후 자금을 계산해요' : !selectedHomes.length ? '팔고 갈 집 선택 필요 · 첫 집이면 모아둔 돈만' : p.cash === null ? `매도 후 ${show(f.sale_net)} · 모아둔 돈 입력 필요` : `매도 후 ${show(f.sale_net)} + 모아둔 돈 ${show(p.cash)}`}{p.new_loan > 0 ? ` · 대출 가정 ${show(p.new_loan)} 별도` : ''}</small></div>
       <div className="property-move-funds-saving"><span>앞으로 모을 돈</span><strong>{p.target_month && f.months != null ? show(f.future_savings) : '—'}</strong><small>{p.target_month && f.months != null ? `매달 ${show(p.monthly_saving)} · ${p.target_month.replace('-', '.')}까지 ${f.months}개월` : '이사 시점·매달 모을 돈 미입력'}</small></div>
       <div className="property-move-funds-reach"><span>후보 {p.candidates.length}곳</span><strong>{!priced.length ? '—' : `지금 닿는 곳 ${reachNow}곳`}</strong><small>{!p.candidates.length ? '비교할 아파트를 더해보세요' : !priced.length ? '자금 계획을 입력하면 비교해요' : p.target_month ? `목표 시점엔 ${reachLater}곳` : '이사 시점을 정하면 그때 닿는 곳도 보여요'}</small></div>
       <div className="property-move-funds-actions"><button className="property-move-button primary" onClick={() => homes.homes.length ? setDialog({ type: 'funds' }) : setDialog({ type: 'home', home: null })}><SlidersHorizontal size={15}/>{homes.homes.length ? '자금·시점 설정' : '우리 집부터 등록'}</button><small>{selectedHomes.length ? `팔고 갈 집 · ${selectedHomes[0].asset.name}${selectedHomes.length > 1 ? ` 외 ${selectedHomes.length - 1}채` : ''}` : '연금은 포함하지 않아요'}{f.sale_value > 0 && p.sale_costs === null ? ' · 매도세금 미입력' : ''}</small></div>
-    </section>
-    {(data.missing_home_ids.length > 0 || data.valuation_needs_review.length > 0) && <p className="property-move-notice">{data.missing_home_ids.length ? '매도할 집이 삭제되었어요. 자금 계획에서 다시 선택해 주세요.' : '선택한 집에 확인이 필요한 시세가 있어요. 실거래 또는 직접 확인한 시세로 갱신해 주세요.'}</p>}
-    <section className="property-move-section" id="property-move-homes"><div className="property-move-section-head"><div><span className="property-move-kicker">01 · OUR HOME TODAY</span><h2>우리 집을 모두 팔면</h2><p>매도금액 합계와 대출·보증금을 뺀 금액, 지금 나온 매물을 함께 봐요.</p></div><button className="property-move-button" onClick={() => setDialog({ type: 'home', home: null })}><Plus size={15}/>{homes.homes.length ? '집 추가' : '우리 집 등록'}</button></div>
+    </section>}
+    {view === 'plan' && (data.missing_home_ids.length > 0 || data.valuation_needs_review.length > 0) && <p className="property-move-notice">{data.missing_home_ids.length ? '매도할 집이 삭제되었어요. 자금 계획에서 다시 선택해 주세요.' : '선택한 집에 확인이 필요한 시세가 있어요. 실거래 또는 직접 확인한 시세로 갱신해 주세요.'}</p>}
+    {view === 'move' && <section className="property-move-section" id="property-move-homes"><div className="property-move-section-head"><div><h2>우리 집</h2></div><Button variant="outline" size="sm" onClick={() => setDialog({ type: 'home', home: null })}><Plus/>{homes.homes.length ? '집 추가' : '우리 집 등록'}</Button></div>
       <HomeSaleSummary homes={homes} hidden={hidden} owner={owner}/>
       <div className="property-move-home-list">{homes.homes.length ? homes.homes.map(h => <HomeLine key={h.asset.id} home={h} hidden={hidden} owner={owner} family={family} onEdit={() => setDialog({ type: 'home', home: h })} onMarket={() => setDialog({ type: 'market', home: h })}/>) : <div className="property-move-empty"><House size={27}/><div><strong>우리 집의 첫 기록을 남겨요.</strong><p>주소·매입가·명의를 등록하면 실거래와 대출을 함께 볼 수 있어요.</p></div></div>}</div>
-    </section>
-    <section className="property-move-section" id="property-move-compare"><div className="property-move-section-head"><div><span className="property-move-kicker">02 · WHERE TO NEXT</span><h2>어디로 갈까요?</h2><p>후보마다 우리 집과의 격차와 더 필요한 돈을 같은 자금으로 봐요. 줄을 펼치면 가격 분석·추적 기록·거주 정보가 나와요.</p></div><button className="property-move-button" disabled={p.candidates.length >= 50} onClick={() => setDialog({ type: 'candidate' })}><Plus size={15}/>비교할 아파트 추가</button></div>
-      {p.candidates.length > 1 && <div className="property-move-compare-toolbar"><span>후보 {p.candidates.length}곳 · 같은 자금으로 비교</span><select aria-label="후보 정렬" value={sort} onChange={e => setSort(e.target.value)}><option value="gap">더 필요한 돈 적은 순</option><option value="price">낮은 가격순</option></select></div>}
+
+
+    </section>}
+    {view === 'plan' && <><section className="property-move-section" id="property-move-compare"><div className="property-move-section-head"><div><h2>후보 비교</h2></div><button className="property-move-button" disabled={p.candidates.length >= 50} onClick={() => setDialog({ type: 'candidate' })}><Plus size={15}/>비교할 아파트 추가</button></div>
+      {p.candidates.length > 1 && <div className="property-move-compare-toolbar"><select aria-label="후보 정렬" value={sort} onChange={e => setSort(e.target.value)}><option value="gap">더 필요한 돈 적은 순</option><option value="price">낮은 가격순</option></select></div>}
       <div className="property-move-candidates">{candidates.map(c => <CandidateLine key={c.id} candidate={c} budget={budgetOf(c.id)} track={data.track[c.id] ?? []} hidden={hidden} busy={busy} revealKey={detailsRequest?.id === c.id ? detailsRequest.sequence : 0} onEdit={() => setDialog({ type: 'candidate', candidate: c })} onTrack={(pick, note) => trackNow(c.id, pick, note)} onUntrack={day => untrack(c.id, day)} onLiving={living => save({ ...p, candidates: p.candidates.map(old => old.id === c.id ? { ...old, living } : old), target_id: null })} onAsking={async won => { await save({ ...p, candidates: p.candidates.map(old => old.id === c.id ? { ...old, asking_low: won, asking_high: won, asking_date: dateToday() } : old), target_id: null }); await trackNow(c.id, { price: won, price_basis: 'asking', price_date: dateToday() }, '') }}/>)}</div>
       {!candidates.length && <div className="property-move-empty"><Target size={28}/><div><strong>마음에 둔 아파트부터 하나씩.</strong><p>후보를 더하면 같은 자금으로 더 필요한 돈을 나란히 비교하고, 줄마다 격차를 추적해요.</p></div></div>}
       <p className="property-move-note">더 필요한 돈은 등록한 후보의 계획 매수가와 자금 계획 기준입니다. 호가는 직접 확인한 기록이며 자동 갱신되지 않아요.</p>
     </section>
-    <details className="property-move-section"><summary>가격 기록 더보기</summary><AnalysisHero data={data} hidden={hidden} onEdit={candidate => setDialog({ type: 'candidate', candidate })} onAdd={() => setDialog({ type: 'candidate' })} onDetails={id => setDetailsRequest(old => ({ id, sequence: (old?.sequence ?? 0) + 1 }))}/></details>
-    <button className="property-move-link property-move-demo-link" onClick={onDemo}>가상 예시 화면 보기 <ArrowRight size={13}/></button>
+    <details className="property-move-section"><summary>가격 기록 더보기</summary><AnalysisHero data={data} hidden={hidden} onEdit={candidate => setDialog({ type: 'candidate', candidate })} onAdd={() => setDialog({ type: 'candidate' })} onDetails={id => setDetailsRequest(old => ({ id, sequence: (old?.sequence ?? 0) + 1 }))}/></details></>}
     {dialog && <Modal title={dialog.type === 'candidate' ? dialog.candidate ? '비교 아파트 수정' : '비교할 아파트 추가' : dialog.type === 'funds' ? '갈아타기 자금 계획' : dialog.type === 'market' ? `${dialog.home?.asset.name} 시세·호가` : dialog.type === 'delete' ? '집 삭제' : dialog.home ? '집 정보' : '우리 집 등록'} onClose={() => setDialog(null)}>
       {dialog.type === 'candidate' ? <CandidateForm initial={dialog.candidate} onSave={async c => { const exists = p.candidates.some(old => old.id === c.id); await save({ ...p, candidates: exists ? p.candidates.map(old => old.id === c.id ? c : old) : [...p.candidates, c], target_id: null }) }} onDelete={dialog.candidate ? async () => { const rest = p.candidates.filter(c => c.id !== dialog.candidate?.id); await save({ ...p, candidates: rest, target_id: null }) } : undefined}/>
         : dialog.type === 'funds' ? <FundsForm plan={p} homes={homes} cashReference={data.cash_reference} onSave={save}/>

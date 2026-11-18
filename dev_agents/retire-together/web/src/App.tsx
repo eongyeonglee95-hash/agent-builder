@@ -7,6 +7,8 @@ import { Brand, CheckItem, IncomeChart, Modal, PanelHeading, StatCard, StrategyS
 import { RebalancePage } from './rebalance-page'   // 리밸런싱 영역 — docs/archive/WORK_AREAS.md
 import { useLocalData } from './local-data'
 import { PropertyPlan } from './property'
+import { PropertyRecords } from './property-move/PropertyRecords'
+import { openPropertyMenu } from './property-observatory'
 import { StockWorkspace } from './stocks'
 import { HomeDashboard } from './home/HomeDashboard'
 import { ClassicHome } from './home/ClassicHome'
@@ -113,7 +115,7 @@ export default function App() {
         <div className="nav-tree">{assetNav.map(item => <div key={item.id}>
           <a href={`#${item.id}`} className={`nav-item ${page === item.id ? 'active' : ''}`} aria-current={page === item.id ? 'page' : undefined} onClick={e => { e.preventDefault(); go(item.id) }}><item.icon size={17}/><span>{item.label}</span><small className="nav-amount" aria-hidden="true">{hidden ? '••' : shortAmount(item.id === 'pension' ? snapshot.retirement : item.id === 'stocks' ? stockTotal : snapshot.property)}</small></a>
           {item.id === 'pension' && <><a href="#rebalance" className={`nav-sub ${page === 'rebalance' ? 'active' : ''}`} aria-current={page === 'rebalance' ? 'page' : undefined} onClick={e => { e.preventDefault(); go('rebalance') }}><span>리밸런싱</span>{largestDeviation !== null && <small className="nav-badge" aria-hidden="true">{largestDeviation.toFixed(1)}%p</small>}</a><button className="nav-sub" onClick={() => { setModal('tax'); setMenuOpen(false) }}><span>수령 · 세금</span><small aria-hidden="true">준비 중</small></button></>}
-          {item.id === 'property' && <button className="nav-sub" onClick={() => { setIsDemo(false); go('property') }}><span>갈아타기 계획</span></button>}
+          {item.id === 'property' && <button className="nav-sub" onClick={() => { setIsDemo(false); openPropertyMenu('plan'); go('property') }}><span>갈아타기 계획</span></button>}
         </div>)}</div>
       </nav>
       <div className="sidebar-bottom"><button className="nav-item settings-link" onClick={() => { setModal('profile'); setMenuOpen(false) }}><Settings size={18}/><span>내 정보 · 설정</span></button><button className="family-profile" onClick={() => { setModal('family'); setMenuOpen(false) }}><span className="avatar-pair"><span>나</span><span>짝</span></span><span><strong>우리 가족</strong><small>함께 만드는 은퇴 계획</small></span><ChevronRight size={16}/></button></div>
@@ -132,7 +134,7 @@ export default function App() {
           {(page !== 'property' || isDemo) && <div className="demo-notice"><Info size={16}/><span>{isDemo ? '화면을 살펴보기 위한 예시 데이터입니다. 실제 계좌와 연결되어 있지 않습니다.' : '직접 등록한 금액입니다. 증권사 자동 연동 전이며, 자산별 기준일을 확인해 주세요.'}</span></div>}</>}
           {(page === 'assets' || page === 'stocks') && !isDemo && <HoldingsPanel key={`${owner}:${page}`} owner={owner} hidden={hidden} stockOnly={page === 'stocks'} onRegister={beginRegistration} onChanged={local.refresh}/>}
           {page === 'stocks' && <StockWorkspace key={`${owner}:${isDemo}`} assets={snapshot.assets.filter(isStock)} isDemo={isDemo} hidden={hidden} onDemo={() => setIsDemo(true)} onRegister={beginRegistration} onSelect={setSelectedAsset}/>}
-          {page === 'property' && <PropertyPlan ledger={ledger} owner={owner} family={family} hidden={hidden} onChanged={local.refresh} onRegister={beginRegistration} value={display(snapshot.property)} registered={snapshot.assets.some(a => a.pocket === 'property')} isDemo={isDemo} onPreview={() => setModal('house')} onDemo={() => setIsDemo(true)}/>}
+          {page === 'property' && <PropertyPlan ledger={<PropertyRecords assets={snapshot.assets.filter(a => a.pocket === 'property')} hidden={hidden} onSelect={setSelectedAsset}/>} owner={owner} family={family} hidden={hidden} onChanged={local.refresh} onRegister={beginRegistration} value={display(snapshot.property)} registered={snapshot.assets.some(a => a.pocket === 'property')} isDemo={isDemo} onPreview={() => setModal('house')} onDemo={() => setIsDemo(true)}/>}
           {(page === 'assets' || page === 'stocks') && ledger}
 
           {page === 'assets' && !isDemo && <AccountManager hidden={hidden} groups={snapshot.account_groups ?? []} onAddDetail={addDetail} onSelect={setSelectedAsset} onRefresh={local.refresh}/>}
