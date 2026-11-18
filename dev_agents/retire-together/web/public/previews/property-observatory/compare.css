@@ -29,7 +29,7 @@ dialog.wide:has(.cmp-overview){width:min(1200px,calc(100vw - 32px))}
 .cmp-trend-toolbar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin:14px 0 16px}
 .cmp-trend-toolbar .segmented button{padding:5px 8px}
 .cmp-chart{display:block;width:100%;height:auto;overflow:visible}
-.cmp-chart text{fill:var(--muted);font-family:inherit;font-size:13px;letter-spacing:0}
+.cmp-chart text{fill:var(--muted);font-family:inherit;font-size:var(--text-sm);letter-spacing:0}
 .cmp-gridline{stroke:var(--line);stroke-width:1;stroke-dasharray:3 5}
 .cmp-guide{stroke:var(--muted);stroke-width:1;stroke-dasharray:3 4;opacity:.5}
 .cmp-months{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:4px;margin:10px 0 14px}

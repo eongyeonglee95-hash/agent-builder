@@ -31,6 +31,8 @@ test('개인연금: 새 초안·미리보기·취소·저장·재진입과 현�
   }
   await dialog.getByRole('button', { name: '취소' }).click()
   await expect(open).toBeFocused()
+  // 테마 버튼은 사이드바 안에 있으므로 데스크톱에서 복귀를 확인한다.
+  await page.setViewportSize({ width: 1440, height: 900 })
   await expect(page.getByRole('button', { name: '테마 변경', exact: true })).toBeVisible()
   expect((await (await request.get('/api/retirement')).json()).plan).toEqual(initial.plan)
   await open.click()

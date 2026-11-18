@@ -1,0 +1,146 @@
+[
+  {
+    "id": "capture-0",
+    "name": "대치미도",
+    "district": "강남",
+    "area": "84 · 단위 미표기",
+    "floor": "고층",
+    "price": 34.9
+  },
+  {
+    "id": "capture-1",
+    "name": "대치은마",
+    "district": "강남",
+    "area": "76 · 단위 미표기",
+    "floor": "저층",
+    "price": 29.5
+  },
+  {
+    "id": "capture-2",
+    "name": "개자포",
+    "district": "강남",
+    "area": "59 · 단위 미표기",
+    "floor": "중층",
+    "price": 27
+  },
+  {
+    "id": "capture-3",
+    "name": "도곡렉슬",
+    "district": "강남",
+    "area": "59 · 단위 미표기",
+    "floor": "저층",
+    "price": 26
+  },
+  {
+    "id": "capture-4",
+    "name": "역삼이편한",
+    "district": "강남",
+    "area": "59 · 단위 미표기",
+    "floor": "저층",
+    "price": 26
+  },
+  {
+    "id": "capture-5",
+    "name": "역삼푸르지오",
+    "district": "강남",
+    "area": "9 · 오기 확인 필요",
+    "floor": "고층",
+    "price": 25.8
+  },
+  {
+    "id": "capture-6",
+    "name": "대치현대",
+    "district": "강남",
+    "area": "59 · 단위 미표기",
+    "floor": "저층",
+    "price": 23.9
+  },
+  {
+    "id": "capture-7",
+    "name": "역삼동부",
+    "district": "강남",
+    "area": "59 · 단위 미표기",
+    "floor": "고층",
+    "price": 23.9
+  },
+  {
+    "id": "capture-8",
+    "name": "역삼대림",
+    "district": "강남",
+    "area": "59 · 단위 미표기",
+    "floor": "고층",
+    "price": 19.6
+  },
+  {
+    "id": "capture-9",
+    "name": "반포자이",
+    "district": "서초",
+    "area": "35평",
+    "floor": "층 미표기",
+    "price": 41.2
+  },
+  {
+    "id": "capture-10",
+    "name": "아리팍",
+    "district": "서초",
+    "area": "24평",
+    "floor": "층 미표기",
+    "price": 39.9
+  },
+  {
+    "id": "capture-11",
+    "name": "메이플자이",
+    "district": "서초",
+    "area": "25평",
+    "floor": "층 미표기",
+    "price": 36.85
+  },
+  {
+    "id": "capture-12",
+    "name": "신반포2차",
+    "district": "서초",
+    "area": "22평",
+    "floor": "층 미표기",
+    "price": 34
+  },
+  {
+    "id": "capture-13",
+    "name": "진흥",
+    "district": "서초",
+    "area": "32평",
+    "floor": "층 미표기",
+    "price": 29.8
+  },
+  {
+    "id": "capture-14",
+    "name": "반포써밋",
+    "district": "서초",
+    "area": "23평",
+    "floor": "층 미표기",
+    "price": 29.2
+  },
+  {
+    "id": "capture-15",
+    "name": "신반포청구",
+    "district": "서초",
+    "area": "24평",
+    "floor": "층 미표기",
+    "price": 25
+  },
+  {
+    "id": "capture-16",
+    "name": "한신로얄",
+    "district": "서초",
+    "area": "27평",
+    "floor": "층 미표기",
+    "price": 25
+  },
+  {
+    "id": "capture-17",
+    "name": "신반포16차",
+    "district": "서초",
+    "area": "17평",
+    "floor": "층 미표기",
+    "price": 24
+  }
+]

@@ -150,9 +150,14 @@ def load_rows(owner: str) -> tuple[list[AccountIn], list[HoldingIn]]:
 
 @router.get("")
 def holdings(owner: Literal["together", "me", "partner"] = "together", live: bool = Query(False),
-             asset_class: Literal["stock", "long_bond", "mid_bond", "gold", "commodity", "cash"] | None = None):
+             asset_class: Literal["stock", "long_bond", "mid_bond", "gold", "commodity", "cash"] | None = None,
+             pocket: Literal["retirement", "cash"] | None = None):
     cfg = settings()
     accounts, rows = load_rows(owner)
+    if pocket:   # 연금 계좌 안의 주식형도 '연금'이다 — 주식 화면은 pocket=cash만 본다 (2026-11-16 사용자)
+        accounts = [a for a in accounts if a.extra.get("pocket") == pocket]
+        keep = {a.id for a in accounts}
+        rows = [h for h in rows if h.account_id in keep]
     if asset_class:
         rows = [h for h in rows if h.asset_class == asset_class]
     quotes, failed = ({}, [])

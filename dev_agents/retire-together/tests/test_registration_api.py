@@ -293,6 +293,8 @@ def test_holdings_api_after_commit_offline_and_live(client, monkeypatch):
     k200 = next(h for h in off["holdings"] if h["ticker"] == "069500")
     assert k200["stock_group"] == "kr" and k200["asset_class"] == "stock" and k200["avg_cost"] == 30000
     assert client.get("/api/holdings?owner=partner").json()["accounts"] == []
+    assert client.get("/api/holdings?pocket=cash").json()["accounts"] == []   # 연금 계좌는 주식 화면에서 빠진다
+    assert len(client.get("/api/holdings?pocket=retirement").json()["holdings"]) == 2
     hapi._quote_cache.clear()
     monkeypatch.setattr(hapi, "fetch_quote", lambda c: {"price": 36000, "prev_close": 35500} if c == "069500" else (_ for _ in ()).throw(OSError("x")))
     on = client.get("/api/holdings?live=1").json()

@@ -32,7 +32,7 @@ export function HoldingsPanel({ owner, hidden, stockOnly = false, onRegister, on
   const [grouped, setGrouped] = useState(true)
   const load = useCallback(async () => {
     setLoading(true); setError('')
-    try { setData(await api<Data>(`/holdings?owner=${owner}${live ? '&live=1' : ''}${stockOnly ? '&asset_class=stock' : ''}`)) }
+    try { setData(await api<Data>(`/holdings?owner=${owner}${live ? '&live=1' : ''}${stockOnly ? '&asset_class=stock&pocket=cash' : ''}`)) }
     catch (e) { setError(e instanceof Error ? e.message : '종목 잔고를 불러오지 못했어요.') }
     finally { setLoading(false) }
   }, [owner, live, stockOnly])
@@ -75,7 +75,7 @@ export function HoldingsPanel({ owner, hidden, stockOnly = false, onRegister, on
         <span>불어난 돈 <b className={tone(t.total_return)}>{ms(t.total_return)}원</b> <span className={tone(t.total_return)}>{hidden ? '' : pct(t.total_rate)}</span></span>
       </div>}
       {data.live && t.today_return !== null && <div className="hp-today">어제 종가 대비 <b className={tone(t.today_return)}>{ms(t.today_return)}원 {hidden ? '' : pct(t.today_rate)}</b></div>}
-      <p className="hp-note">{t.cost_known < t.count ? `매입금액을 아는 ${t.cost_known}/${t.count}종목으로 넣은 돈과 불어난 돈을 계산했어요. 나머지는 매입금액을 넣으면 함께 계산돼요. ` : ''}연금 납입으로 늘어난 금액은 넣은 돈이라 불어난 돈에 들어가지 않아요.{data.holdings.some(r => r.buy_source) ? ` 매입금액 옆 *는 보유수량이 같은 이전 등록(${[...new Set(data.holdings.map(r => r.buy_source).filter(Boolean))].join(', ')})에서 가져온 값이에요.` : ''}</p>
+      <p className="hp-note">{t.cost_known < t.count ? `매입금액을 아는 ${t.cost_known}/${t.count}종목으로 넣은 돈과 불어난 돈을 계산했어요. 나머지는 매입금액을 넣으면 함께 계산돼요. ` : ''}{stockOnly ? '연금 계좌 종목은 연금에서 봐요.' : '연금 납입으로 늘어난 금액은 넣은 돈이라 불어난 돈에 들어가지 않아요.'}{data.holdings.some(r => r.buy_source) ? ` 매입금액 옆 *는 보유수량이 같은 이전 등록(${[...new Set(data.holdings.map(r => r.buy_source).filter(Boolean))].join(', ')})에서 가져온 값이에요.` : ''}</p>
       {data.quote_failed.length > 0 && <p className="hp-note warn">현재가를 받지 못한 종목 {data.quote_failed.length}개는 등록한 가격으로 보여요.</p>}
       {live && data.missing_ticker.length > 0 && <p className="hp-note warn">종목코드가 없는 {data.missing_ticker.join(', ')}은 현재가를 받을 수 없어요.</p>}
     </div>

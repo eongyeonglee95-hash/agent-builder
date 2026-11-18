@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { clearAssets } from './helpers'
 
 const names = ['(무)엔터프라이즈', '연금보험Enterprise(무)']
 const amounts = [37696320, 14450256]
@@ -15,6 +16,7 @@ const groups = names.map((name, index) => ({
 test('보험 두 장: 납입금 기준·분류 확인·첫 계약 저장 후 두 번째 유지', async ({ page, request }) => {
   const errors: string[] = []
   page.on('pageerror', e => errors.push(e.message))
+  await clearAssets(request)   // 아래에서 '저장 전엔 자산이 비어 있다'를 확인한다
   await page.route('**/api/register/capture', route => route.fulfill({ json: { groups } }))
   await page.goto('/#assets')
   await page.getByRole('button', { name: '자산 등록', exact: true }).first().click()

@@ -1,0 +1,33 @@
+/* App integration. Values are supplied from the live theme.css by the host. */
+:root {
+  --ds-white: var(--background); --ds-up: var(--up); --ds-down: var(--down);
+  --ds-up-soft: var(--up-soft); --ds-down-soft: var(--down-soft);
+  --ds-select: var(--ring); --ds-select-soft: var(--grey-100); --ds-radius: 6px;
+  --bg: var(--grey-100); --ink: var(--foreground); --line: var(--border);
+  --soft: var(--grey-50); --tint: var(--grey-100); --muted: var(--grey-600);
+  --xs: var(--text-xs); --sm: var(--text-sm); --base: var(--text-base);
+  --lg: var(--text-lg); --xl: var(--text-xl); --h2: var(--text-2xl); --h1: var(--text-3xl);
+}
+html[data-embedded] .header, html[data-embedded] body > footer,
+html[data-embedded] .demo-strip { display: none; }
+html[data-embedded] main { margin: 0; padding: 16px; max-width: none; }
+body { font-family: Pretendard, sans-serif; font-size: var(--text-sm); }
+button, input, textarea, select { font-size: var(--text-sm); }
+button, .panel, .kpis, .apartment, .source-card { box-shadow: none; border-radius: 6px; }
+button.primary, .iv-period button.active, .sg-filters button.active {
+  background: var(--grey-900); color: var(--background);
+}
+.page-heading h1 { font-size: var(--text-xl); }
+.page-heading .subtitle { font-size: var(--text-sm); color: var(--grey-600); }
+.up, .badge.up { color: var(--up); }
+.down, .badge.down { color: var(--down); }
+.badge.up { background: var(--up-soft); }
+.badge.down { background: var(--down-soft); }
+.badge { border-radius: 4px; }
+.iv-search-box:focus-within { outline: 2px solid var(--ring); outline-offset: 2px; border-color: var(--input); box-shadow: none; }
+.iv-search-box input:focus-visible { outline: none; box-shadow: none; }
+@media (max-width: 600px) {
+  html[data-embedded] main { padding: 12px; }
+  .kpi { padding: 12px; min-width: 0; }
+  .kpi-value { font-size: var(--text-xl); }
+}

@@ -23,7 +23,9 @@ export type TrackEntry = {
   day: string; price: number; price_basis: 'manual' | 'trade' | 'asking'; price_date: string | null; note: string
   home_value: number; home_net: number; own_funds: number | null; gap: number; needed: number | null; costs_complete: boolean; saved_at: string
 }
-export type MoveState = { plan: MovePlan; comparisons: Budget[]; funds: Budget; cash_reference: number; missing_home_ids: string[]; valuation_needs_review: string[]; track: Record<string, TrackEntry[]> }
+export type Capital = { value: number; loans: number; deposit: number; equity: number; cash: number; net: number; valuation_missing: boolean }
+export type Monthly = { month: string; count: number; median: number }
+export type MoveState = { capital?: Capital; plan: MovePlan; comparisons: Budget[]; funds: Budget; cash_reference: number; missing_home_ids: string[]; valuation_needs_review: string[]; track: Record<string, TrackEntry[]> }
 export type PriceCheck = {
   configured: boolean; months: number; trades: { name: string; area: number; price: number; date: string; floor: number | null; kind: string }[]
   analysis: { count: number; latest: number | null; latest_date: string | null; low: number | null; high: number | null; median: number | null; first_date: string | null; last_date: string | null; asking: number | null

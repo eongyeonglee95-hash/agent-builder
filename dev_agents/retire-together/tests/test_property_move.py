@@ -211,3 +211,46 @@ def test_price_check_without_key_and_living_notes_round_trip(client):
     assert r.status_code == 200, r.text
     assert r.json()["plan"]["candidates"][0]["living"] == {"school": "초등 도보 5분", "commute": "", "life": "2008년 입주 · 1,200세대", "concerns": "대로변 소음"}
     assert save(client, dict(version=1, candidates=[candidate(living={"school": "x" * 301})])).status_code == 422
+
+
+def test_capital_uses_all_owned_homes_not_sale_selection(client):
+    home(client)
+    for owner in ('together', 'me', 'partner'):
+        homes = client.get(f'/api/property?owner={owner}').json()
+        state = client.get(f'/api/property-move?owner={owner}').json()
+        capital = state['capital']
+        assert state['plan']['source_home_ids'] == []
+        assert capital['equity'] == homes['total']['equity']
+        assert capital['net'] == homes['total']['equity'] + state['cash_reference']
+        assert capital['value'] - capital['loans'] - capital['deposit'] == capital['equity']
+
+
+def test_trade_chart_monthly_counts_are_not_truncated(client, monkeypatch):
+    monkeypatch.setattr(prop, 'market_key', lambda: 'test')
+    rows = [{'name': 'A', 'area': 84, 'price': i + 1, 'date': '2026-01-01', 'floor': 1} for i in range(70)]
+    monkeypatch.setattr(prop, 'recent_trades', lambda *args: rows)
+    data = client.get('/api/property/trades?sigungu=11680&name=A&area=84').json()
+    assert len(data['trades']) == 30
+    assert data['monthly'] == [{'month': '2026-01', 'count': 70, 'median': 35}]
+
+
+def test_capital_cash_excludes_investments_and_pensions(client, monkeypatch):
+    home(client)
+    monkeypatch.setattr(storage, 'dashboard', lambda owner: {'cash': 900,
+        'assets': [{'pocket': 'cash', 'assetClass': 'cash', 'amount': 100},
+                   {'pocket': 'cash', 'assetClass': 'stock', 'amount': 800},
+                   {'pocket': 'retirement', 'assetClass': 'cash', 'amount': 500}]})
+    data = client.get('/api/property-move').json()
+    assert data['capital']['cash'] == 100
+    assert data['capital']['net'] == data['capital']['equity'] + 100
+    assert data['cash_reference'] == 900  # Existing funds form reference unchanged.
+
+
+def test_research_endpoint_reports_missing_without_key(client):
+    cid=str(uuid4())
+    response=client.put('/api/property-move',json={'version':0,'candidates':[{'id':cid,'name':'검증 단지','area_m2':84}]})
+    assert response.status_code == 200
+    r=client.get('/api/property-move/research')
+    assert r.status_code == 200
+    assert r.json()['summary']['missing'] == 1
+    assert r.json()['rows'][0]['current_count'] is None

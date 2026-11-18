@@ -268,7 +268,11 @@ async def boundary(request: Request, call_next):
         if context_token is not None:
             request_context.reset(context_token)
     response.headers["X-Content-Type-Options"] = "nosniff"
-    response.headers["X-Frame-Options"] = "DENY"
+    # Only the local observatory document is embedded by our own property tab.
+    # Login, financial screens and API responses remain non-embeddable.
+    response.headers["X-Frame-Options"] = (
+        "SAMEORIGIN" if request.url.path == "/previews/property-observatory/index.html" else "DENY"
+    )
     response.headers["Referrer-Policy"] = "no-referrer"
     if request.url.path.startswith("/api"):
         response.headers["Cache-Control"] = "no-store"

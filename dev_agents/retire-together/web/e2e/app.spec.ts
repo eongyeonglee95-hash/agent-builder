@@ -126,44 +126,39 @@ for (const width of [1440, 1024, 390, 360]) {
     await page.goto('/#rebalance')
     await page.getByRole('button', { name: '마이페이지', exact: true }).click()
     await page.getByRole('dialog', { name: '마이페이지' }).getByRole('button', { name: '내 자산', exact: true }).click()
-    await expect(page.getByRole('heading', { name: '종목 잔고로 계산해 보세요' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: '연금 운용 리포트', exact: true })).toBeVisible()
     await page.screenshot({ path: testInfo.outputPath(`rebalance-${width}.png`), fullPage: true })
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
   })
 }
 
-test('CSV 계산은 잘못된 계좌를 차단하고 계좌 전환 시 파일을 비운다', async ({ page }) => {
+test('리밸런싱은 CSV 대신 점검 주기 설정과 보고서를 표시한다', async ({ page }) => {
   await page.goto('/#rebalance')
-  await page.locator('[name="as_of"]').fill('2026-01-01')
-  await page.getByLabel('종목 잔고 CSV', { exact: true }).setInputFiles({
-    name: 'synthetic.csv', mimeType: 'text/csv',
-    buffer: Buffer.from('account_id,ticker_name,ticker,qty,price\nwrong,테스트,000000,1,1000\n'),
-  })
-  await page.getByRole('button', { name: '잔고 확인·계산' }).click()
-  await expect(page.getByRole('alert')).toContainText('모든 계좌만 포함')
-  const select = page.getByRole('combobox', { name: '계산할 계좌 묶음' })
-  const options = await select.locator('option').evaluateAll(items => items.map(item => (item as HTMLOptionElement).value))
-  expect(options.length).toBeGreaterThan(1)
-  await select.selectOption(options[1])
-  await expect(page.getByRole('button', { name: '잔고 확인·계산' })).toBeDisabled()
-  await expect(page.getByLabel('종목 잔고 CSV', { exact: true })).toHaveValue('')
+  await expect(page.getByRole('heading', { name: '연금 리밸런싱', exact: true })).toBeVisible()
+  await expect(page.getByLabel('종목 잔고 CSV', { exact: true })).toHaveCount(0)
+  await page.getByRole('button', { name: '주기 설정', exact: true }).click()
+  await expect(page.getByRole('combobox', { name: /^점검 주기/ })).toBeVisible()
+  await page.getByRole('combobox', { name: /^점검 주기/ }).selectOption('custom')
+  await expect(page.getByLabel('간격(일)', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: '주기 설정', exact: true }).click()
+  await expect(page.getByRole('combobox', { name: /^점검 주기/ })).toHaveCount(0)
 })
 
-test('유효한 종목 CSV를 올리면 서버 계산 결과가 표시되고 입력 변경 시 지워진다', async ({ page, request }) => {
-  const options = await (await request.get('/api/rebalance/options')).json()
-  const selected = options[0]
+test('보고서는 배분 도표와 은퇴 부족분을 탭 없이 함께 표시한다', async ({ page }) => {
+  await page.route('**/api/workbook/review', route => route.fulfill({ json: {
+    config: null, running: null, error: null, next_date: null,
+    report: { created_at: '2026-11-18T10:00:00+09:00', scope: '합성 검증 자료', source: '테스트', limitations: '', ai_text: null, ai_status: 'unavailable', research: [], accounts: [],
+      portfolio: { total_value: 10000000, account_count: 1, dates: ['2026-11-18'], mix: [{asset_class:'stock',label:'주식',current_pct:60,target_pct:50,sell:0,buy:0}] },
+      household: { retirement_outlook: { available:true, monthly_need:2000000, short_years:1, scenarios:[], milestones:[{year:2046,income:1500000,need:2000000,shortfall:500000}], assumptions:{return_rate:.05,inflation:.02,end_age:90} } }
+    }
+  } }))
   await page.goto('/#rebalance')
-  await page.locator('[name="as_of"]').fill('2026-01-01')
-  const csv = 'account_id,ticker_name,ticker,qty,price\n' + selected.accounts.map((a: { id: string }) => `${a.id},TIGER 미국S&P500,360750,100,15000`).join('\n')
-  await page.getByLabel('종목 잔고 CSV', { exact: true }).setInputFiles({ name: 'synthetic-valid.csv', mimeType: 'text/csv', buffer: Buffer.from(csv) })
-  await page.getByRole('button', { name: '잔고 확인·계산' }).click()
-  await expect(page.getByRole('heading', { name: '검토용 주문표' })).toBeVisible()
-  await expect(page.locator('.engine-result-heading')).toContainText('1,500,000원')
-  await expect(page.locator('.engine-explanation')).toContainText('2026-01-01')
-  await expect(page.locator('.engine-result')).toContainText('100.0%')
-  await page.screenshot({ path: test.info().outputPath('engine-preview.png'), fullPage: true })
-  await page.locator('[name="new_cash"]').fill('300000')
-  await expect(page.getByRole('heading', { name: '검토용 주문표' })).not.toBeVisible()
+  const report = page.getByRole('region', { name: '연금 운용 리포트', exact:true })
+  await expect(report.getByRole('heading', { name: '연금 포트폴리오 진단' })).toBeVisible()
+  await expect(report.getByRole('img', { name: '주식 현재 60.0%, 목표 50.0%' })).toBeVisible()
+  await expect(report.getByText('200만원', {exact:true})).toBeVisible()
+  await expect(report.getByText('50만원', {exact:true}).first()).toBeVisible()
+  await expect(report.getByRole('tab')).toHaveCount(0)
 })
 
 test('주식·부동산 메뉴는 해당 자산만 표시하고 등록 종류를 미리 선택한다', async ({ page, request }) => {
@@ -187,8 +182,8 @@ test('주식·부동산 메뉴는 해당 자산만 표시하고 등록 종류를
   await expect(page.locator('.asset-table-panel tbody tr')).toHaveCount(2)
   await page.getByRole('link', { name: '부동산', exact: true }).click()
   await expect(page).toHaveURL(/#property$/)
-  await expect(page.locator('.asset-table-panel tbody tr')).toHaveCount(2)
-  await expect(page.locator('.asset-table-panel')).not.toContainText('일반계좌 주식')
+  await expect(page.getByRole('region', { name: '부동산 관측실' })).toContainText('6억원')
+  await expect(page.getByRole('region', { name: '부동산 관측실' })).not.toContainText('일반계좌 주식')
   await page.getByRole('button', { name: '자산 등록', exact: true }).click()
   await page.getByRole('dialog').getByRole('button', { name: /직접 입력/ }).click()
   await expect(page.getByRole('dialog').getByRole('combobox', { name: '자산 종류', exact: true })).toHaveValue('property')
@@ -209,7 +204,7 @@ test('모바일 더보기에서 주식·부동산 메뉴에 접근할 수 있다
     await page.getByRole('button', { name: '주식·부동산 등 전체 메뉴' }).click()
     await page.getByRole('link', { name: label, exact: true }).click()
     await expect(page).toHaveURL(new RegExp(`#${hash}$`))
-    await expect(page.getByRole('heading', { name: label, exact: true })).toBeVisible()
+    await expect((hash === 'property' ? page.getByRole('region', { name: '부동산 관측실' }) : page).getByRole('heading', { name: label, exact: true })).toBeVisible()
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
     if (hash === 'property') {
       await expect(page.getByRole('heading', { name: '우리 집, 그다음 이야기' })).toBeVisible()
@@ -327,8 +322,9 @@ test('자산 등록 한 곳: 파일(CSV)을 올리면 확인 표를 거쳐 자�
   await expect(page.locator('.hp-row')).toHaveCount(2)
   await expect(page.locator('.hp-row', { hasText: 'KODEX 200' })).toContainText('매입 모름')
   await page.goto('/#stocks')
-  await expect(page.locator('.hp-top h2')).toHaveText('보유 주식')
-  await expect(page.locator('.hp-row')).toHaveCount(1)
+  await expect(page.getByRole('heading', { name: '보유 주식', exact: true })).toBeVisible()
+  // 연금저축 안의 주식도 일반 주식 화면에서 제외된다.
+  await expect(page.locator('.hp-row')).toHaveCount(0)
   expect(errors).toEqual([])
 })
 
@@ -352,13 +348,13 @@ test('엑셀처럼: 복사한 표를 붙여 넣고 키보드로 고쳐 저장하
   await expect(dialog.locator('.xl-save')).toBeDisabled()   // 계좌가 비어 빨간 칸
   // 첫 줄 계좌: 새 계좌 만들기
   await grid.locator('.xl-cell').nth(start).click()
-  await grid.getByLabel('계좌').selectOption('__new__')
+  await grid.getByLabel('계좌', { exact: true }).selectOption('__new__')
   await dialog.locator('.new-account [name="label"]').fill('엑셀 연금저축')
   await dialog.getByRole('button', { name: '계좌 추가' }).click()
   await expect(grid.locator('.xl-cell').nth(start)).toHaveText('엑셀 연금저축')
   // 둘째 줄 계좌: 고르는 칸
   await grid.locator('.xl-cell').nth(start + width).click()
-  await grid.getByLabel('계좌').selectOption({ label: '엑셀 연금저축' })
+  await grid.getByLabel('계좌', { exact: true }).selectOption({ label: '엑셀 연금저축' })
   // 키보드로 수량 고치기: 둘째 줄 보유수량 칸으로 옮겨 숫자를 치고 Enter
   await grid.locator('.xl-cell').nth(start + width + 3).click()
   await page.keyboard.type('600')
@@ -377,7 +373,8 @@ test('엑셀처럼: 복사한 표를 붙여 넣고 키보드로 고쳐 저장하
   const assets = inline.getByRole('grid', { name: '자산 표' })
   await expect(assets).toBeVisible()
   await expect(assets.locator('.xl-cell').first()).not.toHaveText('')
-  const aw = await assets.locator('.xl-head').count()
+  const heads = await assets.locator('.xl-head').allTextContents()
+  const aw = heads.length
   const texts = await assets.locator('.xl-cell').allTextContents()
   const firstEmpty = texts.findIndex((t, i) => i % aw === 0 && t === '' && texts.slice(i, i + aw).every(x => x === ''))   // 첫 빈 줄
   const base = firstEmpty
@@ -386,9 +383,9 @@ test('엑셀처럼: 복사한 표를 붙여 넣고 키보드로 고쳐 저장하
   await page.keyboard.press('Tab')
   await page.keyboard.type('공동명의 아파트')
   await page.keyboard.press('Enter')
-  await assets.locator('.xl-cell').nth(base + 4).click()
+  await assets.locator('.xl-cell').nth(base + heads.indexOf('종류')).click()
   await assets.getByLabel('종류').selectOption('property')
-  await assets.locator('.xl-cell').nth(base + 6).click()
+  await assets.locator('.xl-cell').nth(base + heads.indexOf('금액')).click()
   await page.keyboard.type('900000000')
   await page.keyboard.press('Enter')
   await inline.locator('.xl-save').click()
@@ -411,7 +408,7 @@ test('첫 화면은 메인: 표로 보기·새로고침·시트 탭·보고서·
   await expect(page.getByText(/기준 순자산/)).toBeVisible()
   await expect(summary).toContainText('순자산')
   await page.getByRole('tab', { name: '리밸런싱' }).click()
-  await expect(page.getByRole('heading', { name: '이번 달 리밸런싱' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '연금 리밸런싱', exact: true })).toBeVisible()
   await page.getByRole('tab', { name: '보유종목' }).click()
   await expect(page.getByRole('grid', { name: '보유종목 표' })).toBeVisible()
   await page.getByRole('tab', { name: '자산' }).click()
@@ -465,9 +462,9 @@ test('은퇴: 첫 화면 팝업·연금 카드에서 입력하면 저장하고 �
   await expect(page.getByRole('heading', { name: '연금', exact: true })).toBeVisible()
   await page.getByRole('button', { name: '3층 개인연금 살펴보기', exact: true }).click()
   await page.getByRole('button', { name: '개인연금 납입·수령 설정', exact: true }).click()
-  const again = page.getByRole('dialog', { name: '개인연금 입력', exact: true })
-  await again.getByRole('spinbutton', { name: '나 연금저축 1년 납입액', exact: true }).fill('600')
-  await again.getByRole('button', { name: '저장하고 다시 계산' }).click()
+  const again = page.getByRole('dialog', { name: '개인연금 미래 납입 계획', exact: true })
+  await again.getByRole('spinbutton', { name: '매년 납입할 금액', exact: true }).fill('600')
+  await again.getByRole('button', { name: '나 계획 저장' }).click()
   await expect(again).not.toBeVisible()
   const saved = await (await request.get('/api/retirement')).json()
   expect(saved.plan.me.national_monthly).toBe(1_000_000)

@@ -18,7 +18,7 @@ function Root() {
   useEffect(() => { const h = () => { setClassic(isClassic()); setDesign(isDesign()) }; window.addEventListener('hashchange', h); return () => window.removeEventListener('hashchange', h) }, [])
   if (design) return <DesignSystem/>
   if (!classic) return <Workbook onClassic={() => { location.hash = 'home' }}/>
-  return <><App/><button className="wb-back" onClick={() => { location.hash = 'sheet-summary' }}>표로 보기</button></>
+  return <App/>   // '표로 보기'는 사이드바 아래(App.tsx) — 화면 위에 띄우면 아래 내용과 겹친다 (2026-11-18)
 }
 
 ReactDOM.createRoot(document.getElementById('root')!).render(<React.StrictMode><AuthGate><Root/></AuthGate></React.StrictMode>)

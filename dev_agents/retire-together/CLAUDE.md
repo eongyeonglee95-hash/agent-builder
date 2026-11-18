@@ -41,3 +41,5 @@
 | `docs/DECISIONS.md` | 예전 결정을 확인하거나 새 결정을 적을 때 |
 | `docs/wiki/` | 리서치. 쓰는 절차는 `/wiki-research` |
 | `docs/archive/` | 옛 인계·검토·계획 기록. 작업할 때는 읽지 않는다 |
+
+- 보고서 문구·AI 프롬프트 변경 시 `docs/REPORT_WRITING_GUIDE.md`를 따른다. 보고서 화면은 `docs/DESIGN_SYSTEM.md`의 원페이퍼 규칙을 따른다.

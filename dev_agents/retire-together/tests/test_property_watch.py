@@ -54,6 +54,29 @@ def test_rules_file_has_large_area_threshold():
     assert rules["large_area_m2"] == 135 and rules["months"] == 12
 
 
+def test_watch_failure_is_local_to_district_and_shared_requests_are_reused(monkeypatch):
+    from fastapi import HTTPException
+    from backend import property_move as move
+    monkeypatch.setattr(move.prop, "market_key", lambda: "test-key")
+    monkeypatch.setattr(move, "load_watch_rules", lambda: {"months": 2, "large_area_m2": 135})
+    monkeypatch.setattr(move, "read_plan", lambda owner: {"candidates": [
+        {"id": str(i), "name": str(i), "address": {"sigungu_code": code, "jibun": "서울특별시 강남구 개포동 185"}}
+        for i, code in enumerate(["11680", "11680", "11710", "11710"])
+    ]})
+    calls = []
+    def fetch(code, ym, key):
+        calls.append((code, ym))
+        if code == "11680":
+            raise HTTPException(503, "upstream unavailable")
+        return []
+    monkeypatch.setattr(move.prop, "_month_trades", fetch)
+    result = move.watch("together")
+    assert len(calls) == 3  # one failed district request, two months for the other
+    assert [r["summary"] for r in result["watch"][:2]] == [None, None]
+    assert all(r["missing"] == "실거래 조회 실패" for r in result["watch"][:2])
+    assert all(r["summary"]["count"] == 0 for r in result["watch"][2:])
+
+
 def test_watch_endpoint_groups_members_and_reports_unconfigured(tmp_path, monkeypatch):
     from uuid import uuid4
     from fastapi.testclient import TestClient
@@ -76,3 +99,46 @@ def test_watch_endpoint_groups_members_and_reports_unconfigured(tmp_path, monkey
         assert w["configured"] and w["large_area_m2"] == 135
         item = w["watch"][0]
         assert item["id"] == cid and item["names"] == ["장미1", "장미2"] and item["summary"]["count"] == 2   # 장미3·다른 동 제외
+
+
+def test_monthly_series_uses_contract_month_and_all_transactions():
+    from tools.property_watch import monthly_series
+    rows = [row("A", "x", "1", 84, price, day) for price, day in
+            [(100, "2026-01-03"), (300, "2026-01-20"), (700, "2026-03-01")]]
+    assert monthly_series(rows) == [
+        {"month": "2026-01", "count": 2, "median": 200},
+        {"month": "2026-03", "count": 1, "median": 700},
+    ]
+    # No invented February price; all 65 transactions survive UI list truncation.
+    many = [row("A", "x", "1", 84, i + 1, "2026-04-01") for i in range(65)]
+    assert summarize(many, large_area_m2=135)["areas"][0]["monthly"] == [
+        {"month": "2026-04", "count": 65, "median": 33}]
+
+
+def test_research_uses_closed_months_and_preserves_missing():
+    from datetime import date
+    from tools.property_watch import research_snapshot
+    candidates = [dict(id='a',name='A',area_m2=84,asking_low=280,asking_date='2026-11-01'),
+                  dict(id='b',name='B',area_m2=84)]
+    data = {'configured':True,'watch':[{'id':'a','summary':{'areas':[{'area':84,'latest':{'price':300,'date':'2026-10-03'},'monthly':[
+        {'month':'2026-07','median':330,'count':2}, {'month':'2026-08','median':310,'count':1},
+        {'month':'2026-10','median':300,'count':3}, {'month':'2026-11','median':1,'count':100}]}]}}]}
+    r = research_snapshot(candidates,data,today=date(2026,11,18))
+    a,b = r['rows']
+    assert r['recent'] == ['2026-08','2026-09','2026-10']
+    assert a['current_count'] == 4 and a['previous_count'] == 2
+    assert a['price_change'] == -30 and a['asking_difference'] == -20
+    assert b['current_count'] is None and b['missing']
+    assert r['summary'] == {'total':2,'missing':1,'volume_up':1,'price_down':1,'asking_below_trade':1}
+
+
+def test_research_no_trade_is_zero_but_unavailable_is_not():
+    from datetime import date
+    from tools.property_watch import research_snapshot
+    c=[dict(id='a',name='A',area_m2=84)]
+    watch={'configured':True,'watch':[{'id':'a','summary':{'areas':[]}}]}
+    r=research_snapshot(c,watch,today=date(2026,2,1))
+    assert r['previous'] == ['2025-08','2025-09','2025-10']
+    assert r['rows'][0]['current_count'] == 0
+    assert r['rows'][0]['price_change'] is None
+    assert research_snapshot(c,{'configured':False},today=date(2026,2,1))['rows'][0]['current_count'] is None

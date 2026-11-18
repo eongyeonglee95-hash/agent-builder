@@ -44,7 +44,14 @@
 @media(max-width:1200px) and (min-width:901px){.strategy-tabs button{font-size:9px}.strategy-tabs button span{font-size:7px;margin-left:2px}.strategy-legend{gap:7px;font-size:7px}.allocation-row{grid-template-columns:120px 1fr 110px 50px;gap:10px}.rebalance-summary h2{font-size:19px}.rebalance-summary .soft-icon{display:none}}
 @media(max-width:900px){.allocation-row{grid-template-columns:120px 1fr 110px 50px;gap:10px}.rebalance-summary .soft-icon{display:none}}
 @media(max-width:650px){.strategy-tabs{margin-bottom:20px}.strategy-tabs button{padding:7px 5px;font-size:10px}.strategy-tabs button span{font-size:8px}.strategy-bar{height:29px}.strategy-bar>span>span{font-size:11px}.strategy-legend{font-size:8px;gap:10px}.rebalance-layout{display:flex;flex-direction:column;gap:15px;margin-bottom:15px}.rebalance-summary{padding:23px}.rebalance-summary .soft-icon{display:grid;width:38px;height:38px;top:20px;right:20px}.rebalance-summary h2{font-size:21px;margin-top:23px}.rebalance-summary p{font-size:10px}.rebalance-summary>small{font-size:8px}.allocation-panel{padding:20px 16px}.allocation-panel .panel-heading{flex-wrap:wrap;margin-bottom:20px;gap:12px}.allocation-row{grid-template-columns:1fr 1fr 55px;gap:9px;margin:20px 0}.allocation-row>span:first-child{grid-column:1/-1;font-size:10px}.allocation-bars{min-width:0}.allocation-row>span:nth-child(3){font-size:9px;gap:5px}.allocation-row>b{font-size:10px}.allocation-key{font-size:8px}.strategy-examples>div{grid-template-columns:105px 1fr;gap:12px}.strategy-examples>div>span{font-size:9px}.strategy-examples p{font-size:10px}}
-.engine-panel{margin-top:24px}
+.engine-panel{margin-top:24px;padding:0;border-radius:16px}
+.engine-panel.open{padding:0 24px 24px}
+.engine-toggle{display:flex;width:100%;align-items:center;justify-content:space-between;gap:16px;padding:18px 24px;border:0;background:none;text-align:left;cursor:pointer;color:var(--foreground)}
+.engine-panel.open .engine-toggle{padding:20px 0 4px}
+.engine-toggle h2{font-size:var(--text-lg);font-weight:700}
+.engine-toggle small{display:block;margin-top:2px;font-size:var(--text-sm);color:var(--muted-foreground)}
+.engine-toggle svg{flex:none;color:var(--grey-500);transition:transform .15s}
+.engine-toggle[aria-expanded=true] svg{transform:rotate(180deg)}
 .engine-fields{border:0;padding:0;margin:0;min-width:0}
 .engine-upload{display:flex;align-items:center;gap:16px}
 .engine-upload>.form-label{flex:1;min-width:0}

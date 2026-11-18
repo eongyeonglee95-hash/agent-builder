@@ -2,6 +2,8 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { ChevronDown, Download, Plus, RefreshCw, Trash2 } from 'lucide-react'
 import { Amount } from '@/components/ui/amount'
 import { Button } from '@/components/ui/button'
+import { ObservationRow } from '@/components/ui/observation-row'
+import { SectionMenu } from '@/components/ui/section-menu'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
@@ -11,6 +13,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { ReadGrid, type Cell } from '@/workbook/ReadGrid'
+import { SecuritiesReport } from '@/workbook/SecuritiesReport'
+import { allocationReportExample } from './allocation-report-example'
+import { MixRows, StrategyAllocation } from '@/workbook/RebalancePlan'
 import { classInfo } from '../model'
 import { day, manwon, pct, pp, shares, won } from '@/lib/format'
 
@@ -81,6 +86,7 @@ function sampleRows(paid: string, setPaid: (v: string) => void): Cell[][] {
 }
 
 export function DesignSystem() {
+  const [section, setSection] = useState('brief')
   const [paid, setPaid] = useState('300000')
   const [open, setOpen] = useState(false)
   const [toast, setToast] = useState('')
@@ -102,7 +108,22 @@ export function DesignSystem() {
         <p className="mt-2 max-w-2xl text-base text-grey-700">새 화면은 여기 있는 토큰·컴포넌트만으로 만들어요. 규칙과 이유는 <code className="rounded bg-grey-100 px-1 text-sm">docs/DESIGN_SYSTEM.md</code>.</p>
       </div>
 
-      <Section id="color" title="색" note="회색은 토스 디자인 시스템 10단계. 빨강은 상승, 파랑은 하락에만 써요. 강조색은 엑셀 초록 하나, 시트 선택과 현재 탭에만.">
+      <Section id="allocation-report" title="자산배분 AI 보고서" note="합성 예시 · 핵심 판단 → 근거 → 조건별 비교 → 우선 행동. 실제 투자 판단이 아닙니다.">
+        <SecuritiesReport analysis={allocationReportExample} research={[]} accounts={[{label:'연금저축 · 합성 예시',strategy:'예시 전략',mode:'rebalance',findings:['목표와 현재 배분을 비교한 합성 예시예요.'],plan:{kind:'move',reduce_total:0,increase_total:0,leftover:0,mix:[{asset_class:'stock',label:'주식',current_pct:60,target_pct:40,sell:0,buy:0},{asset_class:'long_bond',label:'장기채',current_pct:40,target_pct:60,sell:0,buy:0}]}}]}/>
+      </Section>
+      <Section id="rebalance" title="리밸런싱 비교표" note="계좌색 위 흰 비교표 · 현재/목표는 보조 정보 · 주문 금액 강조. 예시 데이터입니다.">
+          <div className="mb-4"><StrategyAllocation name="목표 배분 예시" targets={[
+            { asset_class: 'stock', label: '주식', target_pct: 50 },
+            { asset_class: 'long_bond', label: '장기채', target_pct: 30 },
+            { asset_class: 'gold', label: '금', target_pct: 20 },
+          ]}/></div>
+          <MixRows mix={[
+            { asset_class: 'stock', label: '주식 (국내·해외·배당·리츠)', current_pct: 70, target_pct: 30, sell: 16000000, buy: 0 },
+            { asset_class: 'long_bond', label: '장기채', current_pct: 0, target_pct: 40, sell: 0, buy: 16000000 },
+            { asset_class: 'gold', label: '금', current_pct: 15, target_pct: 15, sell: 0, buy: 0 },
+          ]} leftover={0}/>
+        </Section>
+        <Section id="color" title="색" note="회색은 토스 디자인 시스템 10단계. 빨강은 상승, 파랑은 하락에만 써요. 강조색은 엑셀 초록 하나, 시트 선택과 현재 탭에만.">
         <h3 className="mb-2 text-sm font-semibold">회색</h3>
         <div className={grid}>{[50, 100, 200, 300, 400, 500, 600, 700, 800, 900].map(n => <Swatch key={n} token={`--grey-${n}`} note={({ 100: '화면 바탕', 200: '선', 300: '입력 테두리', 500: '비활성 글자', 600: '보조 글자', 900: '본문·주 버튼' } as Record<number, string>)[n]}/>)}</div>
         <h3 className="mb-2 mt-6 text-sm font-semibold">상승·하락</h3>
@@ -146,6 +167,8 @@ export function DesignSystem() {
         </div>
       </Section>
 
+      <Section id="property-observation" title="단지 비교 행"><div className="overflow-hidden rounded-md border border-grey-200"><ObservationRow title="견본 아파트" subtitle="전용 84㎡" metrics={[{ label: '기록 호가', value: <Amount value={900000000} fmt="manwon"/>, detail: '2026.11.17' }, { label: '최근 실거래', value: <Amount value={880000000} fmt="manwon"/>, detail: '2026.10.01 · 8층' }, { label: '중간값', value: <Amount value={870000000} fmt="manwon"/>, detail: '12건' }, { label: '추가 자금', value: <Amount value={200000000} fmt="manwon"/> }]}/></div></Section>
+      <Section id="property-menu" title="화면 안의 메뉴" note="부동산 관측실처럼 다른 작업으로 이동할 때 사용해요."><SectionMenu label="메뉴 견본" value={section} onChange={setSection} items={[{ id: 'brief', label: '브리핑' }, { id: 'watch', label: '관심 단지' }, { id: 'journal', label: '주간·월간' }]}/></Section>
       <Section id="button" title="버튼" note="한 화면에 진한 주 버튼은 하나. 나머지는 테두리(outline)나 조용한(ghost). 파란 버튼은 없어요 — 파랑은 하락.">
         <div className="flex flex-wrap items-center gap-2">
           <Button>저장</Button>

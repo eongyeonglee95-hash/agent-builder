@@ -58,6 +58,16 @@ function apply(theme: ThemeId) {
 }
 
 const host = document.createElement('div'); host.className = 'brand-mode'; document.body.appendChild(host)
+// 2026-11-18 사용자 "표로 보기·테마가 아래쪽 내용과 겹친다 → 좌측 네비게이션 안에" — 화면에 #theme-slot(사이드바)이 있으면 그 안에,
+// 없으면(표 보기 등) 예전처럼 화면 오른쪽 아래에 띄운다
+function place() {
+  const slot = document.getElementById('theme-slot')
+  const target = slot ?? document.body
+  if (host.parentElement !== target) target.appendChild(host)
+  host.classList.toggle('in-nav', !!slot)
+}
+new MutationObserver(place).observe(document.body, { childList: true, subtree: true })
+place()
 const dot = (hex: string) => `<i style="background:${hex}"></i>`
 function render() {
   host.dataset.open = String(open)

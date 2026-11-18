@@ -1,4 +1,5 @@
 import { expect, test, type APIRequestContext } from '@playwright/test'
+import { clearAssets } from './helpers'
 
 test.afterEach(async ({ request }) => {
   const assets = await (await request.get('/api/assets')).json()
@@ -11,8 +12,7 @@ async function seed(request: APIRequestContext, me = 450000360, partner = 360000
   const family = await (await request.get('/api/family')).json()
   expect((await request.put('/api/family', { data: { me: { name: '세금 검수', age: 40 }, partner: { name: '배우자', age: 43 }, retirement_age: 60, version: family?.version ?? 0 } })).ok()).toBe(true)
   // Each run uses the dedicated temporary database, never the development ledger.
-  const assets = await (await request.get('/api/assets')).json()
-  for (const asset of assets) expect((await request.delete(`/api/assets/${asset.id}?version=${asset.version}`)).ok()).toBe(true)
+  await clearAssets(request)
   for (const [who, amount] of [['me', me], ['partner', partner]] as const) {
     expect((await request.post('/api/assets', { data: { request_id: crypto.randomUUID(), name: `${who} 검수 연금`, account: `${who} 검수 연금저축`, owner: who, pocket: 'retirement', assetClass: 'mixed', amount, as_of: new Date().toISOString().slice(0, 10) } })).ok()).toBe(true)
   }

@@ -4,3 +4,6 @@
 large_area_m2: 135
 # months: 실거래를 볼 기간(개월)
 months: 12
+
+# 공개 매매·전월세 호가: 마지막 성공 조회부터 7일 동안 재사용
+listing_cache_days: 7

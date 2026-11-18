@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Annotated, Literal
 
 import pandas as pd
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import Response
 from pydantic import Field
 
@@ -144,6 +144,29 @@ def rebalance_all(data: RebalanceInput) -> dict:
 @router.post("/rebalance")
 def rebalance(data: RebalanceInput):
     return rebalance_all(data)
+
+
+class TelegramInput(RebalanceInput):
+    pool_id: Annotated[str, Field(min_length=1, max_length=80)]
+
+
+@router.post("/telegram")
+def telegram_orders(data: TelegramInput, request: Request):
+    from tools import telegram
+    from backend.auth_config import mode
+    identity = getattr(request.state, "identity", None)
+    if mode() == "web" and (not identity or identity.get("user_id") != telegram.settings()["TELEGRAM_OWNER_USER_ID"]):
+        raise HTTPException(403, "텔레그램을 연결한 사용자만 보낼 수 있어요.")
+    if data.live:
+        raise HTTPException(422, "등록한 가격 기준 주문표에서 보내 주세요.")
+    pool = next((p for p in rebalance_all(data)["pools"] if p["pool_id"] == data.pool_id), None)
+    if pool is None:
+        raise HTTPException(404, "이 계좌의 등록 잔고가 없어요.")
+    try:
+        message_id = telegram.send_orders(pool)
+    except telegram.TelegramError as exc:
+        raise HTTPException(409, str(exc)) from None
+    return {"message": "텔레그램으로 주문표를 보냈어요. 실제 주문은 증권사 앱에서 해주세요.", "message_id": message_id}
 
 
 def _order_text(o: dict) -> str:

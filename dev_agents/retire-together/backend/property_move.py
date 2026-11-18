@@ -168,9 +168,15 @@ def result(plan: dict, owner: Owner) -> dict:
     with storage.connection() as conn:
         _table(conn)
         tracks = _tracks(conn, owner)
+    homes = list_homes(owner)
+    dashboard = storage.dashboard(owner)
+    cash = sum(a["amount"] for a in dashboard["assets"] if a["pocket"] == "cash" and a["assetClass"] == "cash")
+    capital = {**homes["total"], "cash": cash,
+               "net": homes["total"]["equity"] + cash,
+               "valuation_missing": any(h["full_value"] <= 0 or ((h["detail"] or {}).get("value_source") or {}).get("kind") == "none" for h in homes["homes"])}
     return {"plan": plan, "comparisons": comparisons, "missing_home_ids": missing, "track": {c["id"]: tracks.get(c["id"], []) for c in plan["candidates"]},
             "funds": move_budget(**base, price=None, purchase_costs=None),
-            "cash_reference": storage.dashboard(owner)["cash"],
+            "cash_reference": dashboard["cash"], "capital": capital,
             "valuation_needs_review": [h["asset"]["id"] for h in chosen if ((h["detail"] or {}).get("value_source") or {}).get("kind") in ("none", "purchase")]}
 
 
@@ -231,16 +237,33 @@ def watch(owner: Owner = "together"):
     today = dt.date.today()
     yms = [f"{(today.year * 12 + today.month - 1 - i) // 12}{(today.month - 1 - i) % 12 + 1:02d}" for i in range(rules["months"])]
     out = []
+    districts: dict[str, list[dict] | None] = {}
     for c in read_plan(owner)["candidates"]:
         a = c.get("address") or {}
         members = c.get("members") or ([{"name": "", "jibun": a["jibun"]}] if a.get("jibun") else [])
         if not a.get("sigungu_code") or not members:
             out.append({"id": c["id"], "name": c["name"], "names": [], "summary": None, "missing": "주소(지번) 확인 필요"})
             continue
-        rows = group_trades([r for ym in yms for r in prop._month_trades(a["sigungu_code"], ym, prop.market_key())], members)
+        code = a["sigungu_code"]
+        if code not in districts:
+            try:
+                districts[code] = [r for ym in yms for r in prop._month_trades(code, ym, prop.market_key())]
+            except HTTPException:
+                districts[code] = None
+        if districts[code] is None:
+            out.append({"id": c["id"], "name": c["name"], "names": [], "summary": None, "missing": "실거래 조회 실패"})
+            continue
+        rows = group_trades(districts[code], members)
         out.append({"id": c["id"], "name": c["name"], "names": sorted({r["name"] for r in rows}),
                     "summary": summarize(rows, large_area_m2=rules["large_area_m2"])})
     return {"configured": True, "months": rules["months"], "large_area_m2": rules["large_area_m2"], "watch": out}
+
+
+@router.get("/research")
+def research(owner: Owner = "together"):
+    from tools.property_watch import research_snapshot
+    plan = read_plan(owner)
+    return research_snapshot(plan["candidates"], watch(owner), today=dt.date.today())
 
 
 @router.get("/places")

@@ -86,6 +86,10 @@ def test_rebalance_pool_carries_simple_plan_and_empty_pools(client):
     sells = [o for o in p["orders"] if o["side"] == "매도"]
     assert pl["reduce_total"] == sum(o["amount"] for o in sells) and pl["sell_count"] == len(sells)
     assert [x["asset_class"] for x in pl["reduce"]] == ["stock"]
+    mix = {m["asset_class"]: m for m in pl["mix"]}
+    assert mix["stock"]["current_pct"] > mix["stock"]["target_pct"] and mix["stock"]["sell"] == pl["reduce_total"]
+    assert sum(m["buy"] for m in pl["mix"]) == pl["increase_total"]
+    assert abs(sum(m["current_pct"] for m in pl["mix"]) - 100) < 0.5 and abs(sum(m["target_pct"] for m in pl["mix"]) - 100) < 0.5
     assert d["empty_pools"] == [{"pool_id": "empty_pool", "label": "빈 IRP", "mode": "buy_only", "strategy_id": "all_weather"}]
 
 

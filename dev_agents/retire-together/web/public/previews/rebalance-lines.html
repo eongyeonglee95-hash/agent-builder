@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>리밸런싱 · 계좌별 한 줄 시안</title>
+<link rel="stylesheet" href="./property-observatory/theme-tokens.css">
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body { font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif; background: var(--page-bg); color: var(--foreground); padding: 32px 48px 60px; }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  .switch { display: flex; gap: 6px; align-items: center; margin-bottom: 28px; font-size: 13px; color: var(--muted-foreground); }
+  .switch button { height: 34px; padding: 0 14px; border-radius: 17px; border: 1px solid var(--input); background: var(--card); font: inherit; font-size: 13px; color: var(--grey-800); cursor: pointer; }
+  .switch button.on { background: var(--foreground); border-color: var(--foreground); color: #fff; }
+  .switch p { margin-left: 10px; }
+  h1 { font-size: 26px; letter-spacing: -.6px; }
+  .lead { margin: 8px 0 20px; color: var(--grey-700); font-size: 16px; }
+
+  /* 계좌별 색: 자산 색(막대)과 겹치지 않게 짙은 초록 / 남색 / 모래색 */
+  .acct.old { --a: var(--brand); --a-ink: #fff; --a-tint: var(--brand-tint); }
+  .acct.new { --a: #2f4a7a; --a-ink: #fff; --a-tint: #e8edf6; }
+  .acct.irp { --a: #8a6a2e; --a-ink: #fff; --a-tint: #f5efe3; }
+
+  .list { display: grid; gap: 0; background: var(--card); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+  .acct + .acct { border-top: 1px solid var(--border); }
+  .acct { display: grid; grid-template-columns: 278px 1fr; }
+  .line { display: grid; grid-template-columns: minmax(230px, 1fr) minmax(300px, 1.3fr); gap: 28px; align-items: center; padding: 22px 24px 22px 0; }
+
+  .who { grid-row: 1 / 3; display: flex; gap: 14px; align-items: center; align-self: stretch; padding: 22px 0 22px 24px; }
+  .tile { width: 52px; height: 52px; border-radius: 14px; flex: none; display: grid; place-content: center; text-align: center; line-height: 1.1; background: var(--a); color: var(--a-ink); }
+  .tile small { font-size: 10px; font-weight: 600; opacity: .85; }
+  .tile b { font-size: 17px; font-weight: 800; letter-spacing: -.4px; }
+  .who strong { display: block; font-size: 17px; letter-spacing: -.3px; }
+  .who p { margin-top: 3px; font-size: 13px; color: var(--muted-foreground); }
+  .who p button { background: none; border: 0; padding: 0; font: inherit; color: var(--grey-700); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+
+  .say { font-size: 20px; font-weight: 700; letter-spacing: -.5px; line-height: 1.4; }
+  .say .up { color: var(--up); } .say .down { color: var(--down); }
+  .say small { display: block; margin-top: 4px; font-size: 14px; font-weight: 500; color: var(--muted-foreground); letter-spacing: 0; }
+  .say.muted { color: var(--muted-foreground); }
+
+  .flow { display: grid; grid-template-columns: 78px 1fr; gap: 12px 14px; align-items: start; }
+  .flow > span { font-size: 14px; font-weight: 600; line-height: 1.3; }
+  .flow > span b { display: block; font-size: 17px; }
+  .flow .cut { color: var(--down); } .flow .add { color: var(--up); }
+  .bars { display: flex; gap: 3px; height: 14px; }
+  .bars i { border-radius: 7px; }
+  .legend { display: flex; gap: 14px; margin-top: 7px; font-size: 13px; color: var(--grey-700); }
+  .legend b { font-weight: 600; }
+  .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 5px; vertical-align: 1px; }
+
+  .money { display: flex; align-items: center; gap: 8px; font-size: 15px; }
+  .money input { width: 170px; height: 40px; border: 1px solid var(--input); border-radius: 10px; padding: 0 12px; font: inherit; text-align: right; background: var(--card); }
+  .act { display: flex; align-items: center; gap: 8px; padding: 0 24px 18px 0; font-size: 13px; color: var(--muted-foreground); }
+  .act .spacer { flex: 1; }
+  .act .link { background: none; border: 0; padding: 0; font: inherit; color: var(--grey-700); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+  .btn { height: 38px; padding: 0 15px; border-radius: 10px; border: 1px solid var(--input); background: var(--card); font: inherit; font-size: 14px; font-weight: 600; color: var(--foreground); cursor: pointer; }
+  .btn.primary { background: var(--foreground); border-color: var(--foreground); color: #fff; }
+  .foot { margin-top: 14px; font-size: 13px; color: var(--muted-foreground); }
+
+  /* 2안: 줄 배경을 계좌색으로 옅게 */
+  body[data-v="2"] .list { gap: 10px; background: none; border: 0; border-radius: 0; }
+  body[data-v="2"] .acct { background: var(--a-tint); border: 0; border-radius: 14px; }
+  body[data-v="2"] .tile { background: var(--card); color: var(--a); }
+  body[data-v="2"] .act .btn:not(.primary) { background: transparent; border-color: color-mix(in srgb, var(--a) 30%, transparent); }
+
+  /* 3안: 왼쪽 칸을 계좌색 패널로 */
+  body[data-v="3"] .acct { grid-template-columns: 230px 1fr; }
+  body[data-v="3"] .who { background: var(--a); color: var(--a-ink); padding: 22px; align-items: flex-start; }
+  body[data-v="3"] .who p { color: color-mix(in srgb, var(--a-ink) 72%, transparent); }
+  body[data-v="3"] .who p button { color: var(--a-ink); }
+  body[data-v="3"] .tile { display: none; }
+  body[data-v="3"] .who strong { font-size: 19px; margin-bottom: 4px; }
+  body[data-v="3"] .line { padding-left: 28px; }
+  body[data-v="3"] .act { padding-left: 28px; }
+</style>
+</head>
+<body data-v="1">
+<div class="wrap">
+  <div class="switch">계좌 구분 방식
+    <button data-v="1" class="on">1. 계좌 타일</button>
+    <button data-v="2">2. 줄 배경색</button>
+    <button data-v="3">3. 왼쪽 색 패널</button>
+    <p id="why"></p>
+  </div>
+
+  <h1>이번 달 리밸런싱</h1>
+  <p class="lead">옮길 계좌 1개 · 납입 때 맞출 계좌 1개 · 잔고 등록이 필요한 계좌 1개</p>
+
+  <div class="list">
+    <section class="acct old">
+      <div class="who"><span class="tile"><small>연금저축</small><b>구</b></span>
+        <div><strong>연금저축(구)</strong><p>3,901만원 · 사고팔기</p><p>박곰희 따르는 중 · <button>바꾸기</button></p></div></div>
+      <div class="line">
+        <p class="say">장기채가 <span class="down">20.0%p</span> 적어요.<br>912만원 옮겨요.<small>옮기고 131만원 남아요.</small></p>
+        <div class="flow">
+          <span class="cut">줄이기<b>912만원</b></span>
+          <div><div class="bars"><i style="flex:516;background:var(--cls-mid-bond)"></i><i style="flex:396;background:var(--cls-gold)"></i></div>
+            <div class="legend"><span><i class="dot" style="background:var(--cls-mid-bond)"></i>중기채 <b>516만원</b></span><span><i class="dot" style="background:var(--cls-gold)"></i>금 <b>396만원</b></span></div></div>
+          <span class="add">늘리기<b>780만원</b></span>
+          <div><div class="bars"><i style="flex:780;background:var(--cls-long-bond)"></i><i style="flex:132"></i></div>
+            <div class="legend"><span><i class="dot" style="background:var(--cls-long-bond)"></i>장기채 <b>780만원</b></span></div></div>
+        </div>
+      </div>
+      <div class="act"><button class="link">종목·수량 보기</button><span>1종목은 확인 전이라 금액만</span><span class="spacer"></span>
+        <button class="btn">이번엔 넘기기</button><button class="btn primary">직접 주문할게요</button></div>
+    </section>
+
+    <section class="acct new">
+      <div class="who"><span class="tile"><small>연금저축</small><b>신</b></span>
+        <div><strong>연금저축(신)</strong><p>2,350만원 · 사기만</p><p>올웨더 따르는 중 · <button>바꾸기</button></p></div></div>
+      <div class="line">
+        <p class="say">주식이 <span class="up">52.6%p</span> 많아요.<br>팔지 않고 납입 때 맞춰요.</p>
+        <div class="money">이번 달 넣을 돈 <input placeholder="예: 3,000,000"> 원</div>
+      </div>
+    </section>
+
+    <section class="acct irp">
+      <div class="who"><span class="tile"><b>IRP</b></span>
+        <div><strong>내 IRP</strong><p>잔고 없음 · 사기만</p><p>올웨더 따르는 중 · <button>바꾸기</button></p></div></div>
+      <div class="line">
+        <p class="say muted">잔고를 넣으면 비교해요.</p>
+        <div><button class="btn">잔고 등록</button></div>
+      </div>
+    </section>
+  </div>
+  <p class="foot">여기서는 기록만 남기고 자동 주문은 하지 않아요. 주문은 증권사 앱에서.</p>
+</div>
+<script>
+const why = { 1: '흰 줄 + 계좌색 타일. 가장 차분해요', 2: '줄 전체를 계좌색으로 옅게. 계좌가 덩어리로 갈려요', 3: '왼쪽 칸이 계좌색 패널. 계좌가 가장 크게 구분돼요' }
+const set = v => { document.body.dataset.v = v; document.getElementById('why').textContent = why[v]
+  document.querySelectorAll('.switch button').forEach(b => b.classList.toggle('on', b.dataset.v === v)) }
+document.querySelectorAll('.switch button').forEach(b => b.addEventListener('click', () => set(b.dataset.v)))
+set(new URLSearchParams(location.search).get('v') || '1')
+</script>
+</body>
+</html>
