@@ -73,8 +73,8 @@ body.pension-live .tower-flow .tower-income-chart{margin-top:16px}
 body.pension-live .tower-income-slider input{min-height:24px}
 @container pension-content (max-width:1050px){
  body.pension-live .tower-hero{grid-template-columns:minmax(0,1fr)}
- body.pension-live .tower-summary{order:-1;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:'kicker kicker' 'ages ages' 'label gap' 'income gap' 'note gap' 'budget nominal' 'coverage nominal' 'excluded excluded';gap:4px 24px;padding:20px 24px}
- body.pension-live .tower-summary .tower-summary-kicker{grid-area:kicker}
+ body.pension-live .tower-summary{order:-1;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:'title title' 'income gap' 'note gap' 'budget nominal' 'coverage nominal' 'excluded excluded' 'basis basis';gap:4px 24px;padding:20px 24px}
+ body.pension-live .tower-summary .tower-pension-title{grid-area:title}
  body.pension-live .tower-summary .tower-summary-ages{grid-area:ages}
  body.pension-live .tower-summary .tower-monthly-label{grid-area:label;margin-top:12px}
  body.pension-live .tower-summary .tower-income-actions{grid-area:income;justify-content:flex-start}
@@ -116,3 +116,5 @@ body.pension-live .tower-income-slider input{min-height:24px}
  body.pension-live .tower-savings-actions{flex-direction:row;flex-wrap:wrap;padding-inline:10px}
  body.pension-live .tower-savings-actions .tower-layer-edit{margin:0}
 }
+
+body.pension-live .tower-summary .tower-calculation-basis{grid-area:basis;color:var(--muted-foreground)}

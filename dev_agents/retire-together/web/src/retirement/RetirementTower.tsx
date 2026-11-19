@@ -8,7 +8,7 @@ import { ProfileForm } from '../forms'
 import type { Family } from '../model'
 import { useRetirementData, type Plan, type Result } from '../workbook/retirement'
 import { Pagoda } from './Pagoda'
-import { ExtraPensionSummary } from './ExtraPensionSummary'
+import './pension-choice.css'
 import { PlanDialog, type Editor } from './PlanDialog'
 import { SpendingGoal } from './SpendingGoal'
 import { SpendingBudgetDialog } from './SpendingBudgetDialog'
@@ -34,6 +34,7 @@ export function RetirementPage({ owner, onOwnerChange, onChanged, onAssets, onRe
 export function RetirementTower({ data, error, save, reload, owner, onOwnerChange, onAssets, onRegister, hidden = false, details, embedded = false, onProfileChanged }: Props) {
   const uid = useId()
   const [selected, setSelected] = useState(1)
+  const [extraAsPension, setExtraAsPension] = useState(true)
   // 층 상세는 별도 섹션이 아니라 누른 줄 아래 말풍선으로 (2026-11-02 사용자: "메모나 커서 아래로 내용이 뜨면"). 처음엔 닫혀 있다.
   const [detailOpen, setDetailOpen] = useState(false)
   const openDetail = (id: number) => { setSelected(id); setDetailOpen(true) }
@@ -62,17 +63,18 @@ export function RetirementTower({ data, error, save, reload, owner, onOwnerChang
   const hasInputs = scopedStreams.length > 0
   const hasPerson = owner === 'together' ? !!data.used.me : !!data.used[owner]
   const ready = !!row && hasPerson && hasInputs && !error
-  const total = ready ? amount(row, owner) : null
+  const extraMonthly = ready ? extra(row, owner) : 0
+  const baseTotal = ready ? amount(row, owner) : null
+  const total = baseTotal == null ? null : baseTotal + (extraAsPension ? extraMonthly : 0)
+  const nominalTotal = row ? row.total_nominal + (extraAsPension ? row.extra_nominal ?? 0 : 0) : null
   const partial = data.missing.length > 0 && owner === 'together'
   const need = owner === 'together' && !partial && ready && row?.retired ? row.need_real : null
   const gap = need != null && total != null ? total - need : null
   const coverage = need != null && need > 0 ? row?.coverage : null
-  const pct = coverage?.total ?? null
+  const pct = need != null && need > 0 && total != null ? total / need * 100 : null
   const saved = error ? null : capital(data, owner)
   const dbSaved = error ? 0 : accruedDb(data, owner)
   const share = (id: number) => coverage && streams(data, owner, id).length ? coverage.layers[String(id)] ?? 0 : null
-  // 4층 추가연금: 기본 합계 밖. '월급으로 나눠 쓰면' 월액과 '목돈으로 두면' 적립금을 나란히 (추천 없음)
-  const extraMonthly = ready ? extra(row, owner) : 0
   const layerCapital = (id: number) => error ? null : capital(data, owner, id)
   const scopeLabel = owner === 'together' ? '우리 함께' : owner === 'me' ? '나' : '배우자'
   const ageLabel = row ? PEOPLE.filter(([who]) => row.ages[who] != null && (owner === 'together' || who === owner)).map(([who, label]) => `${label} ${row.ages[who]}세`).join(' · ') : '계산 전'
@@ -123,7 +125,7 @@ export function RetirementTower({ data, error, save, reload, owner, onOwnerChang
   const npStarts = streams(data, owner, 1).map(s => s.start_year)
   const npStart = npStarts.length ? Math.min(...npStarts) : null
   const bridgeRow = retireYear != null ? data.projection?.rows.find(r => r.year === retireYear) : undefined
-  const bridge = ready && retireYear != null && npStart != null && npStart > retireYear && bridgeRow ? { from: retireYear, to: npStart - 1, years: npStart - retireYear, amount: amount(bridgeRow, owner) ?? 0 } : null
+  const bridge = ready && retireYear != null && npStart != null && npStart > retireYear && bridgeRow ? { from: retireYear, to: npStart - 1, years: npStart - retireYear, amount: (amount(bridgeRow, owner) ?? 0) + (extraAsPension ? extra(bridgeRow, owner) : 0) } : null
   return <div className={`tower-workspace${embedded ? ' tower-embedded' : ''}`}>
     <div className="tower-intro"><h1>연금</h1>
       <div className="tower-intro-actions"><div className="tower-toolbar"><button onClick={() => setProfileOpen(true)}>내 정보</button><button onClick={() => hasPerson ? setEditor('timing') : setProfileOpen(true)}>은퇴·수령 시점</button><button onClick={() => setEditor('assumptions')}><Settings2 size={14}/>계산 가정</button></div>
@@ -134,23 +136,17 @@ export function RetirementTower({ data, error, save, reload, owner, onOwnerChang
     <section className="tower-hero" aria-label="우리집 4층 연금탑">
       <div className="tower-tower-card"><div className="tower-tower-heading"><div><h2>은퇴 후, 매달 받는 연금.</h2><span>{row ? `${year}년 기준` : scopeLabel} · 세전 · 오늘의 돈</span></div></div>
         <div className="tower-tower-view"><figure className="tower-sculpture"><Pagoda selected={selected} onSelect={openDetail} states={LAYERS.map(l => ({ label: `${l.name}, ${layerText(l.id)}` }))}/><figcaption><MousePointer2 size={13}/>각 층을 눌러 살펴보세요</figcaption><p className="tower-color-legend">색은 연금 종류를 나타내요</p>
-            {/* 사용자(11-02): 4층 두 가지 보기는 요약 카드가 아니라 석탑 아래에. 숫자는 이 카드 기준(오늘 돈)으로 통일 — 그해의 돈 블록과 섞이지 않게 */}
-            {((layerCapital(4) ?? 0) > 0 || extraMonthly > 0) && <ExtraPensionSummary
-              monthly={extraMonthly > 0 ? `월 ${monthly(extraMonthly)}만 원` : layerText(4)}
-              capital={big(layerCapital(4))}
-              combined={extraMonthly > 0 ? total == null ? '—' : `월 ${monthly(total + extraMonthly)}만 원` : undefined}
-              combinedWon={hidden || total == null || extraMonthly <= 0 ? undefined : total + extraMonthly}
-            />}</figure>
+          </figure>
           <div className="tower-layers" role="group" aria-label="연금층 선택">{[...LAYERS].reverse().map(l => <Popover.Root key={l.id} open={detailOpen && selected === l.id} onOpenChange={open => { if (!open) setDetailOpen(false) }}><Popover.Anchor asChild><div className="tower-layer-row" data-selected={selected === l.id}><button className="tower-layer-button" aria-pressed={selected === l.id} onClick={() => detailOpen && selected === l.id ? setDetailOpen(false) : openDetail(l.id)} aria-label={`${l.id}층 ${l.name} 살펴보기`}>
             <span className="tower-layer-name"><i style={{ background: `var(--tower-layer-${l.id})` }}/><small>{l.id}층</small>{l.name}<ChevronRight size={13}/></span>
             <span className="tower-layer-principal">{<>
               {/* 사용자(11-02): 4층도 3층처럼 — 큰 글씨는 월 금액, 아래 연한 글씨는 등록한 목돈 */}
-              {layerMonthly(l.id)}
-              {l.id > 1 && !firstStep && <span className="tower-layer-balance" title={capitalLabel(l.id)}>{l.id === 4 ? '등록한 목돈' : '현재 준비금'} <span data-testid={`layer-capital-${l.id}`} data-won={hidden ? undefined : capitalAmount(l.id) ?? undefined}>{capitalAmount(l.id) == null ? hidden ? '••••••' : '등록 내역 없음' : big(capitalAmount(l.id))}</span></span>}
-              {l.id > 1 && scopedStreams.some(s => s.layer === l.id) && <span className="tower-layer-period">{activePeople.map(([who, label]) => { const periods = streams(data, who, l.id).filter(s => s.payout_years != null).map(s => `${s.start_age}세부터 · ${s.payout_years}년 수령`); return periods.length ? `${label} ${[...new Set(periods)].join(' / ')} · ${data.plan[who].private_start_age == null ? '기본 가정' : '직접 설정'}` : '' }).filter(Boolean).join(' / ')}</span>}
+              {l.id === 4 && !extraAsPension ? <span className="tower-layer-amount"><small>목돈</small><b>{big(layerCapital(4))}</b></span> : layerMonthly(l.id)}
+              {l.id > 1 && !firstStep && (l.id !== 4 || extraAsPension) && <span className="tower-layer-balance" title={capitalLabel(l.id)}>{l.id === 4 ? '등록한 목돈' : '현재 준비금'} <span data-testid={`layer-capital-${l.id}`} data-won={hidden ? undefined : capitalAmount(l.id) ?? undefined}>{capitalAmount(l.id) == null ? hidden ? '••••••' : '등록 내역 없음' : big(capitalAmount(l.id))}</span></span>}
+              {l.id > 1 && (l.id !== 4 || extraAsPension) && scopedStreams.some(s => s.layer === l.id) && <span className="tower-layer-period">{activePeople.map(([who, label]) => { const periods = streams(data, who, l.id).filter(s => s.payout_years != null).map(s => `${s.start_age}세부터 · ${s.payout_years}년 수령`); return periods.length ? `${label} ${[...new Set(periods)].join(' / ')} · ${data.plan[who].private_start_age == null ? '기본 가정' : '직접 설정'}` : '' }).filter(Boolean).join(' / ')}</span>}
             </>}</span>
-            {!firstStep && <span className="tower-layer-gauge" aria-label={hidden ? '금액 숨김' : share(l.id) == null ? '생활비 기여율 계산 전' : `목표 생활비의 ${percent(share(l.id)!)}% 담당`}><span className="tower-layer-track"><i style={{ width: `${hidden ? 0 : Math.min(100, share(l.id) ?? 0)}%`, background: `var(--tower-fill-${l.id})` }}/></span><span>{hidden ? '•••' : share(l.id) != null ? <>생활비의 <b>{percent(share(l.id)!)}%</b></> : l.id === 4 ? '월 연금 연결 전' : owner !== 'together' ? '기여율은 함께 보기에서' : partial ? '가족 정보 확인 필요' : data.plan.monthly_need == null || data.plan.monthly_need === 0 ? '생활비 목표 설정 필요' : !row?.retired ? '은퇴 전' : '연금 정보 확인 필요'}</span></span>}
-          </button>{firstStep ? null : l.id <= 2 ? <button type="button" className="tower-layer-edit" aria-label={`${l.name} 입력·수정하기`} onClick={() => { setSelected(l.id); setEditorScope(null); if (!hasPerson) setProfileOpen(true); else setEditor(l.id as Editor) }}>입력·수정하기</button>
+            {!firstStep && (l.id !== 4 || extraAsPension) && <span className="tower-layer-gauge" aria-label={hidden ? '금액 숨김' : share(l.id) == null ? '생활비 기여율 계산 전' : `목표 생활비의 ${percent(share(l.id)!)}% 담당`}><span className="tower-layer-track"><i style={{ width: `${hidden ? 0 : Math.min(100, share(l.id) ?? 0)}%`, background: `var(--tower-fill-${l.id})` }}/></span><span>{hidden ? '•••' : share(l.id) != null ? <>생활비의 <b>{percent(share(l.id)!)}%</b></> : l.id === 4 ? '월 연금 연결 전' : owner !== 'together' ? '기여율은 함께 보기에서' : partial ? '가족 정보 확인 필요' : data.plan.monthly_need == null || data.plan.monthly_need === 0 ? '생활비 목표 설정 필요' : !row?.retired ? '은퇴 전' : '연금 정보 확인 필요'}</span></span>}
+          </button>{l.id === 4 && <fieldset className="tower-payout-choice" aria-label="4층 수령 방식"><legend className="sr-only">4층 수령 방식</legend><span className="tower-payout-title" aria-hidden="true">4층 추가연금</span><span className="tower-payout-options">{([true, false] as const).map(asPension => <label key={String(asPension)}><input type="radio" name={`${uid}-extra-payout`} checked={extraAsPension === asPension} onChange={() => setExtraAsPension(asPension)}/>{asPension ? '연금으로 받기' : '목돈으로 받기'}</label>)}</span></fieldset>}{firstStep ? null : l.id <= 2 ? <button type="button" className="tower-layer-edit" aria-label={`${l.name} 입력·수정하기`} onClick={() => { setSelected(l.id); setEditorScope(null); if (!hasPerson) setProfileOpen(true); else setEditor(l.id as Editor) }}>입력·수정하기</button>
             : <div className={l.id === 3 ? 'tower-savings-actions' : undefined}><button type="button" className="tower-layer-edit" aria-label={`${l.name} 자산 등록하기`} onClick={() => { setSelected(l.id); (onRegister ?? onAssets)() }}>자산 등록하기</button>{l.id === 3 && <button type="button" className="tower-layer-edit tower-savings-open" ref={savingsButton} onClick={() => { setDetailOpen(false); setSavingsOpen(true) }}>미래 납입 계획</button>}</div>}{/* 개인·추가연금 적립금은 공통 '자산 등록하기'(사진·파일·직접)로 (2026-11-02 사용자: "처음에 자산 등록하기로 되어야, 그건 공통") */}</div></Popover.Anchor>
             <Popover.Portal><Popover.Content className="tower-detail tower-detail-pop tower-plan-dialog" aria-labelledby={`${uid}-detail`} side="bottom" align="start" sideOffset={6} collisionPadding={12} onOpenAutoFocus={e => e.preventDefault()} onCloseAutoFocus={e => e.preventDefault()}>
 <div className="tower-detail-heading"><span className="tower-detail-icon"><Icon size={20}/></span><div><h2 id={`${uid}-detail`}>{selected}층 · {currentLayer.name}</h2><p>{currentLayer.description}</p></div><Popover.Close className="tower-detail-close" aria-label="층 상세 닫기"><X size={16}/></Popover.Close></div>
@@ -192,7 +188,7 @@ export function RetirementTower({ data, error, save, reload, owner, onOwnerChang
       {selected === 3 && <button type="button" className="tower-detail-link" aria-label="개인연금 납입·수령 설정" onClick={() => { setDetailOpen(false); if (!hasPerson) setProfileOpen(true); else setSavingsOpen(true) }}><Settings2 size={13}/>미래 납입 계획</button>}
       {selected === 4 && <button type="button" className="tower-detail-link" onClick={() => { setDetailOpen(false); onAssets() }}><Wallet size={13}/>등록한 자산 보기</button>}
       {selected >= 3 && <button type="button" className="tower-detail-link" aria-label={`${currentLayer.name} 수령 설정`} onClick={() => { setDetailOpen(false); setEditorScope(null); if (!hasPerson) setProfileOpen(true); else setEditor('timing') }}><Settings2 size={13}/>수령 나이 바꾸기</button>}
-      {selected === 4 && <p className="tower-detail-note"><Info size={15}/>세제비적격 연금보험(일반·변액연금보험)과 ISA처럼 세액공제를 받지 않은 은퇴 자금이 여기에 들어가요. 받을 때 연금소득세가 없고 해지해도 토해 낼 공제가 없어요. 월 수령액은 3층과 같은 방식으로 계산하지만 기본 합계에는 넣지 않고, ‘연금으로 받기 / 목돈으로 보유’로 구분해 보여 줘요.</p>}
+      {selected === 4 && <p className="tower-detail-note"><Info size={15}/>세제비적격 연금보험(일반·변액연금보험)과 ISA처럼 세액공제를 받지 않은 은퇴 자금이 여기에 들어가요. 받을 때 연금소득세가 없고 해지해도 토해 낼 공제가 없어요. ‘연금으로 받기’를 선택하면 월 합계에 포함하고, ‘목돈으로 받기’를 선택하면 현재 등록한 목돈을 별도로 보여 줘요.</p>}
       {selected !== 4 && currentStatus === '준비 정보 없음' && <p className="tower-detail-note">정보가 없다는 뜻이며, 실제 받을 연금이 0원이라는 뜻은 아니에요.</p>}
             </Popover.Content></Popover.Portal></Popover.Root>)}
 </div>
@@ -202,7 +198,7 @@ export function RetirementTower({ data, error, save, reload, owner, onOwnerChang
           {dbSaved > 0 && <div><span>확정 퇴직금(DB)</span><b>{big(dbSaved)}</b></div>}
         </details>
       </div>
-      <aside className="tower-summary" aria-label="선택 연도의 연금 요약"><div className="tower-summary-kicker"><i/>{scopeLabel} · {row ? `${year}년` : '계산 전'}</div>{row && <p className="tower-summary-ages">{ageLabel}</p>}<p className="tower-monthly-label">월 연금 · 1–3층</p><div className="tower-income-actions"><div className="tower-total"><small>월</small><strong data-testid="pension-total" data-won={hidden ? undefined : total ?? undefined}>{monthly(total)}</strong><small>만 원</small></div><button type="button" className="tower-budget-open" ref={budgetButton} onClick={() => setBudgetOpen(true)}><Calculator size={14}/>생활비 계산</button></div><p className="tower-summary-note">{partial ? '계산 가능한 가족의 연금만 포함' : '세전 · 오늘의 돈 기준'}</p>
+      <aside className="tower-summary" aria-label="선택 연도의 연금 요약"><h2 className="tower-pension-title">{row ? `${year}년, ` : ''}{owner === 'together' ? '우리 둘의 연금' : owner === 'me' ? '나의 연금' : '배우자의 연금'}</h2><div className="tower-income-actions"><div className="tower-total"><span className="tower-monthly-value"><small>월</small><strong data-testid="pension-total" data-won={hidden ? undefined : total ?? undefined}>{monthly(total)}</strong><small>만 원</small></span>{!extraAsPension && <span className="tower-lump-sum" data-testid="pension-lump-sum">+ 목돈 <b>{big(layerCapital(4))}</b></span>}</div><button type="button" className="tower-budget-open" ref={budgetButton} onClick={() => setBudgetOpen(true)}><Calculator size={14}/>생활비 계산</button></div><p className="tower-summary-note">{ageLabel}{partial && ' · 입력된 가족만'}</p>
         {data.plan.monthly_need != null && <div className="tower-applied-budget" aria-label="적용된 생활비 목표">
           <span>목표 생활비 · 부부</span>
           <strong data-testid="applied-budget" data-won={hidden || error ? undefined : data.plan.monthly_need}>{error ? '확인 필요' : hidden ? '••••••' : `월 ${monthly(data.plan.monthly_need)}만 원`}</strong>
@@ -210,23 +206,24 @@ export function RetirementTower({ data, error, save, reload, owner, onOwnerChang
           {!ready && !error && <p>생활비 목표는 저장됐어요. 연금 정보를 입력하면 부족액과 충당률도 계산해요.</p>}
           {ready && owner !== 'together' && !error && <p>부부 생활비와 연금의 비교는 ‘우리 함께’에서 확인해요.</p>}
         </div>}
-        <div className="tower-coverage">{pct != null && !hidden && <div className="tower-coverage-track" aria-hidden="true">{LAYERS.slice(0, 3).map(l => <i key={l.id} style={{ width: `${(amount(row, owner, l.id) ?? 0) / Math.max(1, total ?? 0, need ?? 0) * 100}%`, background: `var(--tower-layer-${l.id})` }}/>)}</div>}
+        <div className="tower-coverage">{pct != null && !hidden && <div className="tower-coverage-track" aria-hidden="true">{LAYERS.slice(0, extraAsPension ? 4 : 3).map(l => <i key={l.id} style={{ width: `${(amount(row, owner, l.id) ?? 0) / Math.max(1, total ?? 0, need ?? 0) * 100}%`, background: `var(--tower-layer-${l.id})` }}/>)}</div>}
           {pct != null && <div className="tower-coverage-label"><span>생활비 충당률</span><span>{hidden ? '•••' : percent(pct)}%</span></div>}</div>
         <div className="tower-gap"><h3>{firstStep ? '나이부터 알려 주시면 계산을 시작해요.' : !ready ? '연금 정보를 채워 주세요.' : partial ? '가족 정보를 먼저 채워 주세요.' : owner !== 'together' ? '각자의 준비를 함께 살펴요.' : !row?.retired ? '은퇴 전 수령하는 금액이에요.' : gap == null ? '바라는 한 달을 정해 볼까요?' : gap < 0 ? <>월 <em>{monthly(-gap)}만 원</em> 부족</> : gap === 0 ? '생활비 충당' : <>월 <em>{monthly(gap)}만 원</em> 여유</>}</h3>{(!ready || owner !== 'together' || gap == null) && <p>{firstStep ? '위의 안내에서 내 정보를 입력하면, 이 자리에 매달 받는 연금 합계가 나타나요.' : !ready ? '국민연금 예상액과 퇴직금, 연금저축 납입 계획을 알려 주세요.' : owner !== 'together' ? '생활비는 부부의 합계와 비교해요. 우리 함께 보기에서 확인하세요.' : gap != null ? '수령 시점에 따라 달라져요. 다른 나이의 흐름도 함께 살펴보세요.' : '은퇴 후 부부가 필요한 월 생활비를 입력하면 연금과 비교할 수 있어요.'}</p>}
           {!firstStep && <button className="tower-summary-action" onClick={() => !hasPerson ? setProfileOpen(true) : !hasInputs ? setEditor(1) : owner !== 'together' ? onOwnerChange('together') : setEditor('goal')}>{!hasPerson ? '내 정보 입력하기' : !hasInputs ? '연금 정보 입력하기' : owner !== 'together' ? '우리 함께 보기' : '생활비 목표 수정'}<ArrowRight size={15}/></button>}</div>
-        {need != null && row?.need_nominal != null && <div className="tower-nominal-summary" aria-label="선택 연도의 명목 금액 비교"><small>{year}년 물가 기준</small><div><span>월 연금 · 세전</span><b data-testid="selected-nominal-income" data-won={hidden ? undefined : row.total_nominal}>{monthly(row.total_nominal)}만 원</b></div><div><span>월 생활비</span><b data-testid="selected-nominal-need" data-won={hidden ? undefined : row.need_nominal}>{monthly(row.need_nominal)}만 원</b></div></div>}
+        {need != null && row?.need_nominal != null && <div className="tower-nominal-summary" aria-label="선택 연도의 명목 금액 비교"><small>{year}년 물가 기준</small><div><span>월 연금 · 세전</span><b data-testid="selected-nominal-income" data-won={hidden ? undefined : nominalTotal ?? undefined}>{monthly(nominalTotal)}만 원</b></div><div><span>월 생활비</span><b data-testid="selected-nominal-need" data-won={hidden ? undefined : row.need_nominal}>{monthly(row.need_nominal)}만 원</b></div></div>}
+        <details className="tower-calculation-basis"><summary>계산 기준 <Info size={13} aria-hidden="true"/></summary><p>월 연금은 {extraAsPension ? '1–4층' : '1–3층'} 합계 · 세전 · 오늘의 돈 기준이에요.{!extraAsPension && ' 목돈은 현재 등록액이며 미래 수령액이 아니에요.'}</p></details>
       </aside>
     </section>
     <section className="tower-flow" id={`${uid}-flow`} aria-labelledby={`${uid}-flow-title`}>
       <div className="tower-section-heading"><div><h2 id={`${uid}-flow-title`}>받는 시간표</h2><p>연금이 하나씩 더해지며 달라지는 한 달 · 그래프나 연도를 움직여 살펴보세요</p></div>
         {row && hasInputs && !error && <div className="tower-milestones">{milestones.map(y => <button key={y} aria-pressed={year === y} onClick={() => setChosenYear(y)}>{y}년 · {y === defaultYear ? '나 은퇴 첫해' : y === lastYear ? '마지막 해' : [...new Set(scopedStreams.filter(s => s.start_year === y).map(s => `${s.person === 'me' ? '나' : '배우자'} ${s.label.replace(/\(.+\)/, '')}`))].join(' · ') + ' 시작'}</button>)}</div>}</div>
-      {row && hasInputs && !error ? <IncomeChart rows={years} scope={owner} year={year} onYearChange={setChosenYear} onLayerSelect={openDetail} hidden={hidden} showNeed={owner === 'together' && !partial} taxRule={data.pension_tax_rule}/>
+      {row && hasInputs && !error ? <IncomeChart includeExtra={extraAsPension} rows={years} scope={owner} year={year} onYearChange={setChosenYear} onLayerSelect={openDetail} hidden={hidden} showNeed={owner === 'together' && !partial} taxRule={data.pension_tax_rule}/>
         : <div className="tower-flow-empty"><Sprout size={18}/><p>{data.error ? '수령 시점의 입력 오류를 수정하면 시간표를 볼 수 있어요.' : '가족 정보와 연금 계획이 준비되면 수령 시간표가 나타나요.'}</p>{!firstStep && <Button variant="outline" size="sm" onClick={() => !hasPerson ? setProfileOpen(true) : setEditor(data.error ? 'timing' : 1)}>{!hasPerson ? '내 정보 입력' : '연금 정보 입력'}</Button>}</div>}
     </section>
     <SpendingGoal data={data} hidden={hidden} error={error} onGoal={() => setEditor('goal')} onAssumptions={() => setEditor('assumptions')} onTiming={() => { if (data.used.me) { setEditorScope('me'); setEditor('timing') } else setProfileOpen(true) }}/>
     <div className="tower-assumptions-summary"><div><strong>이렇게 계산했어요</strong><button onClick={() => setEditor('assumptions')}>가정 수정<Settings2 size={13}/></button></div><p>연 수익률 {(data.assumptions.return_rate * 100).toFixed(1)}% · 물가 {(data.assumptions.inflation * 100).toFixed(1)}%</p>
       <ul>{scopedStreams.filter(s => s.layer > 1).map((s, i) => <li key={i}><span>{s.person === 'me' ? '나' : '배우자'} · {s.label}</span><strong>{s.start_age}세부터 {s.end_age_exclusive}세 직전까지, 총 {s.payout_years}년 수령</strong></li>)}</ul>
-      <p>국민연금은 종신 · 화면 계산은 {data.assumptions.end_age}세 직전까지. 세금·수령한도·추가연금은 반영하지 않았어요.</p>
+      <p>국민연금은 종신 · 화면 계산은 {data.assumptions.end_age}세 직전까지. 세금·수령한도는 반영하지 않았어요. 4층은 선택한 수령 방식에 따라 월 합계에 포함해요.</p>
     </div>
     <div className="tower-footnote"><p>층별 게이지 = 해당 층의 월 연금 ÷ 목표 월 생활비. 각 층이 생활비에서 담당하는 몫이며, 층마다 100%를 채우는 목표가 아닙니다. 현재 적립금에는 앞으로 넣을 돈과 예상 수익을 더하지 않았어요.</p><p>예측이 아닌 입력한 가정의 계산 결과입니다. 석탑의 네 층은 연금 종류를 구분합니다. 생활비 충당률은 각 항목의 막대와 숫자로 확인해 주세요.</p></div>
     {details && <details className="tower-sheet-detail"><summary>입력값·연도별 계산을 표로 보기<ChevronDown size={16}/></summary><div className="tower-sheet-grid">{details}</div></details>}
