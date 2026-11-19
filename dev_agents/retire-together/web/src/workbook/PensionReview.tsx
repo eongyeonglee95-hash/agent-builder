@@ -1,6 +1,6 @@
 import type { Outlook } from './RetirementOutlook'
 import { SecuritiesReport, type ReportAccount, type ResearchNote, type PortfolioExhibit } from './SecuritiesReport'
-import { AllocationReport, type AllocationAnalysis } from './AllocationReport'
+import type { AllocationAnalysis } from './AllocationReport'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ChevronDown, FileText, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -93,19 +93,11 @@ export function ReviewReport({ review }: { review: Review }) {
     </div>
     {review.state?.error && <p role="alert" className="px-4 pt-3 text-sm text-destructive">{review.state.error}{report && ' 아래는 이전 보고서예요.'}</p>}
     {!report ? <div className="px-4 py-5 sm:px-5"><p className="text-sm font-semibold">내 계좌의 문제점부터 전략별 차이까지</p><p className="mt-1 text-sm leading-relaxed text-grey-600">상단의 ‘지금 점검’을 누르면 목표 비중 이탈, 잔고 확인 사항, 세 전략 비교와 이번에 할 일을 정리해요.</p><p className="mt-3 text-xs text-grey-600">책 캡처 근거는 아직 연결되지 않았어요. 지금은 등록한 전략 규칙으로 점검해요.</p></div>
-    : <div className="flex flex-col gap-4 px-4 py-4 sm:px-5">
+    : <div className="flex flex-col gap-2 px-1 py-2 sm:px-2">
       <p className="text-xs text-grey-600">{report.scope}{report.generation?.cache_hit && ' · 동일 자료의 기존 평가'}</p>
-      {report.research && report.ai_error && <p role="status" className="text-sm text-grey-600">{report.ai_error} 배분·상품·실행표는 계산 결과로 표시해요.</p>}
-      {report.research ? <SecuritiesReport createdAt={report.created_at} analysis={report.ai_report} accounts={report.accounts} research={report.research} outlook={report.household?.retirement_outlook} portfolio={report.portfolio}/> : report.ai_report ? <AllocationReport analysis={report.ai_report}/> : <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-        <div><h4 className="mb-2 text-sm font-bold">전체 진단</h4>
-          {report.ai_text ? <AIExplanation text={report.ai_text}/>
-            : <p className="text-sm leading-relaxed text-grey-600">{report.ai_error || 'AI 설명을 완료하지 못했어요.'} 계산 엔진의 점검 결과는 오른쪽과 아래에서 확인할 수 있어요. 상단에서 다시 점검할 수 있어요.</p>}
-        </div>
-        <div><h4 className="mb-2 text-sm font-bold">계좌별 확인할 사항</h4>
-          {report.accounts.length === 0 && <p className="text-sm text-grey-600">등록된 리밸런싱 묶음이 없어요. 계좌와 잔고를 먼저 등록해 주세요.</p>}
-          <div className="divide-y divide-grey-200">{report.accounts.map(a => <div key={a.label} className="py-2 first:pt-0"><p className="text-sm font-semibold">{a.label.split(' — ')[0]} <span className="font-normal text-grey-600">· {a.strategy}</span></p><ul className="mt-1 list-disc space-y-1 pl-4 text-sm leading-relaxed text-grey-700">{a.findings.slice(0, 3).map((f, i) => <li key={i}>{f}</li>)}</ul></div>)}</div>
-        </div>
-      </div>}
+      {report.ai_error && <p role="status" className="text-sm text-grey-600">{report.ai_error} 배분·상품·실행표는 계산 결과로 표시해요.</p>}
+      <SecuritiesReport createdAt={report.created_at} analysis={report.ai_report} accounts={report.accounts} research={report.research ?? []} outlook={report.household?.retirement_outlook} portfolio={report.portfolio}/>
+      {!report.ai_report && report.ai_text && <details className="border-t border-grey-200 pt-2"><summary className="cursor-pointer text-sm font-semibold">이전에 저장한 진단</summary><AIExplanation text={report.ai_text}/></details>}
       <details className="border-t border-grey-200 pt-3"><summary className="cursor-pointer py-1 text-sm font-semibold focus-visible:outline-2">세 전략 비교 · 계산 근거 보기</summary>
         <p className="mt-2 text-xs text-grey-600">같은 잔고·추가 납입 없이 비교해요. ‘사기만’ 계좌는 세 전략 모두 매도하지 않는 조건이에요. 금액은 등록 가격 기준이며 전략 순위가 아니에요.</p>
         {report.accounts.map(a => <div key={a.label} className="mt-4"><h4 className="mb-2 text-sm font-semibold">{a.label.split(' — ')[0]} <span className="font-normal text-grey-600">· 잔고 {a.as_of || '기준일 미확인'}</span></h4>
