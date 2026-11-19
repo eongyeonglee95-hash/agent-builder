@@ -3,7 +3,7 @@ export type Outlook = {
   available: boolean; missing?: string[]; error?: string; monthly_need?: number | null;
   retire_year?: number; short_years?: number; basis?: string;
   assumptions?: { return_rate: number; inflation: number; end_age: number };
-  milestones?: { year: number; income: number; need: number | null; shortfall: number | null }[];
+  milestones?: { year: number; income: number; need: number | null; shortfall: number | null; extra_income?: number; income_with_extra?: number; shortfall_with_extra?: number | null }[];
   scenarios: { extra_monthly: number; income: number; increase: number; shortfall: number | null; year: number }[];
   scenario_note?: string; contribution_schedule?: { start_year?: number; end_year?: number; payments?: number };
 }
@@ -31,12 +31,13 @@ export function RetirementOutlook({ value, compact = false }: { value?: Outlook;
     <div className="grid gap-5 lg:grid-cols-2">
       <section aria-label="시점별 연금 비교">
         <h4 className="text-base font-bold">은퇴 시점별 생활비 대비 연금</h4>
-        <p className="mb-3 mt-1 text-xs text-grey-600">세전 · 현재 돈 가치 · 각 확인 시점의 월 금액</p>
+        <p className="mb-3 mt-1 text-xs text-grey-600">기본 1~3층 · 세전 · 현재 돈 가치</p>
         <div className="flex flex-wrap gap-3 text-xs text-grey-600"><span className="flex items-center gap-1"><i className="h-2 w-4 bg-grey-800" aria-hidden="true"/>월 연금</span><span className="flex items-center gap-1"><i className="h-3 border-l-2 border-grey-700" aria-hidden="true"/>목표 생활비</span></div>
         <div className="mt-2 divide-y divide-grey-200 border-y border-grey-200">{milestones.map((m, i) => <div key={m.year} className="py-3">
           <div className="mb-2 flex items-baseline justify-between gap-2"><h5 className="text-sm font-semibold">{m.year}년 <span className="text-xs font-normal text-grey-600">{i === 0 ? '은퇴 첫해' : i === milestones.length - 1 ? '계산 마지막 해' : '모든 연금 시작'}</span></h5><span className="text-sm font-semibold tabular-nums">{manwon(m.income)}</span></div>
           <IncomeBar income={m.income} need={m.need} maximum={maximum}/>
           <p className="mt-2 text-right text-xs tabular-nums text-grey-600">{m.shortfall == null ? '목표 생활비 입력 필요' : m.shortfall > 0 ? <>월 부족분 <b className="text-up">{manwon(m.shortfall)}</b></> : '이 시점의 생활비 충족'}</p>
+          {(m.extra_income ?? 0) > 0 && <p className="mt-1 text-xs leading-relaxed text-grey-700">4층을 연금으로 받으면 +{manwon(m.extra_income!)} · 합계 {manwon(m.income_with_extra!)}{m.shortfall_with_extra != null && <> · 부족분 {manwon(m.shortfall_with_extra)}</>}</p>}
         </div>)}</div>
       </section>
       <section aria-label="추가 납입 시나리오 비교">

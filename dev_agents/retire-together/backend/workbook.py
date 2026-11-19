@@ -118,6 +118,16 @@ def run_pool(data: RebalanceInput, ctx: dict, pid: str):
     return base, r, None
 
 
+def additional_pension_assets(owner: Owner, accounts: dict, represented: set[str]) -> list[dict]:
+    """Show registered layer-four assets without inventing trading pools or orders."""
+    from backend.retirement import layer_of
+    return [{"id": a["id"], "name": a["name"], "account": a.get("account", ""),
+             "amount": a["amount"], "owner": a["owner"]}
+            for a in storage.dashboard(owner)["assets"]
+            if a.get("pocket") == "retirement" and layer_of(a, accounts) == 4
+            and a.get("account_id") not in represented]
+
+
 def rebalance_all(data: RebalanceInput) -> dict:
     from backend.plan import build
     from tools.explain import headline
@@ -138,7 +148,9 @@ def rebalance_all(data: RebalanceInput) -> dict:
                     "classes": res["classes"], "orders": res["orders"], "triggered": r.triggered, "blocked_reason": r.blocked_reason,
                     "constraints": res["constraints"], "notes": r.notes, "headline": headline(r), "plan": build(r, base["mode"])})
     # 잔고가 없는 묶음은 계산하지 않고 이름만 (화면이 '잔고 등록'을 보여 준다). pools 목록·check·요약은 그대로
-    return {"pools": out, "empty_pools": empty, "quote_failed": ctx["failed"]}
+    represented = {a["id"] for pool in out for a in pool.get("accounts", [])}
+    return {"pools": out, "empty_pools": empty, "quote_failed": ctx["failed"],
+            "additional_pensions": additional_pension_assets(data.owner, ctx["accts"], represented)}
 
 
 @router.post("/rebalance")

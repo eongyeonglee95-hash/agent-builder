@@ -85,3 +85,19 @@ test('이전 보고서에 리서치 필드가 없어도 같은 종합 진단 문
   await page.getByText('이전에 저장한 진단', { exact: true }).click()
   await expect(page.getByText('이전에 저장한 진단 문장', { exact: true })).toBeVisible()
 })
+
+test('리밸런싱 목록에 매매 묶음 없는 4층 추가연금을 표시한다', async ({ page }) => {
+  await page.route('**/api/workbook/rebalance', route => route.fulfill({ json: { pools: [], empty_pools: [], additional_pensions: [
+    { id: 'a', name: '추가연금 보험 A', account: '보험', amount: 10000000, owner: 'me' },
+    { id: 'b', name: '추가연금 보험 B', account: '보험', amount: 20000000, owner: 'partner' },
+  ] } }))
+  await page.goto('/#rebalance')
+  const list = page.getByRole('region', { name: '4층 추가연금 목록' })
+  await expect(list).toContainText('추가연금 보험 A')
+  await expect(list).toContainText('추가연금 보험 B')
+  await expect(list).toContainText('등록 금액 3,000만원')
+  await expect(list.getByRole('button')).toHaveCount(0)
+  await expect(list.getByRole('link')).toHaveAttribute('href', '#pension')
+  await page.setViewportSize({ width: 360, height: 1000 })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1)
+})
