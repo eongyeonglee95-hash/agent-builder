@@ -96,7 +96,7 @@ export function ReviewReport({ review }: { review: Review }) {
     : <div className="flex flex-col gap-4 px-4 py-4 sm:px-5">
       <p className="text-xs text-grey-600">{report.scope}{report.generation?.cache_hit && ' · 동일 자료의 기존 평가'}</p>
       {report.research && report.ai_error && <p role="status" className="text-sm text-grey-600">{report.ai_error} 배분·상품·실행표는 계산 결과로 표시해요.</p>}
-      {report.research ? <SecuritiesReport analysis={report.ai_report} accounts={report.accounts} research={report.research} outlook={report.household?.retirement_outlook} portfolio={report.portfolio}/> : report.ai_report ? <AllocationReport analysis={report.ai_report}/> : <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+      {report.research ? <SecuritiesReport createdAt={report.created_at} analysis={report.ai_report} accounts={report.accounts} research={report.research} outlook={report.household?.retirement_outlook} portfolio={report.portfolio}/> : report.ai_report ? <AllocationReport analysis={report.ai_report}/> : <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <div><h4 className="mb-2 text-sm font-bold">전체 진단</h4>
           {report.ai_text ? <AIExplanation text={report.ai_text}/>
             : <p className="text-sm leading-relaxed text-grey-600">{report.ai_error || 'AI 설명을 완료하지 못했어요.'} 계산 엔진의 점검 결과는 오른쪽과 아래에서 확인할 수 있어요. 상단에서 다시 점검할 수 있어요.</p>}

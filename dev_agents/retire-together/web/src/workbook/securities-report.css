@@ -1,0 +1,12 @@
+/* The report reads as a paper document; the surrounding app keeps its own theme. */
+.pension-report { overflow-wrap: anywhere; }
+.pension-report h4, .pension-report h5 { text-wrap: balance; }
+.pension-report summary:focus-visible { outline: 2px solid var(--grey-700); outline-offset: 4px; }
+.pension-report ::selection { background: var(--grey-200); color: var(--grey-900); }
+@media print {
+  .pension-report { max-width: none; border: 0; padding: 0; box-shadow: none; }
+  .pension-report .report-detail { break-before: page; margin-top: 0; }
+  .pension-report .report-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .pension-report table tr, .pension-report li, .pension-report header { break-inside: avoid; }
+  .pension-report { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+}

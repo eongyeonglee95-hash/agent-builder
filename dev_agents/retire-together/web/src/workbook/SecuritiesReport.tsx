@@ -1,3 +1,4 @@
+import './securities-report.css'
 import { RetirementOutlook, type Outlook } from './RetirementOutlook'
 import { useState } from 'react'
 import { ArrowRight, ExternalLink } from 'lucide-react'
@@ -18,9 +19,9 @@ function AllocationExhibit({ rows }: { rows: Mix[] }) {
   if (!rows.length) return <p className="py-6 text-sm text-grey-600">잔고를 등록하면 현재·목표 배분을 비교할 수 있어요.</p>
   return <div>
     <div className="mb-4 flex items-center gap-4 text-xs text-grey-600"><span className="flex items-center gap-1.5"><i className="h-2 w-5 bg-grey-700" aria-hidden="true"/>현재</span><span className="flex items-center gap-1.5"><i className="h-2 w-5 border border-grey-400" aria-hidden="true"/>선택 전략 목표</span></div>
-    <div className="space-y-4">{rows.map(row => <div key={row.asset_class} className="grid grid-cols-[64px_minmax(0,1fr)_100px] items-center gap-3 sm:grid-cols-[88px_minmax(0,1fr)_116px]">
+    <div className="space-y-4">{rows.map(row => <div key={row.asset_class} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2 sm:grid-cols-[88px_minmax(0,1fr)_116px]">
       <span className="text-sm font-semibold" title={row.label}>{row.label.split(' (')[0]}</span>
-      <div className="flex flex-col gap-1.5" role="img" aria-label={`${row.label} 현재 ${percent(row.current_pct)}, 목표 ${percent(row.target_pct)}`}>
+      <div className="order-3 col-span-2 flex flex-col gap-1.5 sm:order-none sm:col-span-1" role="img" aria-label={`${row.label} 현재 ${percent(row.current_pct)}, 목표 ${percent(row.target_pct)}`}>
         <div className="h-2.5 bg-grey-100"><div className="h-full" style={{ width: `${row.current_pct}%`, background: color(row.asset_class) }}/></div>
         <div className="h-2.5 bg-grey-100"><div className="h-full border" style={{ width: `${row.target_pct}%`, borderColor: color(row.asset_class) }}/></div>
       </div>
@@ -29,23 +30,64 @@ function AllocationExhibit({ rows }: { rows: Mix[] }) {
   </div>
 }
 
-export function SecuritiesReport({ analysis, accounts, research, outlook, portfolio }: { portfolio?: PortfolioExhibit; outlook?: Outlook; analysis?: AllocationAnalysis | null; accounts: ReportAccount[]; research: ResearchNote[] }) {
+function ExecutiveDiagnosis({ portfolio, outlook, analysis, createdAt, accounts }: { accounts: ReportAccount[]; portfolio?: PortfolioExhibit; outlook?: Outlook; analysis?: AllocationAnalysis | null; createdAt?: string }) {
+  const first = outlook?.available ? outlook.milestones?.[0] : undefined
+  const need = first?.need ?? outlook?.monthly_need
+  const gap = first?.shortfall
+  const coverage = first && need != null && need > 0 ? Math.max(0, Math.min(100, first.income / need * 100)) : null
+  const conclusion = !first ? '은퇴 계획을 입력하면 준비 수준을 진단할 수 있어요.'
+    : gap == null ? '목표 생활비를 입력해 연금과 비교해 보세요.'
+    : gap > 0 ? '은퇴 첫해 생활비를 채울 추가 자금이 필요해요.'
+    : (outlook?.short_years ?? 0) > 0 ? '은퇴 첫해는 충족하지만, 이후 부족한 해가 있어요.'
+    : outlook?.short_years === 0 ? '저장한 계획에서는 계산 기간의 생활비를 충족해요.' : '은퇴 첫해 생활비 충족 · 이후 시점도 확인하세요.'
+  const fallbackActions = accounts.filter(a => a.plan && a.plan.kind !== 'in_range').map(a => ({ timing: short(a.label), action: a.mode === 'buy_only' && !a.orders?.length ? '이번에 넣을 금액을 입력해 매수 수량을 확인하세요.' : a.plan?.line || '계좌별 주문 검토표에서 수량과 현재가를 확인하세요.' }))
+  if (first && (gap ?? 0) > 0) fallbackActions.unshift({ timing: '추가 저축', action: '아래 추가 저축 효과를 비교해 매월 더 넣을 수 있는 금액을 정하세요.' })
+  const actions = (analysis?.actions.length ? analysis.actions : fallbackActions).slice(0, 3)
+  const largestGap = portfolio?.mix.reduce<Mix | undefined>((largest, row) => !largest || Math.abs(row.current_pct - row.target_pct) > Math.abs(largest.current_pct - largest.target_pct) ? row : largest, undefined)
+  const allocationFact = largestGap && Math.abs(largestGap.current_pct - largestGap.target_pct) >= 0.1
+    ? `${largestGap.label.split(' (')[0]} 비중이 선택한 목표보다 ${Math.abs(largestGap.current_pct - largestGap.target_pct).toFixed(1)}%p ${largestGap.current_pct > largestGap.target_pct ? '많아요' : '적어요'}.`
+    : portfolio?.mix.length ? '등록 자산군의 비중이 선택한 목표와 거의 같아요.' : '연금 잔고를 등록하면 현재 배분을 비교할 수 있어요.'
+  const diagnosis = analysis?.assessments.find(a => a.dimension === '목표 적합성')
+  const metrics = [
+    { label: '현재 연금 자산', amount: portfolio?.total_value, note: portfolio ? `등록 ${portfolio.account_count}개 계좌 합계` : '연금 잔고 등록 필요' },
+    { label: '은퇴 후 예상 월 연금', amount: first?.income, note: first ? `${first.year}년 · 은퇴 첫해` : '은퇴 계획 입력 필요' },
+    { label: '월 생활비 부족분', amount: gap, note: need != null ? `목표 생활비 ${manwon(need)} / 월` : '목표 생활비 입력 필요' },
+  ]
+  return <section className="report-overview" aria-label="연금 종합 진단">
+    <header className="flex flex-wrap items-end justify-between gap-3 border-b-2 border-grey-900 pb-5">
+      <div><h4 className="text-3xl font-bold tracking-tight sm:text-4xl">연금 종합 진단</h4><p className="mt-2 text-xs text-grey-600">둘이서은퇴 · 연금 운용 보고서</p></div>
+      <div className="text-right text-xs text-grey-600">{createdAt && <time dateTime={createdAt}>{new Date(createdAt).toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul' })}</time>}<p className="mt-1">종합 진단 / 상세 분석</p></div>
+    </header>
+    <p className="my-6 max-w-prose text-xl font-semibold leading-snug tracking-tight">{conclusion}</p>
+    <dl className="report-metrics grid gap-5 border-y border-grey-200 py-5 sm:grid-cols-3 sm:gap-0">{metrics.map((m, i) => <div key={m.label} className={i ? 'grid grid-cols-[minmax(0,1fr)_auto] items-baseline sm:block sm:border-l sm:border-grey-200 sm:pl-5' : 'grid grid-cols-[minmax(0,1fr)_auto] items-baseline sm:block sm:pr-3'}><dt className="text-xs font-medium text-grey-700">{m.label}</dt><dd className={`mt-2 text-3xl font-bold tracking-tight tabular-nums ${i === 2 && (gap ?? 0) > 0 ? 'text-up' : ''}`}>{m.amount == null ? '미확인' : manwon(m.amount)}</dd><dd className="col-span-2 mt-2 text-xs text-grey-600">{m.note}</dd></div>)}</dl>
+    <div className="my-6 grid gap-7 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+      <section aria-label="전체 연금 배분"><h5 className="mb-4 text-base font-bold">연금 포트폴리오 진단</h5><AllocationExhibit rows={portfolio?.mix ?? []}/><p className="mt-4 text-xs leading-relaxed text-grey-600">목표는 계좌별 선택 전략의 잔고 가중 비중 · ETF 내부 구성 제외</p></section>
+      <aside className="border-t border-grey-200 pt-5 lg:border-l lg:border-t-0 lg:pl-6 lg:pt-0">
+        <h5 className="text-base font-bold">생활비를 얼마나 채울까요?</h5>
+        {coverage != null && first ? <div className="mt-4">
+          <div className="mb-2 flex justify-between gap-2 text-xs"><span>은퇴 첫해 연금</span><strong className="tabular-nums">{percent(coverage)} 충족</strong></div>
+          <div className="flex h-4 overflow-hidden bg-grey-200" role="img" aria-label={`은퇴 첫해 목표 생활비의 ${percent(coverage)}를 연금으로 충족`}><div className="h-full bg-grey-800" style={{ width: `${coverage}%` }}/></div>
+          <p className="mt-2 text-xs text-grey-600">세전 · 현재 돈 가치 · 저장한 계획 가정</p>
+        </div> : <p className="mt-3 text-sm text-grey-600">{outlook?.error || '은퇴 계획과 목표 생활비를 입력하면 비교할 수 있어요.'}</p>}
+        <div className="mt-5 border-t border-grey-200 pt-4"><h5 className="text-xs font-semibold text-grey-600">현재 배분의 의미</h5><p className="mt-2 text-sm leading-relaxed">{diagnosis?.judgment || allocationFact}</p>{!diagnosis && <p className="mt-2 text-xs text-grey-600">계산 결과 · AI 해석 생성 전</p>}{diagnosis && <details className="mt-2 text-xs text-grey-600"><summary className="cursor-pointer py-1">판단 근거와 조건</summary><p className="mt-2 leading-relaxed">{diagnosis.evidence}</p><p className="mt-2 leading-relaxed">{diagnosis.condition}</p></details>}</div>
+      </aside>
+    </div>
+    <section className="border-t-2 border-grey-900 pt-4" aria-label="우선 할 일"><h5 className="text-base font-bold">우선 할 일</h5>
+      {actions.length ? <ol className="mt-2 divide-y divide-grey-200">{actions.map((a, i) => <li key={`${a.timing}-${i}`} className="grid grid-cols-[24px_minmax(0,1fr)] items-baseline gap-2 py-3 sm:grid-cols-[24px_110px_minmax(0,1fr)]"><span className="text-xs font-semibold text-grey-600">{i + 1}.</span><span className="text-xs text-grey-600">{a.timing}</span><p className="col-start-2 text-sm font-semibold leading-relaxed sm:col-start-auto">{a.action}</p></li>)}</ol> : <p className="mt-3 text-sm text-grey-600">{!first ? '은퇴 계획의 수령 시점과 목표 생활비를 입력하세요.' : '상단의 종합 점검을 실행하면 계좌별 우선 행동을 정리해요.'}</p>}
+    </section>
+    <footer className="mt-5 flex flex-wrap justify-between gap-2 border-t border-grey-200 pt-3 text-xs text-grey-600"><span>잔고 기준 {portfolio?.dates.length ? portfolio.dates.join(' · ') : '미확인'}</span><span>연금만 계산 · 부동산·일반자산 인출 제외</span></footer>
+  </section>
+}
+
+export function SecuritiesReport({ analysis, accounts, research, outlook, portfolio, createdAt }: { createdAt?: string; portfolio?: PortfolioExhibit; outlook?: Outlook; analysis?: AllocationAnalysis | null; accounts: ReportAccount[]; research: ResearchNote[] }) {
   const [copyNotice, setCopyNotice] = useState('')
   const copy = async (ticker: string) => { try { await navigator.clipboard.writeText(ticker); setCopyNotice(`${ticker} 복사했어요.`) } catch { setCopyNotice('복사하지 못했어요. 코드를 직접 선택해 주세요.') } }
-  return <article className="mx-auto max-w-5xl border border-grey-200 bg-white px-4 py-6 text-grey-900 shadow-sm sm:px-10 sm:py-10">
-    <p className="mb-3 border-t-4 border-grey-900 pt-3 text-xs font-semibold tracking-widest text-grey-600">둘이서은퇴 · 연금 운용 보고서</p>
-    <header className="pb-2">
-      <h4 className="text-3xl font-bold leading-tight tracking-tight sm:text-4xl">연금 준비 현황</h4>
-    </header>
-    {!!portfolio?.mix.length && <section className="my-6 border-y border-grey-300 py-5">
-      <div className="mb-5 flex flex-wrap items-baseline justify-between gap-2"><h4 className="text-xl font-bold">연금 포트폴리오 진단</h4><span className="text-xs text-grey-600">등록 {portfolio.account_count}개 계좌 · {manwon(portfolio.total_value)}</span></div>
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-        <div><AllocationExhibit rows={portfolio.mix}/><p className="mt-4 text-xs text-grey-600">선택 전략을 계좌 잔고로 가중한 목표 · ETF 내부 구성 미반영</p><p className="mt-1 text-xs text-grey-600">잔고 기준 {portfolio.dates.join(' · ')}</p></div>
-        <aside className="space-y-4 border-t border-grey-200 pt-4 lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0">{analysis ? ['목표 적합성','집중·중복 위험','충격 대응'].map(d=>{const a=analysis.assessments.find(a=>a.dimension===d);return a && <div key={d}><h5 className="text-xs font-semibold text-grey-600">{d==='목표 적합성' ? '현재 배분의 의미' : d==='충격 대응' ? '더 적극적으로 투자한다면' : '쏠림과 분산'}</h5><p className="mt-1 text-sm font-semibold leading-relaxed">{a.judgment}</p><p className="mt-1 text-xs leading-relaxed text-grey-600">{a.condition}</p></div>}) : <p className="text-sm text-grey-600">AI 진단 생성 전 · 현재와 목표 비중을 확인하세요.</p>}</aside>
-      </div>
-    </section>}
+  return <article className="pension-report mx-auto w-full max-w-5xl border border-grey-200 bg-white px-4 py-6 text-grey-900 sm:px-10 sm:py-10">
+    <ExecutiveDiagnosis portfolio={portfolio} outlook={outlook} analysis={analysis} createdAt={createdAt} accounts={accounts}/>
+    <div className="report-detail mt-10 border-t border-grey-900 pt-6">
+    <header className="mb-6"><h4 className="text-2xl font-bold tracking-tight">은퇴 준비 상세 분석</h4><p className="mt-2 text-sm text-grey-600">시기별 생활비와 추가 납입 효과를 비교합니다.</p></header>
     <section className="my-5" aria-label="운용 선택지"><h4 className="text-base font-bold">더 적극적으로 준비하는 두 가지 방법</h4><div className="mt-3 grid gap-4 sm:grid-cols-2"><div className="border-t border-grey-300 pt-3"><h5 className="text-sm font-semibold">주식 비중 확대</h5><p className="mt-1 text-xs leading-relaxed text-grey-600">성장 기회를 늘리는 선택. 하락 때 감수할 손실과 생활비 자금을 먼저 확인해요.</p></div><div className="border-t border-grey-300 pt-3"><h5 className="text-sm font-semibold">현재 비중 유지 · 납입 확대</h5><p className="mt-1 text-xs leading-relaxed text-grey-600">추가 저축으로 투자금을 늘리는 선택. 아래 표에서 납입액별 효과를 비교해요.</p></div></div></section>
-    <RetirementOutlook value={outlook}/>
+    <RetirementOutlook value={outlook} compact/>
     {accounts.map((account, index) => <section key={account.label} className="mt-8 border-t border-grey-300 pt-5">
       <div className="mb-5 flex flex-wrap items-baseline justify-between gap-2">
         <h4 className="text-lg font-bold">{index + 1}. {short(account.label)}</h4>
@@ -82,5 +124,6 @@ export function SecuritiesReport({ analysis, accounts, research, outlook, portfo
       </section>
 
     {analysis && <details className="mt-5 border-t border-grey-300 pt-3"><summary className="cursor-pointer py-1 text-sm font-semibold">종합 평가 · 세 전략의 조건별 해석</summary><div className="mt-4"><AllocationReport analysis={analysis}/></div></details>}
+    </div>
   </article>
 }
