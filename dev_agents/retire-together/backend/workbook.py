@@ -32,6 +32,8 @@ from tools.parse_balance import HOLDING_COLUMNS
 from tools.strategy import CLASS_LABELS, load_strategy
 
 router = APIRouter(prefix="/api/workbook", tags=["workbook"])
+from backend.additional_pensions import router as additional_pensions_router
+router.include_router(additional_pensions_router)
 Owner = Literal["together", "me", "partner"]
 
 

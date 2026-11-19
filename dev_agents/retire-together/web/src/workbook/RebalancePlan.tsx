@@ -1,4 +1,5 @@
 import type React from 'react'
+import { AdditionalPensionCard, type AdditionalPension } from './AdditionalPensionCard'
 import { TradeJournal } from './TradeJournal'
 import { ReviewSettings, ReviewReport, usePensionReview } from './PensionReview'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -25,7 +26,6 @@ type Plan = { kind: 'blocked' | 'in_range' | 'move' | 'buy' | 'buy_needs_cash'; 
 type Order = { account_id?: string; ticker?: string | null; side: string; asset_class: string; ticker_name: string | null; qty: number | null; amount: number }
 type Pool = { pool_id: string; label: string; mode: string; strategy_id: string; total_value?: number; error?: string; plan?: Plan; orders?: Order[]
   accounts: { id: string; label: string }[]; new_cash_account?: string; last_decision?: { date: string; decision: string; reason: string } | null }
-type AdditionalPension = { id: string; name: string; account: string; amount: number; owner: string }
 type EmptyPool = { pool_id: string; label: string; mode: string; strategy_id: string }
 type Card = { id: string; short: string; ready: boolean; classes: { asset_class: string; label: string; target_pct: number }[] }
 type Preview = { name: string; strategy_id: string; current: Plan | null; proposed: Plan; notes: string[] }
@@ -129,11 +129,9 @@ export function RebalancePlan({ owner, live, rev, onChanged, onError, onRegister
         </div>
       </AccountLine>)}
 
-      {!!additional.length && <section aria-label="4층 추가연금 목록" className="border border-grey-200 bg-white px-4 py-3">
-        <div className="flex flex-wrap items-baseline justify-between gap-2"><h3 className="text-base font-bold">4층 추가연금 <span className="text-sm font-normal text-grey-600">{additional.length}건</span></h3><p className="text-sm font-semibold tabular-nums">등록 금액 {man(additional.reduce((sum, a) => sum + a.amount, 0))}</p></div>
-        <p className="mt-1 text-xs text-grey-600">연금 전체에 등록한 자산 · 매매용 계좌 묶음 미연결</p>
-        <ul className="mt-2 divide-y divide-grey-200">{additional.map(a => <li key={a.id} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-2"><div className="min-w-0"><p className="break-words text-sm font-semibold">{a.name}</p><p className="text-xs text-grey-600">{a.owner === 'me' ? '나' : a.owner === 'partner' ? '배우자' : '공동'}</p></div><b className="text-sm tabular-nums">{man(a.amount)}</b></li>)}</ul>
-        <a href="#pension" className="mt-2 inline-block text-xs font-semibold underline underline-offset-4">연금 전체에서 수령 방식 확인</a>
+      {!!additional.length && <section aria-label="4층 추가연금 목록" className="space-y-2">
+        <div className="flex flex-wrap items-baseline justify-between gap-2"><h3 className="text-base font-bold">4층 추가연금 <span className="text-sm font-normal text-grey-600">{additional.length}건</span></h3><span className="text-sm text-grey-600">등록 금액 {man(additional.reduce((sum, a) => sum + a.amount, 0))}</span></div>
+        {additional.map((asset, i) => <AdditionalPensionCard key={asset.id} asset={asset} index={pools.length + empty.length + i}/>)}
       </section>}
       <ReviewReport review={review}/>
 
