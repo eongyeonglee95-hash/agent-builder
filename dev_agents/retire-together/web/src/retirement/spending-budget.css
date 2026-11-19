@@ -48,3 +48,8 @@ body:has(.tower-budget-dialog[data-state="open"]) .wb-back {visibility:hidden}
   .tower-budget-footer {padding:12px 16px 16px}
   .tower-budget-actions {display:grid;grid-template-columns:auto minmax(0,1fr)}
 }
+
+.tower-budget-modes{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px}
+.tower-budget-modes button{min-height:44px}
+.tower-budget-direct{display:grid;gap:12px;font-size:var(--text-sm)}
+.tower-budget-direct small{font-size:var(--text-xs);color:var(--muted-foreground);line-height:1.6}

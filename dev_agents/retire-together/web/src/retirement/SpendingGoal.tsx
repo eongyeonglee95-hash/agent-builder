@@ -2,12 +2,12 @@ import { ArrowRight, Settings2, TrendingUp } from 'lucide-react'
 import type { Result } from '../workbook/retirement'
 
 export function SpendingGoal({ data, hidden, error, onGoal, onAssumptions, onTiming }: {
-  data: Result; hidden: boolean; error: string; onGoal: () => void; onAssumptions: () => void; onTiming: () => void
+  data: Result; hidden: boolean; error: string; onGoal?: () => void; onAssumptions: () => void; onTiming: () => void
 }) {
   const target = error ? null : data.spending_target
   const number = (won: number | null) => hidden ? '••••' : won == null ? '—' : (won / 10000).toLocaleString('ko-KR', { maximumFractionDigits: 1 })
   return <section className="tower-spending" aria-label="물가를 반영한 은퇴 생활비">
-    <div className="tower-spending-title"><div><span className="tower-eyebrow">같은 생활, 달라지는 금액</span><h2>지금의 한 달을, 은퇴 후에도.</h2></div><button onClick={onGoal}><Settings2 size={14}/>생활비 설정</button></div>
+    <div className="tower-spending-title"><div><span className="tower-eyebrow">같은 생활, 달라지는 금액</span><h2>지금의 한 달을, 은퇴 후에도.</h2></div>{onGoal && <button onClick={onGoal}><Settings2 size={14}/>생활비 설정</button>}</div>
     <div className="tower-spending-comparison">
       <div className="tower-spending-now"><span>오늘 기준 · 부부 월 생활비</span><strong data-testid="spending-today" data-won={hidden || error ? undefined : data.plan.monthly_need ?? undefined}>{number(error ? null : data.plan.monthly_need)}<small>만 원 / 월</small></strong><p>{data.base_year}년 현재가치로 설정한 목표</p></div>
       <div className="tower-spending-bridge"><button onClick={onAssumptions}><TrendingUp size={15}/>연 물가 {(data.assumptions.inflation * 100).toLocaleString('ko-KR', { maximumFractionDigits: 2 })}%</button><ArrowRight size={30}/><button onClick={onTiming}>{target ? target.years === 0 ? '올해 기준' : `${target.years}년 뒤` : '은퇴 시점 설정'}</button></div>
