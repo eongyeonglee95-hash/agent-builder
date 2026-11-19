@@ -156,7 +156,7 @@ test('보고서는 배분 도표와 은퇴 부족분을 탭 없이 함께 표시
   const report = page.getByRole('region', { name: '연금 운용 리포트', exact:true })
   await expect(report.getByRole('heading', { name: '연금 포트폴리오 진단' })).toBeVisible()
   await expect(report.getByRole('img', { name: '주식 현재 60.0%, 목표 50.0%' })).toBeVisible()
-  await expect(report.getByText('200만원', {exact:true})).toBeVisible()
+  await expect(report.getByText('목표 생활비 200만원 / 월', {exact:true})).toBeVisible()
   await expect(report.getByText('50만원', {exact:true}).first()).toBeVisible()
   await expect(report.getByRole('tab')).toHaveCount(0)
 })
