@@ -59,3 +59,29 @@ test('AI 해석과 우선 행동을 첫 장에 연결하고 근거는 펼쳐 읽
   await expect(summary.getByText(ai.assessments[0].condition)).toBeVisible()
   await expect(summary).not.toContainText('AI 해석 생성 전')
 })
+
+test('시점별 연금과 납입 효과는 같은 금액 축으로 비교하고 계좌 배분을 시각화한다', async ({ page }) => {
+  const payload = state({ ...outlook,
+    milestones: [outlook.milestones[0], { year: 2051, income: 1800000, need: 2000000, shortfall: 200000 }],
+    scenarios: [{ extra_monthly: 100000, income: 1600000, increase: 100000, shortfall: 400000, year: 2046 }],
+  })
+  await page.route('**/api/workbook/review', route => route.fulfill({ json: { ...payload, report: { ...payload.report, accounts: [{ label: '검증 연금', strategy: '선택 전략', mode: 'rebalance', findings: [], comparisons: [], plan: { kind: 'move', reduce_total: 0, increase_total: 0, leftover: 0, mix: payload.report.portfolio.mix } }] } } }))
+  await page.goto('/#rebalance')
+  const charts = page.getByRole('region', { name: '은퇴 생활비 시각 분석' })
+  await expect(charts.getByRole('img', { name: '월 연금 150만원 · 목표 생활비 200만원', exact: true })).toBeVisible()
+  await expect(charts.getByRole('img', { name: '월 연금 160만원 · 목표 생활비 200만원 · 추가 납입에 따른 증가 10만원', exact: true })).toBeVisible()
+  const widths = await charts.locator('[role="img"] > span:first-child').evaluateAll(nodes => nodes.map(n => (n as HTMLElement).style.width))
+  expect(widths).toEqual(['75%', '90%', '75%'])
+  await expect(page.getByRole('img', { name: '검증 연금 현재 배분: 주식 60.0%' })).toBeVisible()
+  await page.setViewportSize({ width: 360, height: 1000 })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(1)
+})
+
+test('이전 보고서에 리서치 필드가 없어도 같은 종합 진단 문서로 표시한다', async ({ page }) => {
+  const payload = state(outlook)
+  await page.route('**/api/workbook/review', route => route.fulfill({ json: { ...payload, report: { ...payload.report, research: undefined, ai_text: '이전에 저장한 진단 문장' } } }))
+  await page.goto('/#rebalance')
+  await expect(page.getByRole('region', { name: '연금 종합 진단', exact: true })).toBeVisible()
+  await page.getByText('이전에 저장한 진단', { exact: true }).click()
+  await expect(page.getByText('이전에 저장한 진단 문장', { exact: true })).toBeVisible()
+})
