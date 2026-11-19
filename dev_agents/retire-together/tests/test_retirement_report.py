@@ -36,3 +36,15 @@ def test_no_remaining_contribution_years_produces_no_scenarios():
     report = make(plan={'version': 1, 'me': {'retire_age': 60, 'private_start_age': 60}}, family={'me': {'age': 60}})
     assert report['available'] and not report['scenarios']
     assert '남은 기간' in report['scenario_note']
+
+
+def test_fourth_layer_is_shown_as_optional_income_not_silently_added():
+    from tools.retirement_report import summarize
+    result = {'assumptions': {}, 'projection': {'monthly_need': 100, 'summary': {'retire_year': 2046},
+        'rows': [{'year': 2046, 'retired': True, 'total_real': 60, 'extra_real': 30}]}}
+    milestone = summarize(result)['milestones'][0]
+    assert milestone['income'] == 60
+    assert milestone['shortfall'] == 40
+    assert milestone['extra_income'] == 30
+    assert milestone['income_with_extra'] == 90
+    assert milestone['shortfall_with_extra'] == 10

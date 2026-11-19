@@ -13,13 +13,16 @@ def summarize(result):
     if retired:
         selected.add(retired[-1]['year'])
     milestones = [{'year': row['year'], 'income': row['total_real'], 'need': need,
-                   'shortfall': max(0, need-row['total_real']) if need is not None else None}
+                   'shortfall': max(0, need-row['total_real']) if need is not None else None,
+                   'extra_income': row.get('extra_real', 0),
+                   'income_with_extra': row['total_real'] + row.get('extra_real', 0),
+                   'shortfall_with_extra': max(0, need-row['total_real']-row.get('extra_real', 0)) if need is not None else None}
                   for row in retired if row['year'] in selected]
     return {'available': True, 'milestones': milestones, 'assumptions': result['assumptions'],
             'monthly_need': need, 'retire_year': summary.get('retire_year'),
             'short_years': summary.get('short_years'), 'scenarios': [],
             'as_of': result.get('as_of'), 'missing': result.get('missing', []),
-            'basis': '저장한 은퇴 계획 · 국민연금·퇴직연금·개인연금·추가연금 · 세전·현재 돈 가치'}
+            'basis': '저장한 은퇴 계획 · 기본 합계는 1~3층 · 4층은 연금으로 나눠 받을 때의 비교 금액 · 세전·현재 돈 가치'}
 
 
 def build_outlook(plan, family, balances, year, rules, as_of, builder):

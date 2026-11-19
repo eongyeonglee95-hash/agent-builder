@@ -105,3 +105,23 @@ def test_check_for_outside_automation_is_read_only_and_says_what_to_do(client, t
     assert "테스트 연금: 주식 +70.0%p 벗어남 — 이번 달 납입으로 맞출 수 있어요" in d["message"]
     assert d["pools"][0]["worst"] == {"label": "주식", "deviation_pp": 70.0} and d["pools"][0]["orders"] == []
     assert (tmp_path / "DECISIONS.md").read_text(encoding="utf-8") == before
+
+
+def test_additional_pension_list_uses_layer_and_excludes_trading_duplicates(monkeypatch):
+    from backend.workbook import additional_pension_assets
+    rows = [
+        {'id': 'insurance', 'name': '연금보험', 'account': '연금보험', 'account_id': None, 'amount': 10000, 'owner': 'me', 'pocket': 'retirement'},
+        {'id': 'isa', 'name': 'ISA', 'account': 'ISA', 'account_id': 'isa', 'amount': 20000, 'owner': 'me', 'pocket': 'retirement'},
+        {'id': 'cash', 'name': '연금보험', 'account': '연금보험', 'amount': 30000, 'owner': 'me', 'pocket': 'cash'},
+        {'id': 'third', 'name': '연금저축', 'account': '연금저축', 'amount': 40000, 'owner': 'me', 'pocket': 'retirement'},
+    ]
+    scopes = []
+    def dashboard(owner):
+        scopes.append(owner)
+        return {'assets': rows if owner == 'me' else []}
+    monkeypatch.setattr(storage, 'dashboard', dashboard)
+    result = additional_pension_assets('me', {'isa': {'layer': 4}}, {'isa'})
+    assert [a['id'] for a in result] == ['insurance']
+    assert result[0]['amount'] == 10000
+    assert additional_pension_assets('partner', {}, set()) == []
+    assert scopes == ['me', 'partner']

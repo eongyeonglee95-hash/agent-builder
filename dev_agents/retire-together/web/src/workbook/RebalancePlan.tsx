@@ -25,6 +25,7 @@ type Plan = { kind: 'blocked' | 'in_range' | 'move' | 'buy' | 'buy_needs_cash'; 
 type Order = { account_id?: string; ticker?: string | null; side: string; asset_class: string; ticker_name: string | null; qty: number | null; amount: number }
 type Pool = { pool_id: string; label: string; mode: string; strategy_id: string; total_value?: number; error?: string; plan?: Plan; orders?: Order[]
   accounts: { id: string; label: string }[]; new_cash_account?: string; last_decision?: { date: string; decision: string; reason: string } | null }
+type AdditionalPension = { id: string; name: string; account: string; amount: number; owner: string }
 type EmptyPool = { pool_id: string; label: string; mode: string; strategy_id: string }
 type Card = { id: string; short: string; ready: boolean; classes: { asset_class: string; label: string; target_pct: number }[] }
 type Preview = { name: string; strategy_id: string; current: Plan | null; proposed: Plan; notes: string[] }
@@ -80,6 +81,7 @@ export function RebalancePlan({ owner, live, rev, onChanged, onError, onRegister
 }) {
   const review = usePensionReview()
   const [pools, setPools] = useState<Pool[] | null>(null)
+  const [additional, setAdditional] = useState<AdditionalPension[]>([])
   const [empty, setEmpty] = useState<EmptyPool[]>([])
   const [cards, setCards] = useState<Card[]>([])
   const [cash, setCash] = useState<Record<string, number>>({})
@@ -90,10 +92,10 @@ export function RebalancePlan({ owner, live, rev, onChanged, onError, onRegister
   const load = useCallback(async () => {
     try {
       const [rb, pf] = await Promise.all([
-        api<{ pools: Pool[]; empty_pools?: EmptyPool[] }>('/workbook/rebalance', 'POST', input),
+        api<{ pools: Pool[]; empty_pools?: EmptyPool[]; additional_pensions?: AdditionalPension[] }>('/workbook/rebalance', 'POST', input),
         api<{ strategies: Card[] }>('/workbook/portfolios'),
       ])
-      setPools(rb.pools); setEmpty(rb.empty_pools ?? []); setCards(pf.strategies)
+      setAdditional(rb.additional_pensions ?? []); setPools(rb.pools); setEmpty(rb.empty_pools ?? []); setCards(pf.strategies)
     } catch (e) { onError(e instanceof Error ? e.message : '리밸런싱을 계산하지 못했어요.') }
   }, [input, onError])
   useEffect(() => { load() }, [load, rev])
@@ -114,7 +116,7 @@ export function RebalancePlan({ owner, live, rev, onChanged, onError, onRegister
   // 2026-11-02 사용자 "빈 곳이 너무 많다, 더 넓게" → 폭 제한을 넓히고(1600px) 카드 안 여백·간격을 줄였다
   return <div className={embedded ? '' : 'min-h-0 flex-1 overflow-y-auto bg-grey-100'}>
     <div className={cn('flex w-full flex-col gap-3', !embedded && 'mx-auto max-w-[1600px] px-4 py-4 sm:px-6')}>
-      <ReviewSettings review={review} summary={!total ? '연금 계좌와 잔고를 등록해 주세요' : headline || (pools.length ? '목표 범위 안' : '잔고 등록 필요')}/>
+      <ReviewSettings review={review} summary={!total ? additional.length ? `4층 추가연금 ${additional.length}건` : '연금 계좌와 잔고를 등록해 주세요' : headline || (pools.length ? '목표 범위 안' : '잔고 등록 필요')}/>
 
       {pools.map((p, i) => <PoolCard key={p.pool_id} index={i} pool={p} cards={cards} input={input} busy={busy} cash={cash[p.pool_id] ?? 0}
         onCash={v => setCash(c => ({ ...c, [p.pool_id]: v }))} run={run} onError={onError} onCustom={() => setCustomOpen(true)} rule={ruleOf(p.strategy_id)}/>)}
@@ -127,6 +129,12 @@ export function RebalancePlan({ owner, live, rev, onChanged, onError, onRegister
         </div>
       </AccountLine>)}
 
+      {!!additional.length && <section aria-label="4층 추가연금 목록" className="border border-grey-200 bg-white px-4 py-3">
+        <div className="flex flex-wrap items-baseline justify-between gap-2"><h3 className="text-base font-bold">4층 추가연금 <span className="text-sm font-normal text-grey-600">{additional.length}건</span></h3><p className="text-sm font-semibold tabular-nums">등록 금액 {man(additional.reduce((sum, a) => sum + a.amount, 0))}</p></div>
+        <p className="mt-1 text-xs text-grey-600">연금 전체에 등록한 자산 · 매매용 계좌 묶음 미연결</p>
+        <ul className="mt-2 divide-y divide-grey-200">{additional.map(a => <li key={a.id} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-2"><div className="min-w-0"><p className="break-words text-sm font-semibold">{a.name}</p><p className="text-xs text-grey-600">{a.owner === 'me' ? '나' : a.owner === 'partner' ? '배우자' : '공동'}</p></div><b className="text-sm tabular-nums">{man(a.amount)}</b></li>)}</ul>
+        <a href="#pension" className="mt-2 inline-block text-xs font-semibold underline underline-offset-4">연금 전체에서 수령 방식 확인</a>
+      </section>}
       <ReviewReport review={review}/>
 
     </div>
