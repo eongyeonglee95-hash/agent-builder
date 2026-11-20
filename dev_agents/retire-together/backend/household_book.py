@@ -277,7 +277,13 @@ async def capture(month: Annotated[str, Form(pattern=r"^\d{4}-(0[1-9]|1[0-2])$")
             txs = await anyio.to_thread.run_sync(transcribe, paths, int(month[:4]))
         except Exception as e:
             raise HTTPException(502, f"캡처를 읽지 못했어요: {str(e)[:200]}") from None
-    rules = load_rules()
+    if not txs:
+        raise HTTPException(422, "캡처에서 결제 내역을 찾지 못했어요. 날짜·가맹점·금액이 보이는 화면인지 확인해 주세요.")
+    return {"month": month, "rows": _review(month, txs, load_rules())}
+
+
+def _review(month: str, txs: list[dict], rules: dict) -> list[dict]:
+    """읽은 내역 → 분류(전에 고른 것 > 가맹점 낱말)·그달 여부·이미 더한 내역 표시. 저장하지 않는다."""
     with storage.connection() as conn:
         _table(conn)
         learned: dict[str, str] = {}
@@ -290,9 +296,30 @@ async def capture(month: Annotated[str, Form(pattern=r"^\d{4}-(0[1-9]|1[0-2])$")
         cat, how = classify(t["merchant"], learned, rules)
         out.append({**t, "category": cat, "how": how, "in_month": t["date"][:7] == month,
                     "duplicate": tx_fingerprint(t["date"], t["merchant"], t["amount"]) in seen})
-    if not out:
-        raise HTTPException(422, "캡처에서 결제 내역을 찾지 못했어요. 날짜·가맹점·금액이 보이는 화면인지 확인해 주세요.")
-    return {"month": month, "rows": out}
+    return out
+
+
+STATEMENT_SUFFIXES = (".csv", ".xlsx", ".xlsm", ".xls")
+
+
+@router.post("/statement")
+async def statement(month: Annotated[str, Form(pattern=r"^\d{4}-(0[1-9]|1[0-2])$")], file: Annotated[UploadFile, File()]):
+    """카드사·은행 명세서 파일(엑셀·CSV) → 캡처와 같은 확인 표. AI 없이 코드로 읽는다. 저장하지 않는다(파일도 남기지 않는다)."""
+    from tools.household_statement import MAX_BYTES, parse_statement
+    name = file.filename or ""
+    if not name.lower().endswith(STATEMENT_SUFFIXES):
+        raise HTTPException(422, "엑셀(.xlsx·.xls)이나 CSV 파일만 올릴 수 있어요.")
+    data = await file.read(MAX_BYTES + 1)
+    if not data:
+        raise HTTPException(422, "파일이 비어 있어요.")
+    rules = load_rules()
+    try:
+        parsed = parse_statement(data, name, int(month[:4]), rules)
+    except ValueError as e:
+        raise HTTPException(422, str(e)) from None
+    if not parsed["rows"]:
+        raise HTTPException(422, "파일에서 결제 내역을 찾지 못했어요. 이용내역(승인·출금) 파일인지 확인해 주세요.")
+    return {"month": month, "rows": _review(month, parsed["rows"], rules), "skipped": parsed["skipped"]}
 
 
 @router.post("/{month}/capture")

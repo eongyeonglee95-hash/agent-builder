@@ -89,10 +89,8 @@ def _clean_ticker(v) -> str | None:
     return s
 
 
-def read_table(data: bytes, filename: str) -> pd.DataFrame:
-    """바이트 → 원본 표 (첫 시트, 머리글 행 자동 탐색). 지원: .csv .xlsx .xls(x) ."""
-    if len(data) > MAX_BYTES:
-        raise ValueError("파일이 5MB를 넘어요. 보유 내역만 담긴 파일을 올려 주세요.")
+def read_raw(data: bytes, filename: str) -> pd.DataFrame:
+    """바이트 → 머리글 없는 원본 칸 (첫 시트, 모든 칸 그대로). 지원: .csv .xlsx .xlsm .xls"""
     suffix = Path(filename).suffix.lower()
     if suffix == ".csv":
         for enc in ("utf-8-sig", "cp949", "euc-kr"):
@@ -118,6 +116,14 @@ def read_table(data: bytes, filename: str) -> pd.DataFrame:
         raise ValueError("CSV 또는 엑셀(.xlsx) 파일만 올릴 수 있어요.")
     if raw.empty:
         raise ValueError("파일이 비어 있어요.")
+    return raw
+
+
+def read_table(data: bytes, filename: str) -> pd.DataFrame:
+    """바이트 → 원본 표 (첫 시트, 머리글 행 자동 탐색). 지원: .csv .xlsx .xls(x) ."""
+    if len(data) > MAX_BYTES:
+        raise ValueError("파일이 5MB를 넘어요. 보유 내역만 담긴 파일을 올려 주세요.")
+    raw = read_raw(data, filename)
     # 머리글 행: 종목명 계열과 수량 계열이 함께 보이는 첫 행 (증권사 파일은 위에 제목 줄이 있다)
     header_idx = None
     for i in range(min(len(raw), 30)):

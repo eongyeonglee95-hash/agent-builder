@@ -24,7 +24,7 @@ PREFIXES = ('/api/assets', '/api/retirement', '/api/property', '/api/property-mo
             '/api/register', '/api/workbook', '/api/portfolio', '/api/rebalance')
 EXACT = {'/api/family', '/api/dashboard', '/api/strategies', '/api/portfolios', '/api/holdings'}
 PREVIEWS = {'/api/property-move/sentiment', '/api/property-move/discover', '/api/property-move/expert-news', '/api/rebalance/preview', '/api/workbook/rebalance', '/api/retirement/preview',
-            '/api/workbook/portfolio/preview', '/api/workbook/portfolio/alternatives', '/api/register/capture', '/api/household-book/capture',
+            '/api/workbook/portfolio/preview', '/api/workbook/portfolio/alternatives', '/api/register/capture', '/api/household-book/capture', '/api/household-book/statement',
             '/api/register/file', '/api/register/kiwoom'}
 
 

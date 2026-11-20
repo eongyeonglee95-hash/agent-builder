@@ -43,7 +43,7 @@ test('가계부: 흐름 + 1년 표 · 매달 고정 미리 채우기 · 칸 고�
     { date: `${ym(now)}-15`, merchant: '홍길동', amount: 50_000, category: null, how: null, in_month: true, duplicate: false },
     { date: `${ym(prev)}-30`, merchant: '스타벅스', amount: 5_000, category: 'dining', how: 'rule', in_month: false, duplicate: false },
   ] } }))
-  await page.getByRole('button', { name: `${m}월 캡처 올리기` }).click()
+  await page.getByRole('button', { name: `${m}월 내역 올리기` }).click()
   await page.locator('#hb-capture-files').setInputFiles({ name: 'a.png', mimeType: 'image/png', buffer: Buffer.from('x') })
   await expect(page.getByText('1건만 골라 주세요')).toBeVisible()
   await expect(page.getByRole('button', { name: '1건을 골라야 더할 수 있어요' })).toBeDisabled()
@@ -58,4 +58,22 @@ test('가계부: 흐름 + 1년 표 · 매달 고정 미리 채우기 · 칸 고�
   await page.screenshot({ path: testInfo.outputPath('household-390.png'), fullPage: true })
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
   expect(errors).toEqual([])
+})
+
+test('가계부: 카드사 명세서 CSV를 코드로 읽어 분류하고 더한다', async ({ page }, testInfo) => {
+  const m = now.getMonth() + 1, d = (day: number) => `${now.getFullYear()}.${String(m).padStart(2, '0')}.${String(day).padStart(2, '0')}`
+  const csv = ['카드 이용내역', '이용일자,가맹점명,이용금액,취소여부', `${d(3)},이마트 성수점,"84,320",`, `${d(5)},스타벅스 서울숲,"5,600",`,
+    `${d(6)},알수없는상점,"12,000",`, `${d(7)},쿠팡,"32,000",취소`].join('\n')
+  await page.goto('/#household')
+  await page.getByRole('button', { name: `${m}월 내역 올리기` }).click()
+  await page.locator('#hb-capture-files').setInputFiles({ name: '카드.csv', mimeType: 'text/csv', buffer: Buffer.from(csv) })
+  const panel = page.getByRole('region', { name: `${m}월 카드·은행 내역` })
+  await expect(panel).toContainText('3건')
+  await expect(panel).toContainText('취소·입금·합계 1줄은 뺐어요')
+  await expect(panel.getByLabel('이마트 성수점 분류')).toHaveValue('groceries')
+  await expect(panel.getByLabel('스타벅스 서울숲 분류')).toHaveValue('dining')
+  await panel.getByLabel('알수없는상점 분류').selectOption({ label: '쇼핑·생활용품' })
+  await page.screenshot({ path: testInfo.outputPath('household-statement-1440.png'), fullPage: true })
+  await panel.getByRole('button', { name: `${m}월 칸에 더하기` }).click()
+  await expect(panel).toBeHidden()
 })

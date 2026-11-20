@@ -58,7 +58,7 @@ export function HouseholdBook({ hidden }: { hidden: boolean }) {
       </div>
       <div className="hb-actions">
         <Button variant="outline" size="sm" aria-pressed={panel === 'fixed'} onClick={() => setPanel(panel === 'fixed' ? null : 'fixed')}><Pin className="size-3.5"/>매달 고정 항목</Button>
-        {lastMonth > 0 && <Button size="sm" aria-pressed={panel === 'capture'} onClick={() => setPanel(panel === 'capture' ? null : 'capture')}><ImageUp className="size-3.5"/>{m}월 캡처 올리기</Button>}
+        {lastMonth > 0 && <Button size="sm" aria-pressed={panel === 'capture'} onClick={() => setPanel(panel === 'capture' ? null : 'capture')}><ImageUp className="size-3.5"/>{m}월 내역 올리기</Button>}
       </div>
     </div>
 
@@ -199,20 +199,34 @@ function FixedPanel({ book, h, onClose, onSaved }: { book: Book; h: { hidden: bo
   </section>
 }
 
+const STATEMENT = /\.(csv|xlsx|xlsm|xls)$/i
+
 function CapturePanel({ book, month, label, categories, bigLabel, onClose, onSaved }: { book: Book; month: string; label: string; categories: Record<string, Group>; bigLabel: string; onClose: () => void; onSaved: () => void }) {
   const [rows, setRows] = useState<Tx[] | null>(null)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   const options: [string, string][] = [...Object.values(categories).flatMap(g => g.items.map(it => [it.id, it.label] as [string, string])), ['big', bigLabel], ['skip', '가계부에 안 넣기']]
+  const [skipped, setSkipped] = useState(0)
+  async function post(path: string, form: FormData, fallback: string): Promise<{ rows: Tx[]; skipped?: number }> {
+    const r = await apiFetch(path, { method: 'POST', body: form })
+    const body = await r.json().catch(() => ({}))
+    if (!r.ok) throw new Error(typeof body.detail === 'string' ? body.detail : fallback)
+    return body
+  }
+  // 캡처(이미지)는 한 번에 읽고, 명세서 파일(엑셀·CSV)은 파일마다 코드로 읽어 한 표로 합친다
   async function read(files: FileList | null) {
     if (!files?.length) return
-    const form = new FormData(); form.append('month', month); [...files].forEach(f => form.append('images', f))
-    setBusy(true); setErr(''); setRows(null)
+    const all = [...files], sheets = all.filter(f => STATEMENT.test(f.name)), images = all.filter(f => !STATEMENT.test(f.name))
+    setBusy(true); setErr(''); setRows(null); setSkipped(0)
     try {
-      const r = await apiFetch('/api/household-book/capture', { method: 'POST', body: form })
-      const body = await r.json().catch(() => ({}))
-      if (!r.ok) throw new Error(typeof body.detail === 'string' ? body.detail : '캡처를 읽지 못했어요. 다시 시도해 주세요.')
-      setRows(body.rows)
+      const got: Tx[] = []; let skip = 0
+      if (images.length) { const form = new FormData(); form.append('month', month); images.forEach(f => form.append('images', f)); got.push(...(await post('/api/household-book/capture', form, '캡처를 읽지 못했어요. 다시 시도해 주세요.')).rows) }
+      for (const f of sheets) {
+        const form = new FormData(); form.append('month', month); form.append('file', f)
+        const body = await post('/api/household-book/statement', form, `${f.name}을 읽지 못했어요.`)
+        got.push(...body.rows); skip += body.skipped ?? 0
+      }
+      setRows(got); setSkipped(skip)
     } catch (e) { setErr((e as Error).message) } finally { setBusy(false) }
   }
   const use = (rows ?? []).filter(r => r.in_month && !r.duplicate)
@@ -225,12 +239,12 @@ function CapturePanel({ book, month, label, categories, bigLabel, onClose, onSav
     } catch (e) { setErr((e as Error).message) } finally { setBusy(false) }
   }
   const other = (rows ?? []).length - use.length
-  return <section className="hb-panel hb-side" aria-label={`${label} 캡처`}>
-    <div className="hb-panel-head"><h2>{label} 캡처 올리기</h2><span>카드·은행 앱 이용내역 화면. 분류는 전에 고른 것과 가맹점 이름으로 먼저 채워요</span></div>
+  return <section className="hb-panel hb-side" aria-label={`${label} 카드·은행 내역`}>
+    <div className="hb-panel-head"><h2>{label} 카드·은행 내역 올리기</h2><span>앱 이용내역 캡처 또는 카드사·은행에서 내려받은 엑셀·CSV. 분류는 전에 고른 것과 가맹점 이름으로 먼저 채워요</span></div>
     <div className="hb-pad hb-upload">
-      <label className="hb-file" htmlFor="hb-capture-files"><ImageUp className="size-4"/>{busy && !rows ? '읽는 중…' : '캡처 고르기 (여러 장)'}</label>
-      <input id="hb-capture-files" type="file" accept="image/png,image/jpeg,image/webp" multiple hidden disabled={busy} onChange={e => read(e.target.files)}/>
-      {rows && <span><b>{use.length}건</b> 읽었어요 · {ask ? <b className="hb-ask-count">{ask}건만 골라 주세요</b> : '모두 분류됐어요'}{other > 0 && ` · 다른 달·이미 더한 내역 ${other}건은 뺐어요`}</span>}
+      <label className="hb-file" htmlFor="hb-capture-files"><ImageUp className="size-4"/>{busy && !rows ? '읽는 중…' : '캡처·명세서 파일 고르기 (여러 개)'}</label>
+      <input id="hb-capture-files" type="file" accept="image/png,image/jpeg,image/webp,.csv,.xlsx,.xlsm,.xls" multiple hidden disabled={busy} onChange={e => read(e.target.files)}/>
+      {rows && <span><b>{use.length}건</b> 읽었어요 · {ask ? <b className="hb-ask-count">{ask}건만 골라 주세요</b> : '모두 분류됐어요'}{other > 0 && ` · 다른 달·이미 더한 내역 ${other}건은 뺐어요`}{skipped > 0 && ` · 취소·입금·합계 ${skipped}줄은 뺐어요`}</span>}
     </div>
     {rows && use.length > 0 && <div className="hb-scroll"><table className="hb-table">
       <thead><tr><th>가맹점</th><th>날짜</th><th>금액</th><th className="hb-left">분류</th></tr></thead>
