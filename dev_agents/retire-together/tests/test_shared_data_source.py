@@ -30,7 +30,7 @@ def test_large_observations_preserved_without_blocking_household_migration(clien
         restored.deserialize(snapshot)
         names = {r[0] for r in restored.execute("SELECT name FROM sqlite_master")}
         assert "property_obs" not in names
-        assert set(shared_data_source.FINANCIAL_TABLES) <= names
+        assert set(shared_data_source.FINANCIAL_TABLES) - {"household_book"} <= names  # 가계부는 적은 뒤에 생긴다
         assert "history_asset" in names
         assert restored.execute("SELECT event_id FROM asset_history").fetchall() == [(9,)]
         assert restored.execute("SELECT seq FROM sqlite_sequence WHERE name='asset_history'").fetchone() == (19,)

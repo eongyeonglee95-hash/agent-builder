@@ -113,3 +113,22 @@ def test_hold_record_roundtrip_is_shared_and_does_not_write_local_journal(client
     assert response.status_code == 200, response.text
     assert client.get('/api/workbook/journal?pool_id=shared').json()['entries'][0]['note'] == body['note']
     assert not trade_journal.DB_PATH.exists()
+
+
+def test_household_book_month_is_saved_in_sheet_not_local(client, data_env):
+    from tests.test_household_book import entry
+    initial, _ = migrate(client, data_env)
+    original = storage.DB_PATH.read_bytes()
+    view = client.get('/api/household-book', params={'year': 2026, 'month': 10})
+    assert view.status_code == 200, view.text
+    assert view.json()['selected']['recorded'] is False
+    saved = client.put('/api/household-book/2026-10', json=entry() | {'version': 0}, headers=headers(data_env, view))
+    assert saved.status_code == 200, saved.text
+    record = find(client.get('/api/shared-data').json()['state'], 'household_month', '2026-10')
+    assert record['member_id'] == 'household' and record['payload']['version'] == 1
+    assert record['payload']['spend']['groceries'] == 1_180_000
+    again = client.get('/api/household-book', params={'year': 2026, 'month': 10}).json()
+    assert again['selected']['recorded'] and again['selected']['summary']['income'] == 9_850_000
+    stale = client.put('/api/household-book/2026-10', json=entry() | {'version': 0}, headers=headers(data_env, view))
+    assert stale.status_code == 409
+    assert storage.DB_PATH.read_bytes() == original

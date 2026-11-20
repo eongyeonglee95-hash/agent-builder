@@ -20,7 +20,7 @@ from backend.shared_data_schema import fingerprint, key, validate
 from backend.shared_data_source import local_sources
 from tools.data_context import workspace
 
-PREFIXES = ('/api/assets', '/api/retirement', '/api/property', '/api/property-move',
+PREFIXES = ('/api/assets', '/api/retirement', '/api/property', '/api/property-move', '/api/household-book',
             '/api/register', '/api/workbook', '/api/portfolio', '/api/rebalance')
 EXACT = {'/api/family', '/api/dashboard', '/api/strategies', '/api/portfolios', '/api/holdings'}
 PREVIEWS = {'/api/property-move/sentiment', '/api/property-move/discover', '/api/property-move/expert-news', '/api/rebalance/preview', '/api/workbook/rebalance', '/api/retirement/preview',
@@ -80,7 +80,7 @@ class SharedWorkspace:
             workspace.reset(token)
 
     def seed(self):
-        from backend import storage, retirement, property as homes, property_move
+        from backend import storage, retirement, property as homes, property_move, household_book
         from tools.decisions import SECTION
         records, members = self.state['records'], self.service.members
         aliases = {v: k for k, v in members.items()}
@@ -96,6 +96,7 @@ class SharedWorkspace:
             retirement._table(db)
             homes._table(db)
             property_move._table(db)
+            household_book._table(db)
             db.execute('INSERT INTO family VALUES (1,?,?)', (json.dumps(family), self.version))
             if grouped['retirement'] or grouped['pension']:
                 plan = dict(next(iter(grouped['retirement']), {}).get('payload', {}))
@@ -124,6 +125,10 @@ class SharedWorkspace:
                 version = p.pop('version', 0)
                 owner = 'together' if r['member_id'] == 'household' else aliases[r['member_id']]
                 db.execute('INSERT INTO property_move VALUES (?,?,?,?)', (owner, json.dumps(p), version, ''))
+            for r in grouped['household_month']:
+                p = deepcopy(r['payload'])
+                version = p.pop('version')
+                db.execute('INSERT INTO household_book VALUES (?,?,?,?)', (r['id'], json.dumps(p, ensure_ascii=False), version, ''))
             for r in grouped['property_track']:
                 p = r['payload']
                 owner = 'together' if r['member_id'] == 'household' else aliases[r['member_id']]

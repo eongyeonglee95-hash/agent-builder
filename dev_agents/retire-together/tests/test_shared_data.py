@@ -200,7 +200,7 @@ def test_inventory_backup_migration_two_people_and_relogin(client, setup, data_e
     legacy = deepcopy(env.fake.files[SID]["tabs"])
     p = preview(client, env)
     assert env.fake.writes == 0 and p["requires_confirmation"]
-    assert all(n > 0 for k, n in p["local"]["counts"].items() if not k.startswith("additional_") and k != "trade_record")
+    assert all(n > 0 for k, n in p["local"]["counts"].items() if not k.startswith("additional_") and k not in {"trade_record", "household_month"})
     backup = env.data_store.load_backup(p["preview_id"])
     with sqlite3.connect(":memory:") as restored, sqlite3.connect(storage.DB_PATH) as source:
         restored.deserialize(base64.b64decode(backup["archive"]["financial.sqlite3"]))

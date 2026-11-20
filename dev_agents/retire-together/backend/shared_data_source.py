@@ -20,6 +20,7 @@ from tools.sheets import ASSET_TAB, HOLDING_TAB
 FINANCIAL_TABLES = (
     "family", "assets", "asset_history", "retirement_plan",
     "property_detail", "property_move", "property_track", "additional_pension_plans", "additional_pension_payments",
+    "household_book",
 )
 MAX_FINANCIAL_SNAPSHOT_BYTES = 100_000_000
 
@@ -175,6 +176,8 @@ def local_sources(members):
         for r in table("property_move"):
             scope = "household" if r["owner"] == "together" else members[r["owner"]]
             rows.append(record("property_plan", scope, scope, {**json.loads(r["payload"]), "version": r["version"]}))
+        for r in table("household_book"):
+            rows.append(record("household_month", r["month"], "household", {**json.loads(r["payload"]), "version": r["version"]}))
         for r in table("property_track"):
             scope = "household" if r["owner"] == "together" else members[r["owner"]]
             rows.append(record("property_track", f'{scope}:{r["candidate_id"]}:{r["day"]}', scope,

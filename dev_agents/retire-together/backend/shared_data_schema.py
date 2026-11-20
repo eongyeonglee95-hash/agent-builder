@@ -16,7 +16,7 @@ from pydantic import Field, TypeAdapter, ValidationError
 from backend.storage import AssetInput, InputModel, Money, Person
 
 KINDS = {"profile", "family_goal", "pension", "retirement", "asset", "account", "pool",
-         "holding", "trade_record", "additional_plan", "additional_payment", "property_detail", "property_plan", "property_track", "decision", "rules"}
+         "holding", "trade_record", "additional_plan", "additional_payment", "property_detail", "property_plan", "property_track", "household_month", "decision", "rules"}
 IMMUTABLE = {"decision", "rules"}
 
 
@@ -106,7 +106,7 @@ def validate(state, members):
                 fail()
             if kind in {"profile", "pension", "account", "holding"} and member not in people:
                 fail()
-            if kind in {"family_goal", "retirement", "decision", "rules"} and member != "household":
+            if kind in {"family_goal", "retirement", "household_month", "decision", "rules"} and member != "household":
                 fail()
             if kind in {"profile", "pension"}:
                 if rid != member:
@@ -187,6 +187,12 @@ def validate(state, members):
                         fail()
                 if "costs_complete" in e and type(e["costs_complete"]) is not bool:
                     fail()
+            elif kind == "household_month":
+                import re
+                from backend.household_book import MonthInput
+                if not re.fullmatch(r"\d{4}-(0[1-9]|1[0-2])", rid) or type(p.get("version")) is not int or p["version"] < 1:
+                    fail()
+                r["payload"] = {**MonthInput.model_validate(p).model_dump(mode="json", exclude={"version"}), "version": p["version"]}
             elif kind == "trade_record":
                 from backend.trade_journal import Entry
                 if set(p) != {"input", "record"}:

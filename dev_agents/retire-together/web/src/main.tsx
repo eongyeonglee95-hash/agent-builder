@@ -11,7 +11,7 @@ import { DesignSystem } from './design/DesignSystem'
 import './theme.css'   // 예전 화면 CSS도 이 안에서 legacy 레이어로 불러온다
 
 // 2026-11-07 사용자 지정: 첫 화면은 메인. 표는 명시적인 #sheet-* 주소로 연다.
-const CLASSIC = ['home', 'assets', 'pension', 'stocks', 'property', 'rebalance']
+const CLASSIC = ['home', 'assets', 'pension', 'stocks', 'property', 'rebalance', 'household']
 const isClassic = () => !new URLSearchParams(location.search).has('sheet_connection') && (!location.hash || CLASSIC.includes(location.hash.slice(1)))
 const isDesign = () => location.hash.startsWith('#design')   // 디자인 견본 — docs/DESIGN_SYSTEM.md
 

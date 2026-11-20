@@ -1,0 +1,30 @@
+# 가계부 분류 — 사용자 결정 2026-11-20 (docs/DECISIONS.md)
+# 월 합계로 적는다(건별 기록 아님). 수입은 사람별, 지출은 가구 합계.
+# 쓴 돈 = 고정비 + 생활비 + 큰 지출. 모은 돈 = 연금 납입 + 대출 원금 + 현금 주머니(남은 돈).
+# id는 저장 키라 바꾸지 않는다. label은 화면 이름이라 바꿔도 된다.
+spend:
+  fixed:
+    label: 고정비
+    items:
+      - {id: maintenance, label: 관리비}
+      - {id: insurance, label: 보험}
+      - {id: telecom, label: 통신}
+      - {id: loan_interest, label: 대출이자}
+      - {id: fixed_other, label: 기타 고정}
+  life:
+    label: 생활비
+    items:
+      - {id: groceries, label: 식비·장보기}
+      - {id: dining, label: 외식·카페}
+      - {id: transport, label: 교통·차량}
+      - {id: shopping, label: 쇼핑·생활용품}
+      - {id: health, label: 병원·약}
+      - {id: gifts, label: 경조사·선물}
+      - {id: life_other, label: 기타 생활}
+# 큰 지출은 이름과 금액을 그달마다 직접 적는다(여행·수리·명절 등).
+big_label: 큰 지출
+saving:
+  - {id: pension, label: 연금 납입}
+  - {id: principal, label: 대출 원금}
+# 지출 항목이 올해 월평균보다 이 비율 넘게 많으면 표시한다.
+over_average_ratio: 0.15

@@ -1,5 +1,5 @@
 export type Owner = 'together' | 'me' | 'partner'
-export type Page = 'home' | 'assets' | 'pension' | 'stocks' | 'property' | 'rebalance'
+export type Page = 'home' | 'assets' | 'pension' | 'stocks' | 'property' | 'rebalance' | 'household'
 export type AssetClass = 'stock' | 'long_bond' | 'mid_bond' | 'gold' | 'commodity' | 'cash' | 'property' | 'mixed' | 'debt'
 export type Asset = { pension_layer?: 2 | 3 | 4 | null; pension_layer_effective?: number | null; id: string; name: string; account: string; owner: 'me' | 'partner' | 'joint'; pocket: 'retirement' | 'cash' | 'property' | 'debt'; assetClass: AssetClass; amount: number; as_of?: string; version?: number; updated_at?: string; parent_id?: string | null; valuation_source?: 'total' | 'details'; share_percent?: number | null; full_amount?: number; scoped_owner?: string; source?: string; account_id?: string }
 export type Person = { name: string; age: number | null; gender: 'female' | 'male' | 'unspecified'; role: 'wife' | 'husband' | 'partner' | null }

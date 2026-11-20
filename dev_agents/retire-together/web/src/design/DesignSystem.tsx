@@ -20,6 +20,8 @@ import { MixRows, StrategyAllocation } from '@/workbook/RebalancePlan'
 import { classInfo } from '../model'
 import '../property-move/sentiment.css'
 import { day, manwon, pct, pp, shares, won } from '@/lib/format'
+import { Sankey, UseList, type Flow } from '../household/HouseholdBook'
+const HB_SAMPLE: Flow = { sources: [{ id: 'me', label: '나', amount: 5_410_000 }, { id: 'partner', label: '배우자', amount: 4_260_000 }], uses: [{ id: 'fixed', label: '고정비', amount: 1_980_000, kind: 'spend', share: 20.5 }, { id: 'life', label: '생활비', amount: 2_600_000, kind: 'spend', share: 26.9 }, { id: 'pension', label: '연금 납입', amount: 1_000_000, kind: 'saving', share: 10.3 }, { id: 'principal', label: '대출 원금', amount: 600_000, kind: 'saving', share: 6.2 }, { id: 'cash', label: '현금 주머니', amount: 3_490_000, kind: 'saving', share: 36.1 }], shortfall: 0 }
 
 // 디자인 견본 — 주소 #design. 문서는 docs/DESIGN_SYSTEM.md. 여기 있는 것은 모두 실제 컴포넌트·토큰이라 바꾸면 앱 전체에 같이 바뀐다.
 // 새 컴포넌트·패턴을 만들면 이 페이지에도 한 칸 추가한다. 숫자는 모두 가짜 예시.
@@ -224,6 +226,7 @@ export function DesignSystem() {
         </div>
       </Section>
 
+      <Section id="household-flow" title="돈의 흐름" note="가계부. 수입원 → 우리 집 수입 → 쓴 돈·갚은 돈·모은 돈. 좁은 화면에서는 같은 숫자를 막대 목록으로 보여 줘요. 금액은 견본입니다."><div className="hb"><div className="hb-panel"><div className="hb-scroll hb-wide"><Sankey flow={HB_SAMPLE} income={9_670_000} h={{ hidden: false }}/></div><UseList flow={HB_SAMPLE} h={{ hidden: false }}/></div></div></Section>
       <Section id="sentiment-history" title="심리·금리 히트맵" note="합성 견본. 색과 부호로 방향을 표시하고 자료 없음은 0과 구분해요.">
         <div className="sentiment-dashboard sentiment-matrix"><table><thead><tr><th>지표</th><th>상승</th><th>하락</th><th>보합</th><th>결측</th></tr></thead><tbody><tr><th>전주 대비 · 지수</th><td className="sentiment-cell sentiment-rise">+1.00p</td><td className="sentiment-cell sentiment-fall">−1.00p</td><td className="sentiment-cell sentiment-flat">0.00p</td><td className="sentiment-cell sentiment-missing">—</td></tr></tbody></table></div>
       </Section>

@@ -188,6 +188,18 @@ DECISIONS 2026-11-02.
 ### UI-SHADE · P2 · 자산군 묶음 음영
 - [ ] 묶음 영역에 그 자산군 색의 아주 옅은 바탕, 다크 모드 대비 유지(SCREEN_REFERENCE)
 
+## 6-1. 가계부
+
+파일: `household/HouseholdBook.tsx`·`household.css`, `backend/household_book.py`, `tools/household_book.py`, `rules/household_book.yaml`, `e2e/household-book.spec.ts`
+
+### HB-01 · P1 · 가계부 — 월 합계 적기 · 돈의 흐름 (DECISIONS 2026-11-20)
+- [x] 1. 분류 YAML·계산(월 요약·흐름·연 평균·항목별 평균 대비)·로컬 저장 API·화면(월별/연별, 흐름·지출·수입 탭, 지난달 값 미리 채우기)·브라우저 테스트
+- [ ] 2. 급여명세서 사진 → 지급액·공제·실수령 읽기(등록의 사진 읽기 재사용) → 확인 후 수입 줄로 저장. 공제 안 국민연금·퇴직연금 납입은 연금 화면과 연결
+- [ ] 3. 카드사·은행 명세서 파일(엑셀·CSV) 올리기 → 가맹점별 분류(한 번 고르면 다음 달부터 자동) → 분류 안 된 건만 고르기 → 항목별 월 합계로 저장
+- [ ] 4. 은퇴 계획 연결: 최근 12개월 평균 쓴 돈을 목표 생활비 옆에 보여 주고, 바꿀지는 사용자가 정함
+- [x] 5. 공유(웹) 모드: 기록 종류 `household_month`(가구 공동)를 공유 시트 스키마·이전 원본·`shared_workspace` 씨앗에 추가
+- [ ] 6. 엑셀 워크북 `가계부` 시트 탭(읽기 표) — 필요하면
+
 ## 7. Agent (대화)
 
 파일: `agent/*`, Agent 도구(`tools/`), `tests/test_agent*`
