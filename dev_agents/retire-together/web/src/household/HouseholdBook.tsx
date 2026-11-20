@@ -1,105 +1,95 @@
-// 가계부 (HB-01, 2026-11-20 사용자 시안 확정) — 달마다 합계로 적고, 돈이 어디로 갔는지 흐름으로 본다.
-// 계산은 서버(tools/household_book.py). 화면은 받은 숫자를 그리기만 한다.
-import { useCallback, useEffect, useState } from 'react'
-import { ChevronLeft, ChevronRight, Pencil, Plus, X } from 'lucide-react'
+// 가계부 (HB-01 → HB-02, 2026-11-20 사용자 시안 확정) — 위에는 고른 달의 돈의 흐름, 아래는 1년 표.
+// 표 칸을 눌러 바로 고치고, '매달 고정' 칸은 새 달에 미리 채워지고, 카드·은행 캡처는 분류해서 더한다.
+// 계산·분류는 서버(tools/household_book.py). 화면은 받은 숫자를 그리기만 한다.
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { ChevronLeft, ChevronRight, ImageUp, Pin } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { api } from '../local-data'
-import { manwon, won, pct } from '../lib/format'
+import { apiFetch } from '../auth/session'
+import { manwon, pct, MASK, MINUS } from '../lib/format'
 import './household.css'
 
 type Who = 'me' | 'partner' | 'joint'
-type IncomeLine = { who: Who; kind: '월급' | '상여' | '기타'; label?: string; gross: number | null; net: number }
-type Entry = { income: IncomeLine[]; spend: Record<string, number>; big: { name: string; amount: number }[]; saving: Record<string, number> }
 type Summary = { income: number; income_by_who: Record<Who, number>; spend: number; spend_groups: Record<string, number>; saving: Record<string, number>; cash: number; kept: number; kept_rate: number | null }
 export type Flow = { sources: { id: Who; label: string; amount: number }[]; uses: { id: string; label: string; amount: number; kind: 'spend' | 'saving'; share: number | null }[]; shortfall: number }
-type CompareRow = { id: string; group: string; label: string; amount: number; average: number | null; diff: number | null; over: boolean }
+type Row = { key: string; label: string; kind: 'group' | 'item' | 'group-item' | 'total'; fixed?: boolean; values: Record<string, number>; average: number | null; auto?: number[]; locked?: number[] }
 type Group = { label: string; items: { id: string; label: string }[] }
 type Book = {
-  categories: Record<string, Group>; big_label: string; saving: { id: string; label: string }[]
-  months: Record<string, Summary>
+  categories: Record<string, Group>; big_label: string
   next_open: string | null
-  year: { recorded: number; total: Summary; average: Record<'income' | 'spend' | 'cash' | 'kept', number | null>; category_average: Record<string, number | null>; category_total: Record<string, number>; group_average: Record<string, number | null>; flow: Flow | null }
-  selected: { month: number; recorded: boolean; entry: Entry; version: number; summary: Summary; flow: Flow; compare: CompareRow[]; previous: Summary | null; previous_entry: Entry | null; change: Record<'income' | 'spend' | 'kept', number> | null; spend_vs_average: number | null }
+  table: { months: number[]; preview: number | null; versions: Record<string, number>; rows: Row[] }
+  fixed: { month: string | null; version: number; keys: string[]; amounts: Record<string, number>; suggest: string[] }
+  selected: { month: number; recorded: boolean; preview: boolean; version: number; summary: Summary; flow: Flow; change: Record<'income' | 'spend' | 'kept', number> | null; spend_vs_average: number | null }
 }
-type Tab = 'flow' | 'spend' | 'income'
+type Tx = { date: string; merchant: string; amount: number; category: string | null; how: 'learned' | 'rule' | null; in_month: boolean; duplicate: boolean }
 
-const WHO: Record<Who, string> = { me: '나', partner: '배우자', joint: '함께' }
 const USE_COLOR: Record<string, string> = { fixed: 'var(--hb-fixed)', life: 'var(--hb-life)', big: 'var(--hb-big)', principal: 'var(--hb-debt)', pension: 'var(--hb-pension)', cash: 'var(--hb-cash)' }
 const today = new Date()
+const ym = (y: number, m: number) => `${y}-${String(m).padStart(2, '0')}`
+/** 표 칸: 만원 단위. 1만원 아래는 소수 한 자리 */
+const cell = (v: number | undefined, hidden: boolean) => v === undefined ? '' : hidden ? MASK : v === 0 ? '–'
+  : `${v < 0 ? MINUS : ''}${Math.abs(v) < 100_000 ? (Math.abs(v) / 10_000).toLocaleString('ko-KR', { maximumFractionDigits: 1 }) : Math.round(Math.abs(v) / 10_000).toLocaleString('ko-KR')}`
 
 export function HouseholdBook({ hidden }: { hidden: boolean }) {
   const [year, setYear] = useState(today.getFullYear())
   const [month, setMonth] = useState<number | null>(null)
-  const [view, setView] = useState<'month' | 'year'>('month')
-  const [tab, setTab] = useState<Tab>('flow')
   const [book, setBook] = useState<Book | null>(null)
   const [error, setError] = useState('')
-  const [editing, setEditing] = useState(false)
-  const [openAfterLoad, setOpenAfterLoad] = useState(false)
+  const [panel, setPanel] = useState<'fixed' | 'capture' | null>(null)
   const load = useCallback(() => {
     const c = new AbortController()
     api<Book>(`/household-book?year=${year}${month ? `&month=${month}` : ''}`, 'GET', undefined, c.signal)
-      .then(b => { setBook(b); setError(''); if (month === null) setMonth(b.selected.month); if (openAfterLoad && !b.selected.recorded) setEditing(true); setOpenAfterLoad(false) })
+      .then(b => { setBook(b); setError(''); if (month === null) setMonth(b.selected.month) })
       .catch(e => { if (!c.signal.aborted) setError(e.message) })
     return () => c.abort()
-  }, [year, month]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [year, month])
   useEffect(load, [load])
-
   const m = book?.selected.month ?? month ?? today.getMonth() + 1
-  const atLatest = year === today.getFullYear() && m === today.getMonth() + 1
-  const step = (d: number) => {
-    setEditing(false)
-    if (view === 'year') { setYear(year + d); setMonth(12); return }
-    const n = m + d
-    if (n < 1) { setYear(year - 1); setMonth(12) } else if (n > 12) { setYear(year + 1); setMonth(1) } else setMonth(n)
-  }
-  const nextDisabled = view === 'year' ? year >= today.getFullYear() : atLatest
   const h = { hidden }
+  const lastMonth = year < today.getFullYear() ? 12 : year === today.getFullYear() ? today.getMonth() + 1 : 0
 
   return <div className="hb">
     <div className="hb-toolbar">
       <h1>가계부</h1>
-      <div className="hb-seg" role="group" aria-label="기간 단위">
-        {(['month', 'year'] as const).map(v => <button key={v} aria-pressed={view === v} onClick={() => { setView(v); setEditing(false) }}>{v === 'month' ? '월별' : '연별'}</button>)}
-      </div>
       <div className="hb-step">
-        <Button variant="outline" size="icon-sm" aria-label={view === 'month' ? '이전 달' : '이전 해'} onClick={() => step(-1)}><ChevronLeft/></Button>
-        <span>{view === 'month' ? `${year}년 ${m}월` : `${year}년`}</span>
-        <Button variant="outline" size="icon-sm" aria-label={view === 'month' ? '다음 달' : '다음 해'} disabled={nextDisabled} onClick={() => step(1)}><ChevronRight/></Button>
+        <Button variant="outline" size="icon-sm" aria-label="이전 해" onClick={() => { setYear(year - 1); setMonth(12); setPanel(null) }}><ChevronLeft/></Button>
+        <span>{year}년</span>
+        <Button variant="outline" size="icon-sm" aria-label="다음 해" disabled={year >= today.getFullYear()} onClick={() => { setYear(year + 1); setMonth(null); setPanel(null) }}><ChevronRight/></Button>
       </div>
-      {!editing && <div className="hb-actions">
-        {view === 'month' && book?.selected.recorded && <Button variant="outline" size="sm" onClick={() => setEditing(true)}><Pencil className="size-3.5"/>{m}월 고치기</Button>}
-        {book?.next_open && <Button size="sm" onClick={() => { const [ny, nm] = book.next_open!.split('-').map(Number); setView('month'); setOpenAfterLoad(true); setYear(ny); setMonth(nm) }}><Plus className="size-3.5"/>{Number(book.next_open.slice(5))}월 적기</Button>}
-      </div>}
+      <div className="hb-actions">
+        <Button variant="outline" size="sm" aria-pressed={panel === 'fixed'} onClick={() => setPanel(panel === 'fixed' ? null : 'fixed')}><Pin className="size-3.5"/>매달 고정 항목</Button>
+        {lastMonth > 0 && <Button size="sm" aria-pressed={panel === 'capture'} onClick={() => setPanel(panel === 'capture' ? null : 'capture')}><ImageUp className="size-3.5"/>{m}월 캡처 올리기</Button>}
+      </div>
     </div>
 
     {error && <p className="hb-error" role="alert">{error}</p>}
     {!book && !error && <p className="hb-muted">불러오는 중…</p>}
-    {book && (editing
-      ? <MonthForm book={book} year={year} month={m} onCancel={() => setEditing(false)} onSaved={() => { setEditing(false); load() }}/>
-      : view === 'month' && !book.selected.recorded
-        ? <div className="hb-empty"><p>아직 {m}월 가계부를 적지 않았어요.</p><Button onClick={() => setEditing(true)}><Plus className="size-3.5"/>{m}월 가계부 적기</Button></div>
-        : view === 'year' && book.year.recorded === 0
-          ? <div className="hb-empty"><p>{year}년에 적은 달이 없어요.</p></div>
-          : <>
-            <Totals book={book} view={view} h={h}/>
-            <div className="hb-tabs" role="tablist">
-              {([['flow', '돈의 흐름'], ['spend', '지출'], ['income', '수입']] as const).map(([id, label]) => <button key={id} role="tab" aria-selected={tab === id} onClick={() => setTab(id)}>{label}</button>)}
-            </div>
-            {tab === 'flow' && <FlowTab book={book} view={view} year={year} h={h}/>}
-            {tab === 'spend' && <SpendTab book={book} view={view} h={h}/>}
-            {tab === 'income' && <IncomeTab book={book} view={view} h={h}/>}
-          </>)}
-    <p className="hb-foot">한 달에 한 번 카드 명세서·통장·급여명세서 합계를 옮겨 적어요. 합계·평균·흐름은 앱이 계산해요.</p>
+    {book && <>
+      {panel === 'fixed' && <FixedPanel book={book} h={h} onClose={() => setPanel(null)} onSaved={load}/>}
+      {panel === 'capture' && <CapturePanel book={book} month={ym(year, m)} label={`${m}월`} categories={book.categories} bigLabel={book.big_label} onClose={() => setPanel(null)} onSaved={() => { setPanel(null); load() }}/>}
+      <Totals book={book} h={h}/>
+      <section className="hb-panel">
+        <div className="hb-panel-head"><h2>{m}월 돈의 흐름</h2>{book.selected.preview && <span>매달 고정 항목으로 미리 채운 달이에요</span>}</div>
+        {book.selected.summary.income > 0
+          ? <><div className="hb-scroll hb-wide"><Sankey flow={book.selected.flow} income={book.selected.summary.income} h={h}/></div><UseList flow={book.selected.flow} h={h}/></>
+          : <p className="hb-muted hb-pad">아래 표에 {m}월 수입을 적으면 흐름이 보여요.</p>}
+        <p className="hb-sentence">
+          {book.selected.flow.shortfall > 0 ? <>들어온 돈보다 <b>{manwon(book.selected.flow.shortfall, h)}</b> 더 나가서 모아 둔 돈에서 꺼냈어요.</>
+            : book.selected.spend_vs_average !== null && book.table.months.length > 1 ? <>쓴 돈이 올해 월평균보다 <b>{manwon(Math.abs(book.selected.spend_vs_average), h)}</b> {book.selected.spend_vs_average > 0 ? '많아요' : book.selected.spend_vs_average < 0 ? '적어요' : '같아요'}.</> : null}
+        </p>
+      </section>
+      <YearTable book={book} year={year} month={m} lastMonth={lastMonth} hidden={hidden} onPick={setMonth} onSaved={load} onError={setError}/>
+      <p className="hb-foot">칸을 눌러 원 단위로 고쳐요. 회색 숫자는 '매달 고정'으로 미리 채운 값이에요. 합계·평균·흐름은 앱이 계산해요.</p>
+    </>}
   </div>
 }
 
-function Totals({ book, view, h }: { book: Book; view: 'month' | 'year'; h: { hidden: boolean } }) {
-  const s = view === 'month' ? book.selected.summary : book.year.total
-  const c = view === 'month' ? book.selected.change : null
+function Totals({ book, h }: { book: Book; h: { hidden: boolean } }) {
+  const s = book.selected.summary, c = book.selected.change, m = book.selected.month
+  const diff = (n: number) => `지난달보다 ${n > 0 ? '+' : n < 0 ? MINUS : ''}${manwon(Math.abs(n), h)}`
   return <dl className="hb-totals">
-    <div><dt>{view === 'month' ? '이번 달 수입' : `${book.year.recorded}개월 수입`}</dt><dd>{manwon(s.income, h)}</dd>{c && <small>지난달 {won(c.income, { ...h, signed: true })}</small>}</div>
-    <div><dt>쓴 돈</dt><dd>{manwon(s.spend, h)}</dd>{c && <small>지난달 {won(c.spend, { ...h, signed: true })}</small>}</div>
+    <div><dt>{m}월 수입</dt><dd>{manwon(s.income, h)}</dd>{c && <small>{diff(c.income)}</small>}</div>
+    <div><dt>쓴 돈</dt><dd>{manwon(s.spend, h)}</dd>{c && <small>{diff(c.spend)}</small>}</div>
     <div><dt>모으고 갚은 돈</dt><dd className={s.kept < 0 ? 'hb-short' : 'hb-kept'}>{manwon(s.kept, h)}</dd>{s.kept_rate !== null && <small>수입의 {pct(s.kept_rate, { signed: false, digits: 1 })}</small>}</div>
   </dl>
 }
@@ -143,146 +133,115 @@ export function UseList({ flow, h }: { flow: Flow; h: { hidden: boolean } }) {
   </ul>
 }
 
-function FlowTab({ book, view, year, h }: { book: Book; view: 'month' | 'year'; year: number; h: { hidden: boolean } }) {
-  const s = view === 'month' ? book.selected.summary : book.year.total
-  const flow = view === 'month' ? book.selected.flow : book.year.flow!
-  const vs = book.selected.spend_vs_average
-  return <>
-    <section className="hb-panel">
-      <div className="hb-panel-head"><h2>돈이 어디로 갔나</h2><span>{view === 'month' ? `${book.selected.month}월` : `${year}년 · ${book.year.recorded}개월`}</span></div>
-      {s.income > 0 ? <><div className="hb-scroll hb-wide"><Sankey flow={flow} income={s.income} h={h}/></div><UseList flow={flow} h={h}/></> : <p className="hb-muted hb-pad">수입을 적으면 흐름이 보여요.</p>}
-      <p className="hb-sentence">
-        {flow.shortfall > 0 ? <>들어온 돈보다 <b>{manwon(flow.shortfall, h)}</b> 더 나가서 모아 둔 돈에서 꺼냈어요.</>
-          : view === 'month' && vs !== null && book.year.recorded > 1 ? <>쓴 돈이 올해 월평균보다 <b>{manwon(Math.abs(vs), h)}</b> {vs > 0 ? '많아요' : vs < 0 ? '적어요' : '같아요'}.</>
-          : view === 'year' ? <>한 달에 평균 <b>{manwon(book.year.average.spend, h)}</b>을 썼어요.</> : null}
-      </p>
-    </section>
-    {view === 'year' && <YearBars book={book} h={h}/>}
-  </>
-}
-
-function YearBars({ book, h }: { book: Book; h: { hidden: boolean } }) {
-  const W = 760, H = 220, P = { l: 72, r: 10, t: 12, b: 26 }, iw = W - P.l - P.r, ih = H - P.t - P.b
-  const rows = Array.from({ length: 12 }, (_, i) => book.months[String(i + 1)] ?? null)
-  const peak = Math.max(1, ...rows.map(r => r ? Math.max(r.income, r.spend + Object.values(r.saving).reduce((a, b) => a + b, 0)) : 0))
-  const raw = peak / 4, mag = 10 ** Math.floor(Math.log10(raw))
-  const unit = [1, 2, 5, 10].map(x => x * mag).find(x => x >= raw) ?? raw
-  const max = Math.ceil(peak / unit) * unit
-  const sy = (v: number) => P.t + ih - (v / max) * ih, bw = iw / 12
-  const ticks = Array.from({ length: Math.round(max / unit) + 1 }, (_, i) => i * unit)
-  const parts = (r: Summary) => [['fixed', r.spend_groups.fixed], ['life', r.spend_groups.life], ['big', r.spend_groups.big], ['principal', r.saving.principal ?? 0], ['pension', r.saving.pension ?? 0], ['cash', Math.max(r.cash, 0)]] as const
-  const labels: Record<string, string> = { fixed: '고정비', life: '생활비', big: book.big_label, principal: '대출 원금', pension: '연금 납입', cash: '현금 주머니' }
+function YearTable({ book, year, month, lastMonth, hidden, onPick, onSaved, onError }: { book: Book; year: number; month: number; lastMonth: number; hidden: boolean; onPick: (m: number) => void; onSaved: () => void; onError: (e: string) => void }) {
+  // 최근 6달 + 그보다 앞서 적은 달. 1월부터 다 보이면 빈 칸이 너무 많다
+  const end = Math.max(lastMonth, ...book.table.months, 0), start = Math.min(Math.max(1, end - 5), ...book.table.months)
+  const cols = Array.from({ length: Math.max(end - start + 1, 0) }, (_, i) => start + i)
+  const [edit, setEdit] = useState<{ key: string; m: number } | null>(null)
+  const scroller = useRef<HTMLDivElement>(null)
+  useEffect(() => { const el = scroller.current; if (el) el.scrollLeft = el.scrollWidth }, [year])
+  async function save(key: string, m: number, raw: string) {
+    setEdit(null)
+    const value = Number(raw.replace(/[^\d]/g, '') || 0)
+    const row = book.table.rows.find(r => r.key === key)
+    if (row && row.values[m] === value && !row.auto?.includes(m)) return
+    try { await api(`/household-book/${ym(year, m)}/cell`, 'PUT', { key, value, version: book.table.versions[m] ?? 0 }); onSaved() } catch (e) { onError((e as Error).message) }
+  }
   return <section className="hb-panel">
-    <div className="hb-panel-head"><h2>달마다 어떻게 나뉘었나</h2><span>막대 높이 = 그달 수입</span></div>
-    <div className="hb-scroll"><svg className="hb-bars" viewBox={`0 0 ${W} ${H}`} role="img" aria-label="월별 수입의 쓰임">
-      {ticks.map(t => <g key={t}><line x1={P.l} x2={W - P.r} y1={sy(t)} y2={sy(t)} stroke="var(--border)"/><text x={P.l - 6} y={sy(t) + 4} textAnchor="end" className="hb-sub">{hidden(h) ? '' : manwon(t)}</text></g>)}
-      {rows.map((r, i) => { const cx = P.l + i * bw + bw / 2, w = bw * 0.56; let acc = 0
-        return <g key={i}><text x={cx} y={H - 7} textAnchor="middle" className="hb-sub">{i + 1}월</text>
-          {r && parts(r).map(([id, v]) => { if (!v) return null; const el = <rect key={id} x={cx - w / 2} y={sy(acc + v)} width={w} height={sy(acc) - sy(acc + v)} fill={USE_COLOR[id]}><title>{`${i + 1}월 ${labels[id]} ${manwon(v, h)}`}</title></rect>; acc += v; return el })}
-        </g> })}
-    </svg></div>
-    <ul className="hb-legend">{Object.entries(labels).map(([id, l]) => <li key={id}><i style={{ background: USE_COLOR[id] }}/>{l}</li>)}</ul>
-  </section>
-}
-const hidden = (h: { hidden: boolean }) => h.hidden
-
-function SpendTab({ book, view, h }: { book: Book; view: 'month' | 'year'; h: { hidden: boolean } }) {
-  const sel = book.selected, y = book.year
-  const rows = view === 'month' ? sel.compare : sel.compare.map(r => ({ ...r, amount: y.category_total[r.id] ?? 0 }))
-  const groupValue = (g: string) => view === 'month' ? sel.summary.spend_groups[g] : y.total.spend_groups[g]
-  return <section className="hb-panel">
-    <div className="hb-panel-head"><h2>어디에 썼나</h2><span>{view === 'month' ? '검은 눈금 = 올해 월평균 · 단위 원' : '단위 원'}</span></div>
-    <div className="hb-scroll"><table className="hb-table">
-      <thead><tr><th>항목</th><th>{view === 'month' ? `${sel.month}월` : '올해 합계'}</th><th>올해 월평균</th>{view === 'month' && <th>평균 대비</th>}</tr></thead>
-      <tbody>
-        {Object.entries(book.categories).map(([g, group]) => <GroupRows key={g} label={group.label} value={groupValue(g)} avg={y.group_average[g]} month={view === 'month'} h={h}>
-          {rows.filter(r => r.group === g && (r.amount > 0 || (r.average ?? 0) > 0)).map(r => <tr key={r.id}>
-            <td>{r.label}</td><td>{won(r.amount, { ...h, unit: false })}</td><td>{won(r.average, { ...h, unit: false })}</td>
-            {view === 'month' && <td className={r.over ? 'hb-over' : ''}>{won(r.diff, { ...h, unit: false, signed: true })}<Meter value={r.amount} avg={r.average}/></td>}
-          </tr>)}
-        </GroupRows>)}
-        <GroupRows label={book.big_label} value={groupValue('big')} avg={y.group_average.big} month={view === 'month'} h={h}>
-          {(view === 'month' ? sel.entry.big.map(b => ({ ...b, m: 0 })) : []).map((b, i) => <tr key={i}><td>{b.name}</td><td>{won(b.amount, { ...h, unit: false })}</td><td/>{view === 'month' && <td/>}</tr>)}
-        </GroupRows>
-        <tr className="hb-total"><td>쓴 돈 합계</td><td>{won(view === 'month' ? sel.summary.spend : y.total.spend, { ...h, unit: false })}</td><td>{won(y.average.spend, { ...h, unit: false })}</td>{view === 'month' && <td/>}</tr>
-      </tbody>
+    <div className="hb-panel-head"><h2>{year}년 가계부</h2><span>단위 만원 · 달 이름을 누르면 위 흐름이 그 달로 바뀌어요</span></div>
+    <div className="hb-scroll hb-sheet-wrap" ref={scroller}><table className="hb-sheet">
+      <thead><tr><th scope="col">항목</th>
+        {cols.map(c => <th key={c} scope="col" className={c === month ? 'hb-now' : ''}><button onClick={() => onPick(c)} aria-pressed={c === month}>{c}월</button></th>)}
+        <th scope="col">월평균</th></tr></thead>
+      <tbody>{book.table.rows.map(r => <tr key={r.key} className={`hb-${r.kind}`}>
+        <th scope="row">{r.label}{r.fixed && <span className="hb-fix" title="매달 같은 금액으로 미리 채워요">매달</span>}</th>
+        {cols.map(c => {
+          const v = r.values[c], now = c === month ? ' hb-now' : ''
+          const canEdit = (r.kind === 'item' || r.kind === 'group-item') && c <= lastMonth && !r.locked?.includes(c)
+          if (!canEdit) return <td key={c} className={`${now}${v !== undefined && v < 0 ? ' hb-short' : ''}`} title={r.locked?.includes(c) ? '여러 줄이 합쳐진 칸이에요' : undefined}>{cell(v, hidden)}</td>
+          if (edit?.key === r.key && edit.m === c) return <td key={c} className={`hb-editing${now}`}>
+            <input autoFocus inputMode="numeric" aria-label={`${c}월 ${r.label}`} defaultValue={v ? v.toLocaleString('ko-KR') : ''}
+              onBlur={e => save(r.key, c, e.target.value)} onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); if (e.key === 'Escape') setEdit(null) }}/></td>
+          return <td key={c} className={`hb-cell${now}${r.auto?.includes(c) ? ' hb-auto' : ''}`}>
+            <button aria-label={`${c}월 ${r.label} 고치기`} onClick={() => setEdit({ key: r.key, m: c })}>{cell(v, hidden)}</button></td>
+        })}
+        <td className="hb-avg">{cell(r.average ?? undefined, hidden)}</td>
+      </tr>)}</tbody>
     </table></div>
   </section>
 }
 
-function GroupRows({ label, value, avg, month, h, children }: { label: string; value: number; avg: number | null; month: boolean; h: { hidden: boolean }; children: React.ReactNode }) {
-  return <><tr className="hb-group"><td>{label}</td><td>{won(value, { ...h, unit: false })}</td><td>{won(avg, { ...h, unit: false })}</td>{month && <td/>}</tr>{children}</>
-}
+const KEY_LABEL = (book: Book) => Object.fromEntries([
+  ['income:me', '나 수입'], ['income:partner', '배우자 수입'], ['income:joint', '기타 수입 (배당·이자)'],
+  ...Object.values(book.categories).flatMap(g => g.items.map(it => [`spend:${it.id}`, it.label])),
+  ['saving:pension', '연금 납입'], ['saving:principal', '대출 원금'],
+]) as Record<string, string>
 
-function Meter({ value, avg }: { value: number; avg: number | null }) {
-  if (avg === null) return null
-  const max = Math.max(value, avg) * 1.25 || 1
-  return <span className="hb-meter" aria-hidden="true"><i style={{ width: `${(value / max) * 100}%` }}/><s style={{ left: `${(avg / max) * 100}%` }}/></span>
-}
-
-function IncomeTab({ book, view, h }: { book: Book; view: 'month' | 'year'; h: { hidden: boolean } }) {
-  const by = view === 'month' ? book.selected.summary.income_by_who : book.year.total.income_by_who
-  return <>
-    <dl className="hb-totals">
-      {(Object.keys(WHO) as Who[]).map(w => <div key={w}><dt>{w === 'joint' ? '기타 (배당·이자)' : `${WHO[w]} 실수령`}</dt><dd>{manwon(by[w], h)}</dd></div>)}
-    </dl>
-    <section className="hb-panel">
-      <div className="hb-panel-head"><h2>{view === 'month' ? '받은 돈' : '달마다 받은 돈'}</h2><span>단위 원</span></div>
-      <div className="hb-scroll">{view === 'month'
-        ? <table className="hb-table"><thead><tr><th>누구</th><th className="hb-left">종류</th><th>지급액</th><th>실수령</th></tr></thead>
-            <tbody>{book.selected.entry.income.map((l, i) => <tr key={i}><td>{WHO[l.who]}</td><td className="hb-left">{l.kind}{l.label ? ` · ${l.label}` : ''}</td><td>{won(l.gross, { ...h, unit: false })}</td><td className="hb-strong">{won(l.net, { ...h, unit: false })}</td></tr>)}</tbody></table>
-        : <table className="hb-table"><thead><tr><th>월</th><th>나</th><th>배우자</th><th>기타</th><th>합계</th></tr></thead>
-            <tbody>{Object.entries(book.months).map(([mo, s]) => <tr key={mo}><td>{mo}월</td><td>{won(s.income_by_who.me, { ...h, unit: false })}</td><td>{won(s.income_by_who.partner, { ...h, unit: false })}</td><td>{won(s.income_by_who.joint, { ...h, unit: false })}</td><td className="hb-strong">{won(s.income, { ...h, unit: false })}</td></tr>)}
-              <tr className="hb-total"><td>합계</td><td>{won(by.me, { ...h, unit: false })}</td><td>{won(by.partner, { ...h, unit: false })}</td><td>{won(by.joint, { ...h, unit: false })}</td><td>{won(book.year.total.income, { ...h, unit: false })}</td></tr></tbody></table>}
-      </div>
-    </section>
-  </>
-}
-
-/* 한 달 적기: 지난달 값을 미리 채워 바뀐 칸만 고치게 한다 (큰 지출은 비워 둔다) */
-function MonthForm({ book, year, month, onCancel, onSaved }: { book: Book; year: number; month: number; onCancel: () => void; onSaved: () => void }) {
-  const sel = book.selected
-  const start: Entry = sel.recorded ? sel.entry : sel.previous_entry ? { ...sel.previous_entry, big: [] } : { income: [{ who: 'me', kind: '월급', gross: null, net: 0 }, { who: 'partner', kind: '월급', gross: null, net: 0 }], spend: {}, big: [], saving: {} }
-  const [e, setE] = useState<Entry>(structuredClone(start))
-  const [saving, setSaving] = useState(false)
+function FixedPanel({ book, h, onClose, onSaved }: { book: Book; h: { hidden: boolean }; onClose: () => void; onSaved: () => void }) {
+  const labels = KEY_LABEL(book), f = book.fixed
+  const [keys, setKeys] = useState<string[]>(f.keys)
   const [err, setErr] = useState('')
-  const num = (v: string) => { const n = Number(v.replace(/[^\d]/g, '')); return Number.isFinite(n) ? n : 0 }
-  const show = (n: number | null | undefined) => n ? n.toLocaleString('ko-KR') : ''
-  const setIncome = (i: number, patch: Partial<IncomeLine>) => setE({ ...e, income: e.income.map((l, j) => j === i ? { ...l, ...patch } : l) })
+  const [busy, setBusy] = useState(false)
   async function save() {
-    setSaving(true); setErr('')
-    const body = { ...e, spend: Object.fromEntries(Object.entries(e.spend).filter(([, v]) => v > 0)), big: e.big.filter(b => b.name.trim() && b.amount > 0), income: e.income.filter(l => l.net > 0), version: sel.version }
-    try { await api(`/household-book/${year}-${String(month).padStart(2, '0')}`, 'PUT', body); onSaved() } catch (x) { setErr((x as Error).message) } finally { setSaving(false) }
+    setBusy(true); setErr('')
+    try { await api('/household-book/fixed', 'POST', { keys, version: f.version }); onSaved(); onClose() } catch (e) { setErr((e as Error).message) } finally { setBusy(false) }
   }
-  const money = (id: string, label: string, value: number | null | undefined, set: (n: number) => void) =>
-    <label className="hb-field" htmlFor={id}><span>{label}</span><input id={id} inputMode="numeric" value={show(value)} placeholder="0" onChange={ev => set(num(ev.target.value))}/></label>
-  return <form className="hb-form" onSubmit={ev => { ev.preventDefault(); save() }}>
-    <div className="hb-form-head"><h2>{year}년 {month}월 적기</h2>{!sel.recorded && sel.previous_entry && <span>지난달 값을 미리 채웠어요. 바뀐 칸만 고쳐 주세요.</span>}</div>
-    <fieldset><legend>수입 <small>실수령 기준 · 원</small></legend>
-      {e.income.map((l, i) => <div className="hb-income-row" key={i}>
-        <select aria-label="누구" value={l.who} onChange={ev => setIncome(i, { who: ev.target.value as Who })}>{(Object.keys(WHO) as Who[]).map(w => <option key={w} value={w}>{WHO[w]}</option>)}</select>
-        <select aria-label="종류" value={l.kind} onChange={ev => setIncome(i, { kind: ev.target.value as IncomeLine['kind'] })}>{['월급', '상여', '기타'].map(k => <option key={k}>{k}</option>)}</select>
-        {money(`hb-gross-${i}`, '지급액', l.gross, n => setIncome(i, { gross: n || null }))}
-        {money(`hb-net-${i}`, '실수령', l.net, n => setIncome(i, { net: n }))}
-        <Button type="button" variant="ghost" size="icon-sm" aria-label="이 줄 지우기" onClick={() => setE({ ...e, income: e.income.filter((_, j) => j !== i) })}><X/></Button>
-      </div>)}
-      <Button type="button" variant="ghost" size="sm" onClick={() => setE({ ...e, income: [...e.income, { who: 'me', kind: '상여', gross: null, net: 0 }] })}><Plus className="size-3.5"/>수입 줄 더하기</Button>
-    </fieldset>
-    {Object.entries(book.categories).map(([g, group]) => <fieldset key={g}><legend>{group.label} <small>원</small></legend>
-      <div className="hb-grid">{group.items.map(it => <div key={it.id}>{money(`hb-${it.id}`, it.label, e.spend[it.id], n => setE({ ...e, spend: { ...e.spend, [it.id]: n } }))}</div>)}</div>
-    </fieldset>)}
-    <fieldset><legend>{book.big_label} <small>여행·수리·명절처럼 이번 달에만 · 원</small></legend>
-      {e.big.map((b, i) => <div className="hb-big-row" key={i}>
-        <label className="hb-field" htmlFor={`hb-big-name-${i}`}><span>이름</span><input id={`hb-big-name-${i}`} value={b.name} maxLength={40} onChange={ev => setE({ ...e, big: e.big.map((x, j) => j === i ? { ...x, name: ev.target.value } : x) })}/></label>
-        {money(`hb-big-${i}`, '금액', b.amount, n => setE({ ...e, big: e.big.map((x, j) => j === i ? { ...x, amount: n } : x) }))}
-        <Button type="button" variant="ghost" size="icon-sm" aria-label="이 줄 지우기" onClick={() => setE({ ...e, big: e.big.filter((_, j) => j !== i) })}><X/></Button>
-      </div>)}
-      <Button type="button" variant="ghost" size="sm" onClick={() => setE({ ...e, big: [...e.big, { name: '', amount: 0 }] })}><Plus className="size-3.5"/>큰 지출 더하기</Button>
-    </fieldset>
-    <fieldset><legend>모으고 갚은 돈 <small>나머지는 현금 주머니로 계산해요 · 원</small></legend>
-      <div className="hb-grid">{book.saving.map(s => <div key={s.id}>{money(`hb-${s.id}`, s.label, e.saving[s.id], n => setE({ ...e, saving: { ...e.saving, [s.id]: n } }))}</div>)}</div>
-    </fieldset>
-    {err && <p className="hb-error" role="alert">{err}</p>}
-    <div className="hb-form-actions"><Button type="button" variant="outline" onClick={onCancel}>닫기</Button><Button type="submit" disabled={saving} aria-busy={saving}>{saving ? '저장 중…' : '저장'}</Button></div>
-  </form>
+  if (!f.month) return <section className="hb-panel hb-side"><p className="hb-pad">먼저 아래 표에 한 달을 적어 주세요. 그 금액으로 매달 고정 항목을 고를 수 있어요.</p></section>
+  return <section className="hb-panel hb-side" aria-label="매달 고정 항목">
+    <div className="hb-panel-head"><h2>매달 고정 항목</h2><span>체크한 칸은 새 달이 열리면 {Number(f.month.slice(5))}월 금액으로 미리 채워요</span></div>
+    {f.suggest.length > 0 && <p className="hb-suggest">최근 3달 금액이 같았어요: {f.suggest.map(k => labels[k]).join(', ')}
+      <Button variant="outline" size="sm" onClick={() => setKeys([...new Set([...keys, ...f.suggest])])}>모두 고정으로</Button></p>}
+    <div className="hb-fixed-list">{Object.entries(labels).map(([k, l]) => <label key={k} htmlFor={`hb-fix-${k}`}>
+      <input id={`hb-fix-${k}`} type="checkbox" checked={keys.includes(k)} onChange={e => setKeys(e.target.checked ? [...keys, k] : keys.filter(x => x !== k))}/>
+      <span>{l}</span><b>{f.amounts[k] ? manwon(f.amounts[k], h) : '–'}</b></label>)}</div>
+    {err && <p className="hb-error hb-pad" role="alert">{err}</p>}
+    <div className="hb-side-actions"><Button variant="outline" onClick={onClose}>닫기</Button><Button onClick={save} disabled={busy} aria-busy={busy}>{busy ? '저장 중…' : '저장'}</Button></div>
+  </section>
+}
+
+function CapturePanel({ book, month, label, categories, bigLabel, onClose, onSaved }: { book: Book; month: string; label: string; categories: Record<string, Group>; bigLabel: string; onClose: () => void; onSaved: () => void }) {
+  const [rows, setRows] = useState<Tx[] | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+  const options: [string, string][] = [...Object.values(categories).flatMap(g => g.items.map(it => [it.id, it.label] as [string, string])), ['big', bigLabel], ['skip', '가계부에 안 넣기']]
+  async function read(files: FileList | null) {
+    if (!files?.length) return
+    const form = new FormData(); form.append('month', month); [...files].forEach(f => form.append('images', f))
+    setBusy(true); setErr(''); setRows(null)
+    try {
+      const r = await apiFetch('/api/household-book/capture', { method: 'POST', body: form })
+      const body = await r.json().catch(() => ({}))
+      if (!r.ok) throw new Error(typeof body.detail === 'string' ? body.detail : '캡처를 읽지 못했어요. 다시 시도해 주세요.')
+      setRows(body.rows)
+    } catch (e) { setErr((e as Error).message) } finally { setBusy(false) }
+  }
+  const use = (rows ?? []).filter(r => r.in_month && !r.duplicate)
+  const ask = use.filter(r => !r.category).length
+  async function apply() {
+    setBusy(true); setErr('')
+    try {
+      await api(`/household-book/${month}/capture`, 'POST', { rows: use.map(({ date, merchant, amount, category }) => ({ date, merchant, amount, category })), version: book.table.versions[Number(month.slice(5))] ?? 0 })
+      onSaved()
+    } catch (e) { setErr((e as Error).message) } finally { setBusy(false) }
+  }
+  const other = (rows ?? []).length - use.length
+  return <section className="hb-panel hb-side" aria-label={`${label} 캡처`}>
+    <div className="hb-panel-head"><h2>{label} 캡처 올리기</h2><span>카드·은행 앱 이용내역 화면. 분류는 전에 고른 것과 가맹점 이름으로 먼저 채워요</span></div>
+    <div className="hb-pad hb-upload">
+      <label className="hb-file" htmlFor="hb-capture-files"><ImageUp className="size-4"/>{busy && !rows ? '읽는 중…' : '캡처 고르기 (여러 장)'}</label>
+      <input id="hb-capture-files" type="file" accept="image/png,image/jpeg,image/webp" multiple hidden disabled={busy} onChange={e => read(e.target.files)}/>
+      {rows && <span><b>{use.length}건</b> 읽었어요 · {ask ? <b className="hb-ask-count">{ask}건만 골라 주세요</b> : '모두 분류됐어요'}{other > 0 && ` · 다른 달·이미 더한 내역 ${other}건은 뺐어요`}</span>}
+    </div>
+    {rows && use.length > 0 && <div className="hb-scroll"><table className="hb-table">
+      <thead><tr><th>가맹점</th><th>날짜</th><th>금액</th><th className="hb-left">분류</th></tr></thead>
+      <tbody>{use.map(r => { const i = rows.indexOf(r); return <tr key={i} className={r.category ? '' : 'hb-ask'}>
+        <td>{r.merchant}</td><td>{r.date.slice(5).replace('-', '.')}</td><td>{r.amount.toLocaleString('ko-KR')}</td>
+        <td className="hb-left"><select aria-label={`${r.merchant} 분류`} value={r.category ?? ''} onChange={e => setRows(rows.map((x, j) => j === i ? { ...x, category: e.target.value || null, how: null } : x))}>
+          <option value="">골라 주세요</option>{options.map(([id, l]) => <option key={id} value={id}>{l}</option>)}</select>
+          {r.how === 'learned' && <small> 전에 고른 분류</small>}</td>
+      </tr> })}</tbody></table></div>}
+    {err && <p className="hb-error hb-pad" role="alert">{err}</p>}
+    <div className="hb-side-actions"><Button variant="outline" onClick={onClose}>닫기</Button>
+      {rows && use.length > 0 && <Button onClick={apply} disabled={busy || ask > 0} aria-busy={busy}>{ask ? `${ask}건을 골라야 더할 수 있어요` : `${label} 칸에 더하기`}</Button>}</div>
+  </section>
 }
