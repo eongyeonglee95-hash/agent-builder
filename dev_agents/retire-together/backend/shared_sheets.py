@@ -56,6 +56,15 @@ def status(request: Request):
               "health": "unlinked", "active": False, "read_only": True}
     from backend.shared_data_store import DataStore
     result["data_started"] = DataStore(config.db_path).started(identity["household_id"])
+    if result["data_started"]:
+        from backend.shared_data import Service
+        from backend.shared_read_cache import current
+        try:
+            current(Service(config, identity))
+            result.update(health="ok", active=True, read_only=False)
+        except HTTPException as exc:
+            result.update(health="attention", detail=exc.detail)
+        return result
     if binding:
         result["health"] = "create_rejected" if binding["retryable"] else "setup_pending"
         if binding["spreadsheet_id"]:

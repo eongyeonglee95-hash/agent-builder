@@ -123,6 +123,8 @@ class Service:
         if fingerprint(found["state"]) != fingerprint(expected):
             fail("저장 결과가 직접 편집되었습니다. 백업 대조 후 복구해 주세요.")
         self.store.finish(op, fingerprint(expected))
+        from backend.shared_read_cache import clear
+        clear(self.config.db_path)
         self.store.activate(self.identity["household_id"], ready=True)
         return self.result(raw, state, replayed=True, backup_id=receipt["backup_id"])
 
@@ -146,6 +148,8 @@ class Service:
         if fingerprint(got) != fingerprint(after) or summary(got) != summary(after):
             fail("저장 후 건수·합계·명의 대조가 일치하지 않습니다. 백업을 확인해 주세요.")
         self.store.finish(op, fingerprint(after))
+        from backend.shared_read_cache import clear
+        clear(self.config.db_path)
         self.store.activate(self.identity["household_id"], ready=True)
         return self.result(got_raw, got, backup_id=backup, replayed=False)
 
@@ -265,8 +269,8 @@ def write_result(action):
 @router.get("")
 def read(request: Request):
     s = service(request)
-    s.access()
-    raw, state = s.current()
+    from backend.shared_read_cache import current
+    raw, state = current(s)
     return s.result(raw, state)
 
 
@@ -274,8 +278,8 @@ def read(request: Request):
 def dashboard(request: Request, owner: Literal["together", "me", "partner"] = "together"):
     from backend.shared_data_view import dashboard as project
     s = service(request)
-    s.access()
-    _, state = s.current()
+    from backend.shared_read_cache import current
+    _, state = current(s)
     return project(state, projection(state, s.member_id), owner)
 
 
