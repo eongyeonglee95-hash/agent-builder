@@ -76,7 +76,7 @@ export function IncomeChart({ large = false, hidden = false }: { large?: boolean
     <div className="chart-bottom"><label>연도 <select aria-label="소득 예시 연도" value={point} onChange={e => setPoint(Number(e.target.value))}>{income.map((p, i) => <option key={p.year} value={i}>{p.year}년</option>)}</select></label><span>연 <strong>{hidden ? '••••' : income[point].base.toLocaleString()}만원</strong><small> · 고정 예시</small></span></div>
   </div>
 }
-export function Modal({ title, children, onClose }: { title: string; children: ReactNode; onClose: () => void }) {
+export function Modal({ title, children, onClose, className = '' }: { title: string; children: ReactNode; onClose: () => void; className?: string }) {
   const ref = useRef<HTMLDialogElement>(null)
   const titleId = useId()
   useEffect(() => {
@@ -91,7 +91,7 @@ export function Modal({ title, children, onClose }: { title: string; children: R
       if (trigger instanceof HTMLElement && trigger.isConnected && !document.querySelector('dialog[open]')) trigger.focus()
     }
   }, [])
-  return <dialog ref={ref} className="modal" aria-labelledby={titleId} onCancel={onClose} onClick={event => { if (event.target === ref.current) { const r = ref.current.getBoundingClientRect(); if (event.clientX < r.left || event.clientX > r.right || event.clientY < r.top || event.clientY > r.bottom) onClose() } }}><div className="modal-header"><div><span className="eyebrow">RETIRE TOGETHER</span><h2 id={titleId}>{title}</h2></div><button className="icon-button" onClick={onClose} aria-label="닫기"><X size={21}/></button></div><div className="modal-body">{children}</div></dialog>
+  return <dialog ref={ref} className={`modal ${className}`} aria-labelledby={titleId} onCancel={onClose} onClick={event => { if (event.target === ref.current) { const r = ref.current.getBoundingClientRect(); if (event.clientX < r.left || event.clientX > r.right || event.clientY < r.top || event.clientY > r.bottom) onClose() } }}><div className="modal-header"><div><span className="eyebrow">RETIRE TOGETHER</span><h2 id={titleId}>{title}</h2></div><button className="icon-button" onClick={onClose} aria-label="닫기"><X size={21}/></button></div><div className="modal-body">{children}</div></dialog>
 }
 export function TextLink({ children, onClick }: { children: ReactNode; onClick: () => void }) { return <button className="text-link" onClick={onClick}>{children}<ChevronRight size={15}/></button> }
 export function CheckItem({ label, detail, checked, onChange }: { label: string; detail: string; checked: boolean; onChange: () => void }) {

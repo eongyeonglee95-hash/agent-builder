@@ -35,10 +35,11 @@ class StrategyDisplay(BaseModel):
 
 def load_strategy_display() -> list[StrategyDisplay]:
     # Explicit allowlist: there is no user-controlled file/path parameter.
-    strategies = yaml.safe_load((RULES_DIR / "strategies.yaml").read_text())[
+    from tools.data_context import resolve
+    strategies = yaml.safe_load(resolve("strategies.yaml", RULES_DIR / "strategies.yaml").read_text())[
         "strategies"
     ]
-    defaults = yaml.safe_load((RULES_DIR / "asset_map.yaml").read_text()).get(
+    defaults = yaml.safe_load(resolve("asset_map.yaml", RULES_DIR / "asset_map.yaml").read_text()).get(
         "class_defaults", {}
     )
     result = []

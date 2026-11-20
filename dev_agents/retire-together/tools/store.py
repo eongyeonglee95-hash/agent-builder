@@ -21,7 +21,7 @@ def _read(path: Path) -> pd.DataFrame:
 
 
 def save_holdings(account_id: str, df: pd.DataFrame, on: dt.date | None = None,
-                  accounts: dict[str, dict] | None = None) -> Path:
+                  accounts: dict[str, dict] | None = None, base_dir: Path | None = None) -> Path:
     """계좌의 보유 내역을 스냅샷으로 저장. SAFE-01: 계좌 ID는 등록된 활성 계좌만(경로 문자 금지), 빈 표·잘못된 행은 거부,
     스냅샷 폴더 밖에는 쓰지 않는다. accounts를 안 주면 rules/accounts.yaml을 읽는다."""
     from tools.assets import load_accounts
@@ -47,7 +47,7 @@ def save_holdings(account_id: str, df: pd.DataFrame, on: dt.date | None = None,
     if errors:
         raise ValueError("저장 거부:\n" + "\n".join(errors))
     on = on or dt.date.today()
-    base = SNAPSHOTS.resolve()
+    base = (base_dir or SNAPSHOTS).resolve()
     out = (base / account_id / f"{on.isoformat()}.csv").resolve()
     if base not in out.parents:
         raise ValueError(f"스냅샷 폴더 밖 경로: {out}")

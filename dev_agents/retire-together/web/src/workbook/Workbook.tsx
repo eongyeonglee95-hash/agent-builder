@@ -1,3 +1,5 @@
+import { LinkedLedger, LINKED_TABS } from './LinkedLedger'
+import { ConnectionSettings } from '../auth/ConnectionSettings'
 import { AccountMenu } from '../auth/AuthGate'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ChevronDown, Download, FileSpreadsheet, Camera, LayoutGrid, RefreshCw, Copy, Landmark } from 'lucide-react'
@@ -21,7 +23,7 @@ import { RetirementTower } from '../retirement/RetirementTower'
 // 리밸런싱 시트의 결정 줄: 직접 주문할게요(수락)·이번엔 넘기기(보류) + 사유 → DECISIONS.md (자동주문 없음).
 
 type Owner = 'together' | 'me' | 'partner'
-type SheetKey = 'summary' | 'holdings' | 'assets' | 'rebalance' | 'retire'
+type SheetKey = 'summary' | 'holdings' | 'assets' | 'rebalance' | 'retire' | 'pension' | 'stocks' | 'property' | 'cash'
 const SHEETS: [SheetKey, string][] = [['summary', '요약'], ['holdings', '보유종목'], ['assets', '자산'], ['rebalance', '리밸런싱'], ['retire', '연금']]
 const CLASS: Record<string, [string, string]> = { stock: ['주식', 'var(--cls-stock)'], long_bond: ['장기채', 'var(--cls-long-bond)'], mid_bond: ['중기채', 'var(--cls-mid-bond)'], gold: ['금', 'var(--cls-gold)'], commodity: ['원자재', 'var(--cls-commodity)'], cash: ['현금', 'var(--cls-cash)'], mixed: ['혼합·미분류', 'var(--grey-300)'] }
 const OWNER_LABEL: Record<string, string> = { me: '나', partner: '배우자', joint: '공동' }
@@ -37,8 +39,11 @@ type Summary = { line: string; dashboard: { net: number; total: number; debt: nu
 
 let kiwoomSyncStarted = false
 
-export function Workbook({ onClassic }: { onClassic: () => void }) {
-  const [sheet, setSheet] = useState<SheetKey>(() => { const h = location.hash.replace(/^#(sheet-)?/, ''); return (SHEETS.find(s => s[0] === h)?.[0]) ?? 'summary' })
+export function Workbook({ onClassic, shared = false }: { onClassic: () => void; shared?: boolean }) {
+  const [sheet, setSheet] = useState<SheetKey>(() => { const h = location.hash.replace(/^#(sheet-)?/, ''); return ([...SHEETS, ...Object.entries(LINKED_TABS)].find(s => s[0] === h)?.[0] as SheetKey) ?? 'summary' })
+  const [detailEdit, setDetailEdit] = useState(false)
+  const linked = shared && sheet in LINKED_TABS
+  const tabs: [SheetKey, string][] = shared ? [...Object.entries(LINKED_TABS) as [SheetKey, string][], ['rebalance', '리밸런싱'], ['retire', '은퇴 계획']] : SHEETS
   const [owner, setOwner] = useState<Owner>('together')
   const [live, setLive] = useState(false)
   const [data, setData] = useState<Summary | null>(null)
@@ -55,7 +60,7 @@ export function Workbook({ onClassic }: { onClassic: () => void }) {
   }, [owner, live])
   useEffect(() => { load() }, [load, rev])
   useEffect(() => { const refresh = () => { load() }; window.addEventListener('retire:holdings-changed', refresh); return () => window.removeEventListener('retire:holdings-changed', refresh) }, [load])
-  useEffect(() => { history.replaceState(null, '', sheet === 'summary' ? location.pathname : `#sheet-${sheet}`) }, [sheet])
+  useEffect(() => { history.replaceState(null, '', `${location.pathname}${location.search}#sheet-${sheet}`) }, [sheet])
   useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(''), 3500); return () => clearTimeout(t) }, [toast])
   const changed = useCallback((msg: string) => { setToast(msg); setRev(r => r + 1) }, [])
   const [kiwoomAuto, setKiwoomAuto] = useState<Preview[] | undefined>()
@@ -127,13 +132,13 @@ export function Workbook({ onClassic }: { onClassic: () => void }) {
   return <div className="wb flex h-dvh flex-col bg-grey-100 text-grey-900">
     <header className="flex h-12 shrink-0 items-center gap-2 border-b border-grey-200 bg-white px-3 sm:gap-3 sm:px-4">
       <a href="#home" aria-label="둘이서은퇴 홈으로" className="inline-flex min-h-10 shrink-0 items-center whitespace-nowrap rounded-sm text-base font-semibold tracking-tight focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">둘이서은퇴</a>
-      <span className="hidden text-xs text-grey-600 sm:inline">우리 자산.xlsx</span>
+      <span className="hidden text-xs text-grey-600 sm:inline">자산 관리</span>
       <div className="ml-auto flex min-w-0 items-center gap-1.5 sm:gap-2"><AccountMenu/>
-        <Select value={owner} onValueChange={v => setOwner(v as Owner)}>
+        {!linked && <Select value={owner} onValueChange={v => setOwner(v as Owner)}>
           <SelectTrigger size="sm" className="h-8 w-[92px] text-sm sm:w-[110px]" aria-label="누구의 자산"><SelectValue/></SelectTrigger>
           <SelectContent><SelectItem value="together">부부 전체</SelectItem><SelectItem value="me">나</SelectItem><SelectItem value="partner">배우자</SelectItem></SelectContent>
-        </Select>
-        <label className="hidden items-center gap-1.5 text-sm text-grey-700 md:flex"><Checkbox checked={live} onCheckedChange={v => setLive(v === true)}/>현재가 반영</label>
+        </Select>}
+        {!linked && <label className="hidden items-center gap-1.5 text-sm text-grey-700 md:flex"><Checkbox checked={live} onCheckedChange={v => setLive(v === true)}/>현재가 반영</label>}
         <DropdownMenu>
           <DropdownMenuTrigger asChild><Button variant="outline" size="sm" className="h-8 px-2.5 sm:px-3">가져오기<ChevronDown className="size-3.5"/></Button></DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-60">
@@ -146,31 +151,34 @@ export function Workbook({ onClassic }: { onClassic: () => void }) {
             <DropdownMenuItem asChild><a href="/api/register/template.xlsx" download><Download className="size-4"/>빈 엑셀 양식 받기</a></DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-        <Button asChild size="sm" className="h-8 px-2.5 sm:px-3"><a href={`/api/workbook/report.xlsx?owner=${owner}${live ? '&live=true' : ''}`} download aria-label="보고서 내려받기"><Download className="size-3.5"/><span className="hidden sm:inline">보고서 내려받기</span></a></Button>
+        <Button asChild size="sm" className="h-8 px-2.5 sm:px-3"><a href={shared ? '/api/shared-data/ledger.xlsx' : `/api/workbook/report.xlsx?owner=${owner}${live ? '&live=true' : ''}`} download aria-label={shared ? '장부 내려받기' : '보고서 내려받기'}><Download className="size-3.5"/><span className="hidden sm:inline">{shared ? '장부 내려받기' : '보고서 내려받기'}</span></a></Button>
         <Button variant="ghost" size="sm" className="h-8 px-2 text-grey-700" onClick={onClassic} aria-label="요약 화면으로 보기"><LayoutGrid className="size-3.5"/><span className="hidden lg:inline">요약 화면으로 보기</span></Button>
       </div>
     </header>
 
     <div className="flex shrink-0 items-start gap-2 border-b border-grey-200 bg-white px-4 py-2.5">
+      <ConnectionSettings onChanged={() => setRev(r => r + 1)}/>
       <p className="min-w-0 flex-1 text-sm leading-relaxed text-grey-900" aria-live="polite">{loading && !data ? '불러오는 중…' : error ? <span className="text-destructive">{error}</span> : data?.line}</p>
       {loading && <RefreshCw className="mt-0.5 size-3.5 animate-spin text-grey-600"/>}
       {data && <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-grey-600" onClick={() => navigator.clipboard?.writeText(data.line).then(() => setToast('한 줄 요약을 복사했어요.')).catch(() => {})}><Copy className="size-3.5"/>복사</Button>}
     </div>
 
     <main className="flex min-h-0 flex-1 flex-col bg-white">
-      {sheet === 'summary' && <div className="min-h-0 flex-1 overflow-y-auto">{data && !loading && !error ? <div className="flex min-h-full flex-col"><Overview dashboard={data.dashboard} accounts={data.holdings.accounts} pools={data.rebalance.pools} owner={owner} onRegister={() => setImportMode('capture')} onHoldings={() => setSheet('holdings')} onRebalance={() => setSheet('rebalance')} onAssets={() => setSheet('assets')}/><div className="flex min-h-[360px] flex-1 flex-col"><ReadGrid label="요약 시트" widths={[220, 120, 110, 130, 130, 130, 90, 130]} rows={summaryRows}/></div></div> : <div className="p-6 text-sm text-grey-600" role="status">{error ? <><p>자산 현황을 불러오지 못했어요.</p><Button variant="outline" className="mt-3" onClick={load}>다시 불러오기</Button></> : '불러오는 중…'}</div>}</div>}
-      {sheet === 'holdings' && <AssetSheet key={`h-${owner}-${rev}`} owner={owner} initialTab="holdings" embedded onSaved={changed}/>}
-      {sheet === 'assets' && <AssetSheet key={`a-${owner}-${rev}`} owner={owner} initialTab="assets" embedded onSaved={changed}/>}
+      {linked && <LinkedLedger tab={sheet as keyof typeof LINKED_TABS} rev={rev} onChanged={changed} onEdit={sheet === 'assets' || sheet === 'holdings' ? () => setDetailEdit(true) : undefined}/>}
+      {!linked && sheet === 'summary' && <div className="min-h-0 flex-1 overflow-y-auto">{data && !loading && !error ? <div className="flex min-h-full flex-col"><Overview dashboard={data.dashboard} accounts={data.holdings.accounts} pools={data.rebalance.pools} owner={owner} onRegister={() => setImportMode('capture')} onHoldings={() => setSheet('holdings')} onRebalance={() => setSheet('rebalance')} onAssets={() => setSheet('assets')}/><div className="flex min-h-[360px] flex-1 flex-col"><ReadGrid label="요약 시트" widths={[220, 120, 110, 130, 130, 130, 90, 130]} rows={summaryRows}/></div></div> : <div className="p-6 text-sm text-grey-600" role="status">{error ? <><p>자산 현황을 불러오지 못했어요.</p><Button variant="outline" className="mt-3" onClick={load}>다시 불러오기</Button></> : '불러오는 중…'}</div>}</div>}
+      {!linked && sheet === 'holdings' && <AssetSheet key={`h-${owner}-${rev}`} owner={owner} initialTab="holdings" embedded onSaved={changed}/>}
+      {!linked && sheet === 'assets' && <AssetSheet key={`a-${owner}-${rev}`} owner={owner} initialTab="assets" embedded onSaved={changed}/>}
       {sheet === 'rebalance' && <RebalancePlan owner={owner} live={live} rev={rev} onChanged={changed} onError={setError} onRegister={() => setImportMode('capture')}/>}
       {sheet === 'retire' && <div className="min-h-0 flex-1 overflow-y-auto bg-grey-50"><RetirementTower data={retire.data} error={retire.error} save={retire.save} reload={retire.reload} owner={owner} onOwnerChange={setOwner} onAssets={() => setSheet('assets')} onRegister={() => setImportMode('capture')} onProfileChanged={() => changed('가족 정보를 저장했어요.')} details={<ReadGrid label="은퇴 시트" widths={[200, 130, 130, 110, 110, 120, 110, 260]} rows={retire.rows}/>}/></div>}
     </main>
 
     <nav className="flex min-h-11 shrink-0 items-stretch overflow-x-auto border-t border-grey-300 bg-grey-100 text-sm" role="tablist" aria-label="시트">
-      {SHEETS.map(([k, l]) => <button key={k} role="tab" aria-selected={sheet === k} onClick={() => setSheet(k)}
+      {tabs.map(([k, l]) => <button key={k} role="tab" aria-selected={sheet === k} onClick={() => setSheet(k)}
         className={cn('shrink-0 border-r border-grey-300 px-4 text-grey-700 transition-colors hover:bg-white', sheet === k && 'bg-white font-semibold text-sheet-select shadow-[inset_0_-2px_0_var(--sheet-select)]')}>{l}</button>)}
       <span className="ml-auto hidden items-center px-4 text-xs text-grey-600 md:flex">{sheet === 'retire' ? '층을 눌러 준비 상태를 확인해요 · 세전·오늘 돈 · 상세 표는 부부 전체 기준' : sheet === 'rebalance' ? '이번 달 납입 칸에 금액을 넣으면 다시 계산해요 · 결정은 기록만 하고 주문은 증권사 앱에서' : sheet === 'summary' ? '숫자는 등록한 잔고와 장부로 계산했어요' : '칸을 눌러 바로 고치고, 엑셀에서 복사해 붙여 넣어도 돼요'}</span>
     </nav>
 
+    <Dialog open={detailEdit} onOpenChange={setDetailEdit}><DialogContent className="flex h-[85dvh] max-w-[95vw] flex-col sm:max-w-[95vw]"><DialogHeader><DialogTitle>{sheet === 'holdings' ? '보유 종목' : '자산 내역'} · 상세 편집</DialogTitle></DialogHeader><AssetSheet owner="together" initialTab={sheet === 'holdings' ? 'holdings' : 'assets'} embedded onSaved={changed}/></DialogContent></Dialog>
     <Dialog open={importMode !== null} onOpenChange={o => { if (!o) { setImportMode(null); setKiwoomAuto(undefined) } }}>
       <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-3xl">
         <DialogHeader><DialogTitle>{importMode === 'capture' ? '증권사 앱 캡처로 등록' : importMode === 'kiwoom' ? '키움에서 잔고 불러오기' : '엑셀·CSV 파일 올리기'}</DialogTitle></DialogHeader>

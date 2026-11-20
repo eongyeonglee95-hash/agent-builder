@@ -8,6 +8,7 @@ from urllib.parse import urlsplit
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from starlette.concurrency import run_in_threadpool
+from starlette.requests import ClientDisconnect
 
 from backend import auth_config, auth_google
 from backend.auth_config import AuthConfig, CALLBACK, ConfigurationError, LOOPBACK_HOSTS
@@ -242,27 +243,63 @@ def check_boundary(request: Request):
         if DataStore(config.db_path).started(identity["household_id"]):
             # No stale local profile/YAML/CSV reads after cutover. SHARE-06 uses
             # the explicit fixed-member API, not login-relative legacy contracts.
-            raise HTTPException(409, "공유 자료 API로 다시 불러와 주세요. 이전 로컬 자료로 전환하지 않았습니다.")
+            from backend.shared_workspace import supported
+            if not supported(path):
+                raise HTTPException(409, "공유 자료 API로 다시 불러와 주세요. 이전 로컬 자료로 전환하지 않았습니다.")
+            request.state.shared_review = path.startswith('/api/workbook/review')
+            request.state.shared_workspace = not request.state.shared_review
 
 
 async def boundary(request: Request, call_next):
     from backend.shared_sheets import request_context, financial_write_guard
     context_token = None
     write_guard = None
+    bridge = None
+    workspace_token = None
     try:
         await run_in_threadpool(check_boundary, request)
         if getattr(request.state, "identity", None) is not None:
             context_token = request_context.set((request.state.auth_config, request.state.identity))
             path = request.url.path
-            if (request.method not in SAFE_METHODS and not path.startswith(("/api/auth/", "/api/google/", "/api/shared-data"))
+            if getattr(request.state, "shared_workspace", False):
+                from backend.shared_workspace import SharedWorkspace
+                from backend.shared_data_schema import fingerprint
+                from tools.data_context import workspace
+                from hashlib import sha256
+                body = await request.body() if request.method not in SAFE_METHODS else b""
+                rh = fingerprint([request.method, str(request.url), sha256(body).hexdigest(), request.headers.get("x-retire-sheet"), request.headers.get("x-retire-revision")])
+                bridge = await run_in_threadpool(SharedWorkspace, request.state.auth_config, request.state.identity, path, request.method, request.headers, rh)
+                if bridge.replayed_response is None:
+                    workspace_token = workspace.set(bridge.root)
+            elif (not getattr(request.state, "shared_review", False) and request.method not in SAFE_METHODS and not path.startswith(("/api/auth/", "/api/google/", "/api/shared-data"))
                     and path not in {"/api/rebalance/preview", "/api/workbook/rebalance", "/api/retirement/preview"}):
                 guard = financial_write_guard(request.state.auth_config, request.state.identity)
                 await run_in_threadpool(guard.__enter__)
                 write_guard = guard
-        response = await call_next(request)
+        if bridge is not None and bridge.replayed_response is not None:
+            saved = bridge.replayed_response
+            response = Response(content=saved['body'], status_code=saved['status'], media_type='application/json')
+        else:
+            response = await call_next(request)
+            if bridge is not None and bridge.writing and response.status_code < 400:
+                body = b''.join([chunk async for chunk in response.body_iterator])
+                await run_in_threadpool(bridge.finish, {'status': response.status_code, 'body': body.decode()})
+                response = Response(content=body, status_code=response.status_code, headers=dict(response.headers))
+        if bridge is not None:
+            response.headers['X-Retire-Sheet'] = bridge.service.sid
+            response.headers['X-Retire-Revision'] = bridge.revision
+            if getattr(bridge, 'changed', False):
+                response.headers['X-Retire-Changed'] = '1'
+    except ClientDisconnect:
+        response = Response(status_code=499)
     except HTTPException as exc:
         response = JSONResponse({"detail": exc.detail}, status_code=exc.status_code)
     finally:
+        if workspace_token is not None:
+            from tools.data_context import workspace
+            workspace.reset(workspace_token)
+        if bridge is not None:
+            await run_in_threadpool(bridge.close)
         if write_guard is not None:
             await run_in_threadpool(write_guard.__exit__, None, None, None)
         if context_token is not None:

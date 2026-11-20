@@ -212,7 +212,9 @@ def update_home(asset_id: UUID, data: HomeUpdate) -> dict:
             storage.delete_asset(UUID(deposit_id), old_deposit["version"])
         deposit_id = None
     loan_ids = [*map(str, data.loan_ids), *_new_loans(data, uuid5(asset_id, f"loans-{data.detail_version}"))]
-    keep = {k: details[hid][k] for k in ("request_id", "listings") if details.get(hid, {}).get(k)}
+    keep = {k: details[hid][k] for k in ("request_id", "listings", "kb_quote") if details.get(hid, {}).get(k)}
+    if data.area_m2 != details.get(hid, {}).get("area_m2") or data.model_dump(mode="json")["address"] != details.get(hid, {}).get("address"):
+        keep.pop("kb_quote", None)
     _write_detail(hid, {**_detail_payload(data, loan_ids, deposit_id), **keep, "value_source": source}, data.detail_version)
     return get_home(hid)
 
@@ -344,6 +346,16 @@ def _month_trades(sigungu: str, ym: str, key: str) -> list[dict]:
         except (ValueError, Exception) as e:   # 포털 오류 문구 또는 깨진 XML
             last = f"실거래가 조회 오류: {e}"[:200]
             continue
+        # District exploration must include pages beyond the first 1,000 trades.
+        import xml.etree.ElementTree as ET
+        try:
+            total = int(ET.fromstring(r.text).findtext('.//totalCount') or len(rows))
+            for page in range(2, (total + 999) // 1000 + 1):
+                extra = requests.get(url, params={"serviceKey": key, "LAWD_CD": sigungu, "DEAL_YMD": ym, "numOfRows": 1000, "pageNo": page}, timeout=10)
+                extra.raise_for_status()
+                rows.extend(parse_trades(extra.text))
+        except Exception:
+            raise HTTPException(502, "실거래 추가 페이지 조회에 실패했습니다. 다시 조회해 주세요.") from None
         _cache[(sigungu, ym)] = (time.time(), rows)
         return rows
     raise HTTPException(502, last)
@@ -426,6 +438,38 @@ def save_listings(asset_id: UUID, data: ListingsInput):
         raise HTTPException(404, "집 정보를 먼저 저장해 주세요.")
     payload = {k: v for k, v in detail.items() if k not in ("version", "updated_at")}
     payload["listings"] = [l.model_dump(mode="json") for l in data.listings]
+    _write_detail(hid, payload, data.detail_version)
+    return get_home(hid)
+
+
+class KBQuote(InputModel):
+    average: Annotated[int, Field(strict=True, gt=0, le=10**13)]
+    as_of: dt.date
+    area_m2: Annotated[float, Field(gt=0, le=2000)]
+
+    @model_validator(mode="after")
+    def not_future(self):
+        if self.as_of > dt.date.today():
+            raise ValueError("KB 시세 기준일은 오늘 이후일 수 없습니다.")
+        return self
+
+
+class KBQuoteInput(InputModel):
+    quote: KBQuote | None
+    detail_version: Annotated[int, Field(strict=True, ge=1)]
+
+
+@router.put("/{asset_id}/kb-quote")
+def save_kb_quote(asset_id: UUID, data: KBQuoteInput):
+    hid = str(asset_id)
+    get_home(hid)
+    detail = _details().get(hid)
+    if not detail:
+        raise HTTPException(404, "집 정보를 먼저 저장해 주세요.")
+    if data.quote and data.quote.area_m2 != detail.get("area_m2"):
+        raise HTTPException(422, "등록한 집의 전용면적과 같은 평형의 KB 시세를 입력해 주세요.")
+    payload = {k: v for k, v in detail.items() if k not in ("version", "updated_at")}
+    payload["kb_quote"] = data.quote.model_dump(mode="json") if data.quote else None
     _write_detail(hid, payload, data.detail_version)
     return get_home(hid)
 

@@ -254,3 +254,52 @@ def test_research_endpoint_reports_missing_without_key(client):
     assert r.status_code == 200
     assert r.json()['summary']['missing'] == 1
     assert r.json()['rows'][0]['current_count'] is None
+
+
+def test_pir_range_boundaries_and_missing_income():
+    from tools.property_move import income_price_ratio
+    def check(price, me=120_000_000, partner=130_000_000):
+        return income_price_ratio(price, me, partner, 10, 15)
+    assert check(3_100_000_000)['ratio'] == 12.4
+    assert check(2_500_000_000)['status'] == 'within'
+    assert check(3_750_000_000)['status'] == 'within'
+    assert check(3_750_000_001)['status'] == 'above'
+    assert check(2_499_999_999)['status'] == 'below'
+    assert check(3_100_000_000)['price_min'] == 2_500_000_000
+    assert check(None)['ratio'] is None
+    assert check(3_100_000_000, None)['ratio'] is None
+    assert check(3_100_000_000, 0, 0)['ratio'] is None
+    assert check(3_000_000_000, 0, 250_000_000)['ratio'] == 12
+    with pytest.raises(ValueError):
+        income_price_ratio(100, 10, 10, 15, 10)
+
+
+def test_pir_settings_persist_and_validate(client):
+    initial = client.get('/api/property-move?owner=together').json()
+    assert initial['pir']['lower'] == 10 and initial['pir']['upper'] == 15
+    assert initial['pir']['income'] is None
+    plan = initial['plan']
+    plan['pir'] = dict(annual_me=120_000_000, annual_partner=130_000_000, lower=10, upper=15)
+    r = save(client, plan)
+    assert r.status_code == 200, r.text
+    data = client.get('/api/property-move?owner=together').json()
+    assert data['plan']['pir'] == plan['pir']
+    assert data['pir']['price_max'] == 3_750_000_000
+    assert data['plan']['new_loan'] == 0
+    assert client.get('/api/property-move?owner=me').json()['pir']['income'] is None
+    plan = data['plan']
+    plan['pir']['upper'] = 9
+    assert save(client, plan).status_code == 422
+    plan['pir']['upper'] = 15
+    plan['pir']['annual_me'] = -1
+    assert save(client, plan).status_code == 422
+
+
+def test_capital_shortfall():
+    from tools.property_move import capital_shortfall
+    assert capital_shortfall(2400000000, 2000000000) == {"needed": 400000000, "surplus": 0}
+    assert capital_shortfall(2000000000, 2400000000) == {"needed": 0, "surplus": 400000000}
+    assert capital_shortfall(2000000000, 2000000000)["needed"] == 0
+    assert capital_shortfall(2000000000, -100000000)["needed"] == 2100000000
+    assert capital_shortfall(None, 2000000000)["needed"] is None
+    assert capital_shortfall(2000000000, None)["needed"] is None

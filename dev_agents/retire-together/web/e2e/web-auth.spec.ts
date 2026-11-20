@@ -125,7 +125,7 @@ test('상단 마이페이지·큰 시트 연결 버튼은 모바일과 연금에
     }
   }
   await connect.click()
-  await expect(page.getByRole('dialog', { name: '구글 시트 연결', exact: true })).toBeVisible()
+  await expect(page.getByRole('dialog', { name: '연결 설정', exact: true })).toBeVisible()
   await page.keyboard.press('Escape')
   await expect(connect).toBeFocused()
   await myPage.click()
@@ -177,7 +177,7 @@ test('업로드 전송도 CSRF를 포함하고 세션 만료 시 로그인을 �
   expect(response.request().headers()['content-type']).toContain('multipart/form-data; boundary=')
   await dialog.getByRole('button', { name: '닫기', exact: true }).click()
   await page.context().clearCookies()
-  await page.getByRole('button', { name: '표로 보기', exact: true }).click()
+  await page.getByRole('button', { name: '자산 관리', exact: true }).click()
   await expect(page.getByRole('link', { name: 'Google로 로그인' })).toBeVisible()
 })
 
@@ -225,7 +225,7 @@ test('시트 파일 동의 진입·취소·다른 계정 거부·권한 저장·
   })
   // A success-looking query is only navigation; status comes from the server.
   await page.goto('/?sheet_connection=ready#home')
-  const dialog = page.getByRole('dialog', { name: '구글 시트 연결' })
+  const dialog = page.getByRole('dialog', { name: '연결 설정' })
   await expect(dialog.getByText('내 자료를 Google에 연결해요')).toBeVisible()
   await expect(dialog.getByText('Google 파일 접근 동의가 완료됐어요.')).toHaveCount(0)
   const start = async (account: string) => {

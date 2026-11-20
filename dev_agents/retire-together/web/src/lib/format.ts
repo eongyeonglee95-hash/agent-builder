@@ -51,3 +51,13 @@ export function tone(n: number | null | undefined): 'up' | 'down' | undefined {
 export function day(iso: string | null | undefined): string {
   return iso ? iso.slice(0, 10).replaceAll('-', '.') : EMPTY
 }
+
+/** 단지 선택처럼 좁은 공간의 억 단위: 2,280,000,000 → 22.8억. 정확한 금액은 상세에 표시. */
+export function eok(n: number | null | undefined, o: Opt = {}): string {
+  return guard(n, o) ?? `${(n! / 100_000_000).toLocaleString('ko-KR', { maximumFractionDigits: 2 })}억`
+}
+
+/** 지수·일반 소수 수치. 결측값은 0과 구분한다. */
+export function decimal(n: number | null | undefined, digits = 2): string {
+  return guard(n) ?? `${sign(n!)}${Math.abs(n!).toLocaleString('ko-KR', { minimumFractionDigits: digits, maximumFractionDigits: digits })}`
+}

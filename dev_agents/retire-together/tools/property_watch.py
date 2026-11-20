@@ -59,6 +59,8 @@ def research_snapshot(candidates: list[dict], watch: dict, *, today) -> dict:
         return f"{n // 12}-{n % 12 + 1:02d}"
     recent, previous = [month(i) for i in (-3, -2, -1)], [month(i) for i in (-6, -5, -4)]
     rows = []
+    heat_months=[month(i) for i in range(-11,1)]
+    heat_rows=[]
     for c in candidates:
         found = next((w for w in watch.get("watch", []) if w["id"] == c["id"]), {})
         summary = found.get("summary")
@@ -68,6 +70,16 @@ def research_snapshot(candidates: list[dict], watch: dict, *, today) -> dict:
                          and selected_area <= watch.get("large_area_m2", 135))
         monthly = {v["month"]: v for v in (area or {}).get("monthly", [])}
         available = available and (area is None or "monthly" in area)
+        cells=[]
+        for m in heat_months:
+            n=int(m[:4])*12+int(m[5:])-2
+            prev=f"{n//12}-{n%12+1:02d}"
+            current=monthly.get(m) if available else None
+            before=monthly.get(prev) if available else None
+            change=round((current['median']/before['median']-1)*100,1) if current and before and before['median'] else None
+            cells.append({'month':m,'count':current['count'] if current else (0 if available else None),
+                          'price':current['median'] if current else None,'change_pct':change})
+        heat_rows.append({'id':c['id'],'name':c['name'],'area':selected_area,'cells':cells})
         current_count = sum(monthly.get(m, {}).get("count", 0) for m in recent) if available else None
         previous_count = sum(monthly.get(m, {}).get("count", 0) for m in previous) if available else None
         current_price, previous_price = monthly.get(recent[-1], {}).get("median"), monthly.get(previous[-1], {}).get("median")
@@ -79,7 +91,13 @@ def research_snapshot(candidates: list[dict], watch: dict, *, today) -> dict:
                      "latest": latest, "asking": asking, "asking_date": c.get("asking_date"),
                      "asking_difference": asking - latest["price"] if asking is not None and latest else None,
                      "missing": not available, "sparse": current_count is not None and current_count < 3})
-    return {"as_of": today.isoformat(), "recent": recent, "previous": previous, "rows": rows,
+    cells=[c for r in heat_rows for c in r['cells']]
+    max_volume=max([c['count'] or 0 for c in cells]+[1])
+    max_change=max([abs(c['change_pct'] or 0) for c in cells]+[1])
+    for c in cells:
+        c['volume_shade']=round((c['count'] or 0)/max_volume*25)
+        c['change_shade']=round(abs(c['change_pct'] or 0)/max_change*25)
+    return {"heatmap":{"months":heat_months,"rows":heat_rows}, "as_of": today.isoformat(), "recent": recent, "previous": previous, "rows": rows,
             "summary": {"total": len(rows), "missing": sum(r["missing"] for r in rows),
                         "volume_up": sum(r["current_count"] is not None and r["current_count"] > r["previous_count"] for r in rows),
                         "price_down": sum(r["price_change"] is not None and r["price_change"] < 0 for r in rows),

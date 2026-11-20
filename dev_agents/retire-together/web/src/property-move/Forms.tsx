@@ -11,29 +11,32 @@ export function Amount({ label, value, onChange, hint }: { label: string; value:
 
 export const LIVING_FIELDS = [['school', '학군·통학', '예: ○○초 도보 5분, 중학교 배정 확인 필요'], ['commute', '출퇴근·교통', '예: 회사까지 지하철 35분, 2호선 도보 8분'], ['life', '생활·단지', '예: 2008년 입주 1,200세대, 관리비 25만, 마트 도보'], ['concerns', '단점·확인할 것', '예: 대로변 소음, 주차 1.1대, 수리 필요']] as const
 
-export function CandidateForm({ initial, onSave, onDelete }: { initial?: Candidate; onSave: (c: Candidate) => Promise<void>; onDelete?: () => Promise<void> }) {
+export function CandidateForm({ initial, onSave, onDelete }: { initial?: Candidate; onSave: (c: Candidate[]) => Promise<void>; onDelete?: () => Promise<void> }) {
   const [d, setD] = useState<Candidate>(() => initial ?? { id: crypto.randomUUID(), name: '', address: null, area_m2: null, price: null, price_basis: 'manual', price_date: null, asking_low: null, asking_high: null, asking_date: null, purchase_costs: null, memo: '', living: emptyLiving() })
-  const [search, setSearch] = useState(false)
+  const [search, setSearch] = useState(!initial?.address)
+  const [areas, setAreas] = useState<number[]>(initial?.area_m2 ? [initial.area_m2] : [])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(false)
   const set = <K extends keyof Candidate>(key: K, value: Candidate[K]) => setD(old => ({ ...old, [key]: value }))
-  const pick = useCallback((address: Address) => { setD(old => ({ ...old, address, name: address.building || old.name, area_m2: null })); setSearch(false) }, [])
+  const pick = useCallback((address: Address) => { if (!address.building || !address.sigungu_code || !address.jibun) { setError('아파트 이름과 주소가 있는 검색 결과를 선택해 주세요.'); return } setError(''); setAreas([]); setD(old => ({ ...old, address, name: address.building || old.name, area_m2: null, price: null, price_basis: 'manual', price_date: null, asking_low: null, asking_high: null, asking_date: null, purchase_costs: null })); setSearch(false) }, [])
   async function submit(e: FormEvent) {
     e.preventDefault(); setError('')
-    if (!d.name.trim()) { setError('단지 이름을 입력해 주세요.'); return }
-    if (!d.area_m2) { setError('추적할 전용면적을 선택하거나 입력해 주세요.'); return }
+    if (!d.address?.sigungu_code || !d.address.jibun || !d.name.trim()) { setError('검색 결과에서 단지를 선택해 주세요.'); return }
+    const picked = [...new Set([...areas, ...(d.area_m2 && !areas.some(a => Math.floor(a) === Math.floor(d.area_m2!)) ? [d.area_m2] : [])])]
+    if (!picked.length) { setError('추적할 평형을 하나 이상 선택해 주세요.'); return }
     setBusy(true)
-    try { await onSave({ ...d, name: d.name.trim() }) } catch (e) { setError((e as Error).message); setBusy(false) }
+    try { await onSave(picked.map((area, index) => ({ ...d, id: initial ? area === initial.area_m2 ? d.id : crypto.randomUUID() : index === 0 ? d.id : crypto.randomUUID(), name: d.name.trim(), area_m2: area, ...(initial && area !== initial.area_m2 ? { price: null, price_basis: 'manual' as const, price_date: null, asking_low: null, asking_high: null, asking_date: null, purchase_costs: null } : {}) }))) } catch (e) { setError((e as Error).message); setBusy(false) }
   }
   return <form className="property-move property-move-form" onSubmit={submit}>
-    <button type="button" className="property-move-address-button" onClick={() => setSearch(v => !v)}><Search size={17}/>{d.address ? d.address.road : '아파트 이름으로 검색'}<span>검색</span></button>
-    {search && <><AddressSearch onPick={pick}/><p className="property-move-note">주소 검색어는 카카오 우편번호 서비스로 전송돼요.</p></>}
-    <label className="property-move-field"><span>단지 이름</span><input required maxLength={100} value={d.name} onChange={e => set('name', e.target.value)} placeholder="희망하는 아파트"/></label>
-    <AreaPicker address={d.address} name={d.name} value={d.area_m2} onChange={v => set('area_m2', v)}/>
-    <label className="property-move-field"><span>비교 메모</span><textarea rows={2} maxLength={300} placeholder="예: 출퇴근 30분, 남향, 수리 필요" value={d.memo} onChange={e => set('memo', e.target.value)}/></label>
+    <button type="button" className="property-move-address-button" onClick={() => setSearch(v => !v)}><Search size={17}/>{d.address ? d.address.building || d.name : '아파트 이름으로 검색'}<span>검색</span></button>
+    {search && <><AddressSearch onPick={pick} allowNameOnly={false}/><p className="property-move-note">주소 검색어는 카카오 우편번호 서비스로 전송돼요.</p></>}
+    {d.address && !search && <><label className="property-move-field"><span>단지 이름</span><input readOnly required maxLength={100} value={d.name} onChange={e => set('name', e.target.value)} placeholder="희망하는 아파트"/></label>
+    <p className="property-move-note">{d.address.road || d.address.jibun}</p>
+    <AreaPicker address={d.address} name={d.name} value={d.area_m2} onChange={v => set('area_m2', v)} selected={areas} onSelection={next => { setAreas(next); set('area_m2', null) }}/>
+    <label className="property-move-field"><span>비교 메모</span><textarea rows={2} maxLength={300} placeholder="예: 출퇴근 30분, 남향, 수리 필요" value={d.memo} onChange={e => set('memo', e.target.value)}/></label></>}
     {error && <p className="property-move-error" role="alert">{error}</p>}
-    <div className="property-move-form-actions">{onDelete && <button type="button" className="property-move-link" disabled={busy} onClick={async () => { if (!confirmDelete) { setConfirmDelete(true); return } setBusy(true); try { await onDelete() } catch (e) { setError((e as Error).message); setBusy(false) } }}>{confirmDelete ? '이 후보 삭제 확인' : '후보 삭제'}</button>}<button className="property-move-button primary" disabled={busy}><Check size={15}/>{busy ? '저장 중…' : '후보 저장'}</button></div>
+    <div className="property-move-form-actions">{onDelete && <button type="button" className="property-move-link" disabled={busy} onClick={async () => { if (!confirmDelete) { setConfirmDelete(true); return } setBusy(true); try { await onDelete() } catch (e) { setError((e as Error).message); setBusy(false) } }}>{confirmDelete ? '이 후보 삭제 확인' : '후보 삭제'}</button>}<button className="property-move-button primary" disabled={busy || search || !d.address || (!areas.length && !d.area_m2)}><Check size={15}/>{busy ? '저장 중…' : '후보 저장'}</button></div>
   </form>
 }
 

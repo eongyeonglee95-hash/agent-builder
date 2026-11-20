@@ -182,3 +182,33 @@ def test_address_based_trade_lookup_reaches_home_and_analysis_without_ledger_wri
     # price-check 최소 기간은 1개월. 같은 주소 식별이 분석에도 전달되어야 한다.
     assert client.get("/api/property-move/price-check", params=query).json()["analysis"]["latest"] == 660000000
     assert client.get("/api/assets").json() == before
+
+
+def test_kb_quote_is_reference_only_and_survives_edit(client):
+    h = client.post('/api/property', json=home(request_id=str(uuid.uuid4()))).json()
+    url = f"/api/property/{h['asset']['id']}/kb-quote"
+    body = {'detail_version': h['detail']['version'], 'quote': {'average': 1_200_000_000, 'as_of': TODAY, 'area_m2': 84.9}}
+    r = client.put(url, json=body)
+    assert r.status_code == 200, r.text
+    h2 = r.json()
+    assert h2['detail']['kb_quote'] == body['quote']
+    assert h2['full_value'] == h['full_value']
+    assert h2['metrics'] == h['metrics']
+    assert client.put(url, json=body).status_code == 409
+    h3 = client.put(f"/api/property/{h['asset']['id']}", json=home(version=h2['asset']['version'], detail_version=h2['detail']['version'])).json()
+    assert h3['detail']['kb_quote'] == body['quote']
+    h4 = client.put(f"/api/property/{h['asset']['id']}", json=home(area_m2=59, version=h3['asset']['version'], detail_version=h3['detail']['version'])).json()
+    assert not h4['detail'].get('kb_quote')
+    assert client.put(url, json={**body, 'detail_version': h4['detail']['version']}).status_code == 422
+
+
+def test_kb_quote_validation_and_clear(client):
+    h = client.post('/api/property', json=home(request_id=str(uuid.uuid4()))).json()
+    url = f"/api/property/{h['asset']['id']}/kb-quote"
+    body = {'detail_version': h['detail']['version'], 'quote': {'average': 1_200_000_000, 'as_of': TODAY, 'area_m2': 84.9}}
+    for change in [{'average': 0}, {'average': -1}, {'as_of': '2999-01-01'}, {'area_m2': 59}]:
+        assert client.put(url, json={**body, 'quote': {**body['quote'], **change}}).status_code == 422
+    h2 = client.put(url, json=body).json()
+    r = client.put(url, json={'detail_version': h2['detail']['version'], 'quote': None})
+    assert r.status_code == 200
+    assert r.json()['detail']['kb_quote'] is None

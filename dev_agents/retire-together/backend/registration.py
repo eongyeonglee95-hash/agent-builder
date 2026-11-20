@@ -41,11 +41,13 @@ TYPE_LABELS = {"pension_savings": "연금저축", "irp": "IRP", "isa": "ISA", "g
 # ---------- 경로 (브라우저 테스트가 임시 폴더로 바꾼다) ----------
 
 def accounts_path() -> Path:
-    return Path(os.environ.get("RETIRE_ACCOUNTS_PATH") or ROOT / "rules" / "accounts.yaml")
+    from tools.data_context import resolve
+    return resolve("accounts.yaml", Path(os.environ.get("RETIRE_ACCOUNTS_PATH") or ROOT / "rules" / "accounts.yaml"))
 
 
 def asset_map_path() -> Path:
-    return Path(os.environ.get("RETIRE_ASSET_MAP_PATH") or ROOT / "rules" / "asset_map.yaml")
+    from tools.data_context import resolve
+    return resolve("asset_map.yaml", Path(os.environ.get("RETIRE_ASSET_MAP_PATH") or ROOT / "rules" / "asset_map.yaml"))
 
 
 def upload_dir() -> Path:
@@ -53,7 +55,8 @@ def upload_dir() -> Path:
 
 
 def snapshot_dir() -> Path:
-    return Path(os.environ.get("RETIRE_SNAPSHOT_DIR") or snapshots.SNAPSHOTS)
+    from tools.data_context import resolve
+    return resolve("snapshots", Path(os.environ.get("RETIRE_SNAPSHOT_DIR") or snapshots.SNAPSHOTS))
 
 
 # ---------- 계좌 ----------
@@ -614,8 +617,7 @@ def commit(data: CommitInput):
     replace_group(storage.list_assets(), data.account_id, data.source, payloads, storage.now())
     # (1) 엔진용 스냅샷 — 등록·활성·형식·중복 검사는 store가 다시 한다 (SAFE-01/02)
     try:
-        snapshots.SNAPSHOTS = snapshot_dir()
-        snapshot_path = snapshots.save_holdings(data.account_id, df, on=data.as_of, accounts=accts)
+        snapshot_path = snapshots.save_holdings(data.account_id, df, on=data.as_of, accounts=accts, base_dir=snapshot_dir())
     except ValueError as e:
         raise HTTPException(422, str(e)) from None
     # (2) 종목 꼬리표 — 사용자가 고른 자산군은 '확인됨'으로 매핑에 남아 다음부터 안 묻는다. 혼합은 남기지 않는다
@@ -628,6 +630,7 @@ def commit(data: CommitInput):
         store.replace_holdings(data.account_id, [r.model_dump() for r in data.rows], data.as_of.isoformat())
     # (4) 자산군별 자산 행
     created = storage.replace_account_assets(data.account_id, data.source, payloads)
+    from tools.data_context import workspace
     return {"assets": created, "holdings": len(data.rows), "tags_confirmed": tagged, "total": sum(by_class.values()) + (data.cash or 0), "cash": data.cash or 0,
             "snapshot": str(snapshot_path.relative_to(ROOT)) if snapshot_path.is_relative_to(ROOT) else snapshot_path.name,
-            "sheet": store is not None}
+            "sheet": store is not None or workspace.get() is not None}

@@ -1,6 +1,6 @@
 import { expect, test, type BrowserContext, type Page } from '@playwright/test'
 const SID = 'synthetic_common_sheet_123456789'
-const dialog = (page: Page) => page.getByRole('dialog', { name: '구글 시트 연결', exact: true })
+const dialog = (page: Page) => page.getByRole('dialog', { name: '연결 설정', exact: true })
 async function controls(page: Page, body: object) { const r = await page.request.post('/__share_fixture', { data: body }); expect(r.ok()).toBe(true); return r.json() }
 async function guard(context: BrowserContext) {
   await context.route('**/*', route => ['127.0.0.1', 'localhost'].includes(new URL(route.request().url()).hostname) ? route.continue() : route.abort())
@@ -14,7 +14,7 @@ async function login(page: Page, person = '테스트 오너') {
   await expect.poll(() => popup.isClosed()).toBe(true)
   await expect(page.getByRole('button', { name: '마이페이지', exact: true })).toBeVisible()
 }
-async function panel(page: Page) { await page.getByRole('button', { name: '내 자산 연결 Google 시트', exact: true }).click(); await expect(dialog(page)).toBeVisible() }
+async function panel(page: Page) { if (await dialog(page).isVisible()) return; if (await page.getByRole('button', { name: '자산 관리', exact: true }).isVisible()) await page.getByRole('button', { name: '자산 관리', exact: true }).click(); await page.getByRole('button', { name: '연결 설정', exact: true }).click(); await expect(dialog(page)).toBeVisible() }
 async function consent(page: Page) {
   await panel(page)
   await dialog(page).getByRole('button', { name: 'Google에서 접근 허용' }).click()
@@ -267,17 +267,17 @@ test('360/390/1440px·키보드 파일/초대/자료 화면·JSON 입력 없음'
 })
 
 
-test('다른 자료 선택 뒤 합계를 다시 확인하고 실제 이전은 준비 중으로 유지', async ({ page }) => {
+test('다른 자료 선택 뒤 합계를 다시 확인하고 확인 전에는 자료를 이전하지 않음', async ({ page }) => {
   await setupFile(page)
   await controls(page, { legacy_conflict: true })
   const p = dialog(page)
   await p.getByRole('button', { name: '우리 자료', exact: true }).click()
   await p.getByRole('button', { name: '이 컴퓨터 자료 확인' }).click()
-  await expect(p.getByRole('button', { name: '자료 옮기기 준비 중' })).toBeDisabled()
+  await expect(p.getByRole('button', { name: '확인한 자료를 시트에 저장' })).toBeDisabled()
   await p.getByRole('radio', { name: /기존 시트 자료/ }).check()
   await p.getByRole('button', { name: '선택 결과 대조' }).click()
   await expect(p.getByText('오너 이름 · 자산 150만원 / 대출 0원', { exact: true }).last()).toBeVisible()
-  await expect(p.getByRole('button', { name: '자료 옮기기 준비 중' })).toBeDisabled()
+  await expect(p.getByRole('button', { name: '확인한 자료를 시트에 저장' })).toBeDisabled()
   expect((await page.request.get('/api/google/shared/status')).ok()).toBe(true)
   expect(await page.evaluate(async () => (await (await fetch('/api/google/shared/status')).json()).data_started)).toBe(false)
 })
@@ -299,11 +299,90 @@ test('연결된 파일은 다음 행동 하나로 자료 확인, 연결 관리�
   }
   await p.getByRole('button', { name: '이 컴퓨터 자료 확인' }).click()
   await expect(p.getByRole('heading', { name: '옮길 자료 미리보기' })).toBeVisible()
-  await expect(p.getByRole('button', { name: '자료 옮기기 준비 중' })).toBeDisabled()
+  await expect(p.getByRole('button', { name: '확인한 자료를 시트에 저장' })).toBeDisabled()
   expect(mutations.filter(path => path.endsWith('/migration/preview'))).toHaveLength(1)
   expect(mutations.filter(path => path.endsWith('/migration/commit'))).toEqual([])
   await page.screenshot({ path: test.info().outputPath('migration-review-360.png') })
   await p.getByRole('button', { name: '공통 시트', exact: true }).click()
   await expect(p.getByRole('button', { name: '이 컴퓨터 자료 확인' })).toBeVisible()
+  expect(errors).toEqual([])
+})
+
+test('자료 이전 → 자산 수정 → 버전 보관·읽기 전용·현재 파일 전환', async ({ page }) => {
+  await setupFile(page)
+  const p = dialog(page)
+  await p.getByRole('button', { name: '이 컴퓨터 자료 확인' }).click()
+  await p.getByLabel('명의·건수·금액을 확인했어요. 이 자료를 구글 시트에 저장할게요.').check()
+  await p.getByRole('button', { name: '확인한 자료를 시트에 저장' }).click()
+  await expect(p.getByText('구글 시트에 자료를 저장했어요. 우리 자산에서 확인할 수 있어요.')).toBeVisible()
+  await p.getByRole('button', { name: '시트 버전', exact: true }).click()
+  await p.getByLabel('보관할 버전 이름').fill('11월 자산 보관')
+  await p.getByRole('button', { name: '현재 자료를 새 버전으로 보관' }).click()
+  await expect(p.getByRole('heading', { name: '11월 자산 보관 · 읽기 전용' })).toBeVisible()
+  const current = await page.evaluate(async () => (await (await fetch('/api/google/shared/status')).json()).spreadsheet.spreadsheet_id)
+  expect(current).toBe(SID)
+  await expect(p.getByRole('link', { name: '엑셀 다운로드', exact: true })).toHaveAttribute('href', new RegExp(`${SID}/export\\?format=xlsx`))
+  await expect(p.getByRole('button', { name: '현재 관리 시트로 지정' })).toBeDisabled()
+  for (const width of [1440, 390, 360]) {
+    await page.setViewportSize({ width, height: 1000 })
+    expect(await p.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true)
+    await page.screenshot({ path: test.info().outputPath(`sheet-versions-${width}.png`) })
+  }
+  await p.getByLabel('이 파일을 앞으로의 저장 위치로 사용할게요').check()
+  await p.getByRole('button', { name: '현재 관리 시트로 지정' }).click()
+  await expect.poll(async () => page.evaluate(async () => (await (await fetch('/api/google/shared/status')).json()).spreadsheet.spreadsheet_id)).not.toBe(SID)
+  const selected = await page.evaluate(async () => (await (await fetch('/api/google/shared/status')).json()).spreadsheet.spreadsheet_id)
+  expect(selected).not.toBe(SID)
+  await page.keyboard.press('Escape')
+  await page.goto('/#assets')
+  await expect(page.getByRole('heading', { name: '우리 자산', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: '자산 등록', exact: true }).click()
+  const form = page.getByRole('dialog', { name: '내 자산 등록하기', exact: true })
+  await form.getByRole('button', { name: /금액 직접 입력/ }).click()
+  await form.getByLabel('자산 종류', { exact: true }).selectOption('cash')
+  await form.getByRole('textbox', { name: '계좌·자산 이름', exact: true }).fill('새 예금')
+  await form.locator('input[name=amount]').fill('2000000')
+  await form.getByRole('button', { name: '입력 내용 확인' }).click()
+  await form.getByRole('button', { name: '저장하기', exact: true }).click()
+  await expect(form).toBeHidden()
+  await expect(page.getByRole('button', { name: /새 예금.*기준/ })).toBeVisible()
+  await page.reload()
+  await expect(page.getByRole('button', { name: /새 예금.*기준/ })).toBeVisible()
+  await page.goto('/#sheet-summary')
+  await expect(page.getByRole('tablist', { name: '시트', exact: true })).toBeVisible()
+  await page.getByRole('tab', { name: '자산', exact: true }).click()
+  await expect(page.getByText('새 예금', { exact: true }).first()).toBeVisible()
+  // Old file is still available and did not receive the new asset.
+  const old = await page.evaluate(async sid => {
+    const session = await (await fetch('/api/auth/session')).json()
+    return (await fetch('/api/shared-data/versions/preview', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Retire-CSRF': session.csrf_token }, body: JSON.stringify({ spreadsheet_id: sid }) })).json()
+  }, SID)
+  expect(old.snapshot.assets.some((a: { name: string }) => a.name === '새 예금')).toBe(false)
+})
+
+test('시트 연동 뒤에도 원래 엑셀 워크북과 연금·부동산·리밸런싱을 사용', async ({ page }) => {
+  const errors: string[] = []
+  page.on('pageerror', e => errors.push(e.message))
+  await setupFile(page)
+  await loadMigratedFixture(page)
+  await page.goto('/#sheet-summary')
+  await expect(page.getByRole('tablist', { name: '시트', exact: true })).toBeVisible()
+  for (const name of ['요약', '보유종목', '자산', '리밸런싱', '연금']) {
+    await expect(page.getByRole('tab', { name, exact: true })).toBeVisible()
+  }
+  await expect(page.getByRole('grid', { name: '요약 시트', exact: true })).toBeVisible()
+  await page.keyboard.press('Escape')
+  await page.screenshot({ path: test.info().outputPath('restored-workbook.png'), fullPage: true })
+  await page.getByRole('tab', { name: '연금', exact: true }).click()
+  await expect(page.getByText('공유 자료 연결은 준비 중이에요.', { exact: false })).toHaveCount(0)
+  await expect.poll(async () => (await page.request.get('/api/retirement')).status()).toBe(200)
+  await page.getByRole('tab', { name: '리밸런싱', exact: true }).click()
+  await expect.poll(async () => (await page.request.get('/api/workbook/portfolios')).status()).toBe(200)
+  await page.goto('/#property')
+  await expect(page.getByRole('region', { name: '부동산 관측실', exact: true })).toBeVisible()
+  await expect.poll(async () => (await page.request.get('/api/property')).status()).toBe(200)
+  await page.goto('/#assets')
+  await expect(page.locator('details.ledger-disclosure')).toHaveAttribute('open', '')
+  await expect(page.getByRole('button', { name: /오너 예금.*기준/ })).toBeVisible()
   expect(errors).toEqual([])
 })

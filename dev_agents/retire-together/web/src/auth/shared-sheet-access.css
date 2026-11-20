@@ -29,7 +29,7 @@
 .sheet-badge.web-sheet-badge { min-height: 36px; color: var(--brand); background: var(--card); border-color: var(--border); font-size: var(--home-caption); }
 @media (max-width: 650px) { .sheet-badge.web-sheet-badge { width: 36px; justify-content: center; padding: 0; flex-shrink: 0; }.web-sheet-badge span { display: none; } }
 .share-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 24px; }
-.shared-sheet-access .share-tabs button { flex: 1; justify-content: center; min-height: 44px; padding: 10px 8px; font-size: var(--home-caption); }
+.shared-sheet-access .share-tabs button { flex: 1 0 100px; white-space: nowrap; justify-content: center; min-height: 44px; padding: 10px 8px; font-size: var(--home-caption); }
 .share-tabs button[aria-pressed=true] { border-color: var(--primary); color: var(--primary); font-weight: 700; }
 .share-section { margin-top: 16px; }
 .share-form, .share-copy { display: grid; gap: 12px; margin: 16px 0; }
@@ -52,3 +52,12 @@
 .share-invitation-page { min-height: 100dvh; background: var(--background); color: var(--foreground); padding: clamp(16px, 4vw, 48px); }
 .share-invitation-card { width: min(100%, 560px); margin: 32px auto; padding: clamp(16px, 4vw, 32px); background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); }
 .share-invitation-card h1 { font-size: var(--text-2xl); line-height: 1.4; }
+
+.shared-workbook { max-width: 80rem; margin: 0 auto; padding: 24px; color: var(--foreground); background: var(--background); }
+.shared-workbook h1 { margin-top: 24px; }
+.shared-workbook .button-row { flex-wrap: wrap; }
+.share-preview td { overflow-wrap: anywhere; }
+@media (max-width: 600px) { .shared-workbook { padding: 16px; } }
+
+.shared-source-status { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; color: var(--muted-foreground); font-size: var(--text-sm); margin-bottom: 12px; }
+.shared-source-status button { display: inline-flex; align-items: center; gap: 8px; }

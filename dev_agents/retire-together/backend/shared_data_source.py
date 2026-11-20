@@ -19,7 +19,7 @@ from tools.sheets import ASSET_TAB, HOLDING_TAB
 # migration backup or include them in the household source-change check.
 FINANCIAL_TABLES = (
     "family", "assets", "asset_history", "retirement_plan",
-    "property_detail", "property_move", "property_track",
+    "property_detail", "property_move", "property_track", "additional_pension_plans", "additional_pension_payments",
 )
 MAX_FINANCIAL_SNAPSHOT_BYTES = 100_000_000
 
@@ -134,8 +134,8 @@ def local_sources(members):
     db = sqlite3.connect(":memory:", uri=True)
     db.row_factory = sqlite3.Row
     try:
-        if storage.DB_PATH.exists():
-            financial_snapshot(db, storage.DB_PATH)
+        if storage.database_path().exists():
+            financial_snapshot(db, storage.database_path())
             archive["financial.sqlite3"] = base64.b64encode(db.serialize()).decode()
         tables = {r[0] for r in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
 
@@ -161,6 +161,12 @@ def local_sources(members):
             rows.append(asset({**json.loads(r["payload"]), "id": r["id"], "request_id": r["request_id"],
                                "version": r["version"], "updated_at": r["updated_at"]}, members))
         asset_members = {r["id"]: r["member_id"] for r in rows if r["kind"] == "asset"}
+        for r in table("additional_pension_plans"):
+            rows.append(record("additional_plan", r["asset_id"], asset_members[r["asset_id"]],
+                {**json.loads(r["body"]), "version": r["version"]}))
+        for r in table("additional_pension_payments"):
+            rows.append(record("additional_payment", r["id"], asset_members[r["asset_id"]],
+                {**json.loads(r["body"]), "asset_id": r["asset_id"], "recorded_at": r["recorded_at"]}))
         for r in table("property_detail"):
             if r["asset_id"] not in asset_members:
                 fail("장부에서 사라진 집의 상세 정보가 있습니다. 원본을 정리한 뒤 이전해 주세요.")
@@ -213,6 +219,19 @@ def local_sources(members):
                     fail("스냅샷 평가액과 수량·가격 합계가 일치하지 않습니다.")
                 p.setdefault("as_of", files[-1].stem)
                 rows.append(holding(p, accounts))
+    from backend.trade_journal import DB_PATH as trade_path
+    from tools.data_context import resolve
+    trade_path = resolve("trade-journal.sqlite3", trade_path)
+    if trade_path.exists():
+        with sqlite3.connect(trade_path.resolve().as_uri() + "?mode=ro", uri=True) as trades:
+            if trades.execute("SELECT 1 FROM sqlite_master WHERE name='entries'").fetchone():
+                trade_rows = trades.execute("SELECT id,input,body FROM entries ORDER BY id").fetchall()
+                archive["trade-records.json"] = base64.b64encode(json.dumps(trade_rows).encode()).decode()
+                for rid, input_text, body_text in trade_rows:
+                    payload = json.loads(input_text)
+                    account = accounts.get(payload.get("account_id"))
+                    scope = account["member_id"] if account else "household"
+                    rows.append(record("trade_record", rid, scope, {"input": payload, "record": json.loads(body_text)}))
     for rid, path in (("strategies", strategies_path()), ("asset_map", registration.asset_map_path())):
         text = read(path, rid + ".yaml")
         rows.append(record("rules", rid, "household", {"text": text, "sha256": sha256(text.encode()).hexdigest()}))

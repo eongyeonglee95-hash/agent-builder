@@ -9,26 +9,26 @@ import { ObservationRow } from '../components/ui/observation-row'
 import { day } from '../lib/format'
 import type { MoveState } from './types'
 
-export type Area = { area: number; count: number; median: number; monthly?: import('./types').Monthly[]; latest: { price: number; date: string; area: number; floor: number | null } }
+export type Area = { funding?: {needed:number|null;surplus:number|null}; pir?: import('./types').PirResult; area: number; count: number; median: number; monthly?: import('./types').Monthly[]; latest: { price: number; date: string; area: number; floor: number | null } }
 export type Watch = { configured: boolean; months?: number; large_area_m2?: number; watch: { id: string; name: string; missing?: string; summary: { count: number; excluded_large: number; areas: Area[] } | null }[] }
 type Load<T> = { data: T | null; loading: boolean; error: boolean }
 type Place = { name: string; distance_m: number }
 type Places = { radius_m: number; fetched_at: Record<string, string>; items: { id: string; places: { department: Place | null; park_large: Place | null; hospital_tertiary: Place | null; hospital_general: Place | null; parks_within: number | null } | null }[] }
 
-export function useRead<T>(path: string, revision: number, enabled = true) {
+export function useRead<T>(path: string, revision: number, enabled = true, keepData = false) {
   const [state, setState] = useState<Load<T>>({ data: null, loading: true, error: false })
   useEffect(() => {
     if (!enabled) { setState({ data: null, loading: false, error: false }); return }
     const controller = new AbortController()
     let active = true
-    setState({ data: null, loading: true, error: false })
+    setState(old => ({ data: keepData ? old.data : null, loading: true, error: false }))
     const timer = setTimeout(() => { if (active) { setState({ data: null, loading: false, error: true }); controller.abort() } }, 120000)
     api<T>(path, 'GET', undefined, controller.signal)
       .then(data => { if (active) setState({ data, loading: false, error: false }) })
       .catch(() => { if (active) setState({ data: null, loading: false, error: true }) })
       .finally(() => clearTimeout(timer))
     return () => { active = false; clearTimeout(timer); controller.abort() }
-  }, [path, revision, enabled])
+  }, [path, revision, enabled, keepData])
   return state
 }
 
