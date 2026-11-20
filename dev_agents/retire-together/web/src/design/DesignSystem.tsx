@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { ChevronDown, Download, Plus, RefreshCw, Trash2 } from 'lucide-react'
 import { Amount } from '@/components/ui/amount'
 import { Button } from '@/components/ui/button'
+import { CandidateOrb } from '@/components/ui/candidate-orb'
 import { ObservationRow } from '@/components/ui/observation-row'
 import { SectionMenu } from '@/components/ui/section-menu'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -17,6 +18,7 @@ import { SecuritiesReport } from '@/workbook/SecuritiesReport'
 import { allocationReportExample } from './allocation-report-example'
 import { MixRows, StrategyAllocation } from '@/workbook/RebalancePlan'
 import { classInfo } from '../model'
+import '../property-move/sentiment.css'
 import { day, manwon, pct, pp, shares, won } from '@/lib/format'
 
 // 디자인 견본 — 주소 #design. 문서는 docs/DESIGN_SYSTEM.md. 여기 있는 것은 모두 실제 컴포넌트·토큰이라 바꾸면 앱 전체에 같이 바뀐다.
@@ -167,6 +169,7 @@ export function DesignSystem() {
         </div>
       </Section>
 
+      <Section id="candidate-orb" title="원형 단지 후보" note="구별 후보를 고를 때 사용해요. 원을 눌러 근거를 확인하고 별도로 저장해요. 가격은 견본입니다."><div className="flex flex-wrap gap-4"><CandidateOrb name="견본 아파트" area="전용 84㎡" price="30억원" selected={section === 'candidate-preview'} onSelect={()=>setSection(section === 'candidate-preview' ? 'brief' : 'candidate-preview')}/><CandidateOrb name="저장한 견본" area="전용 59㎡" price="26억원" saved onSelect={()=>setSection('candidate-preview')}/></div></Section>
       <Section id="property-observation" title="단지 비교 행"><div className="overflow-hidden rounded-md border border-grey-200"><ObservationRow title="견본 아파트" subtitle="전용 84㎡" metrics={[{ label: '기록 호가', value: <Amount value={900000000} fmt="manwon"/>, detail: '2026.11.17' }, { label: '최근 실거래', value: <Amount value={880000000} fmt="manwon"/>, detail: '2026.10.01 · 8층' }, { label: '중간값', value: <Amount value={870000000} fmt="manwon"/>, detail: '12건' }, { label: '추가 자금', value: <Amount value={200000000} fmt="manwon"/> }]}/></div></Section>
       <Section id="property-menu" title="화면 안의 메뉴" note="부동산 관측실처럼 다른 작업으로 이동할 때 사용해요."><SectionMenu label="메뉴 견본" value={section} onChange={setSection} items={[{ id: 'brief', label: '브리핑' }, { id: 'watch', label: '관심 단지' }, { id: 'journal', label: '주간·월간' }]}/></Section>
       <Section id="button" title="버튼" note="한 화면에 진한 주 버튼은 하나. 나머지는 테두리(outline)나 조용한(ghost). 파란 버튼은 없어요 — 파랑은 하락.">
@@ -219,6 +222,10 @@ export function DesignSystem() {
         <div className="flex h-80 flex-col overflow-hidden rounded-md border border-grey-200">
           <ReadGrid label="견본 시트" widths={[190, 70, 120, 120, 90, 130]} rows={sampleRows(paid, setPaid)}/>
         </div>
+      </Section>
+
+      <Section id="sentiment-history" title="심리·금리 히트맵" note="합성 견본. 색과 부호로 방향을 표시하고 자료 없음은 0과 구분해요.">
+        <div className="sentiment-dashboard sentiment-matrix"><table><thead><tr><th>지표</th><th>상승</th><th>하락</th><th>보합</th><th>결측</th></tr></thead><tbody><tr><th>전주 대비 · 지수</th><td className="sentiment-cell sentiment-rise">+1.00p</td><td className="sentiment-cell sentiment-fall">−1.00p</td><td className="sentiment-cell sentiment-flat">0.00p</td><td className="sentiment-cell sentiment-missing">—</td></tr></tbody></table></div>
       </Section>
 
       <Section id="state" title="상태 문구" note="해요체, 한 문장. 무슨 일이 있었는지 + 다음에 할 일. 영어·기술 용어·느낌표 없이.">

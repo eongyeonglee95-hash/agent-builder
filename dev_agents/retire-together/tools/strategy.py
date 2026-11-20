@@ -18,7 +18,8 @@ STRATEGIES_PATH = ROOT / "rules" / "strategies.yaml"
 
 def strategies_path() -> Path:
     """전략 파일 위치. 테스트·브라우저 검사는 RETIRE_STRATEGIES_PATH로 임시 파일을 쓴다."""
-    return Path(os.environ.get("RETIRE_STRATEGIES_PATH") or STRATEGIES_PATH)
+    from tools.data_context import resolve
+    return resolve("strategies.yaml", Path(os.environ.get("RETIRE_STRATEGIES_PATH") or STRATEGIES_PATH))
 
 ASSET_CLASSES = ("stock", "long_bond", "mid_bond", "gold", "commodity", "cash")
 CLASS_LABELS = {

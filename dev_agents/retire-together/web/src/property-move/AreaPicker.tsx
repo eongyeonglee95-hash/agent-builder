@@ -6,7 +6,7 @@ import type { Address } from '../property-entry'
 type Area = { area: number; min: number; max: number; supply_pyeong: number[] }
 type Areas = { areas: Area[]; sources: string[]; warnings: string[] }
 
-export function AreaPicker({ address, name, value, onChange }: { address: Address | null; name: string; value: number | null; onChange: (area: number | null) => void }) {
+export function AreaPicker({ address, name, value, onChange, selected, onSelection }: { selected?: number[]; onSelection?: (areas: number[]) => void; address: Address | null; name: string; value: number | null; onChange: (area: number | null) => void }) {
   const [data, setData] = useState<Areas | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -26,10 +26,12 @@ export function AreaPicker({ address, name, value, onChange }: { address: Addres
       .finally(() => { clearTimeout(timeout); if (live) setLoading(false) })
     return () => { live = false; clearTimeout(timeout); controller.abort() }
   }, [bcode, building, jibun, rev])
+  const checked = (area: number) => selected ? selected.some(v => Math.floor(v) === Math.floor(area)) : value !== null && Math.floor(value) === Math.floor(area)
+  const choose = (area: number) => { if (selected && onSelection) onSelection(checked(area) ? selected.filter(v => Math.floor(v) !== Math.floor(area)) : [...selected, area]); else onChange(area); setManual(false) }
   const matched = data?.areas.some(a => value !== null && Math.floor(a.area) === Math.floor(value))
-  return <fieldset className="property-area-picker"><legend>추적할 평형</legend>
+  return <fieldset className="property-area-picker"><legend>추적할 평형{selected ? ' · 복수 선택' : ''}</legend>
     {loading && <p className="property-move-note" role="status">이 단지의 거래·매물에서 전용면적을 찾고 있어요.</p>}
-    {!!data?.areas.length && <><div className="property-area-options">{data.areas.map(a => <button type="button" key={a.area} aria-pressed={value !== null && Math.floor(value) === Math.floor(a.area)} onClick={() => { onChange(a.area); setManual(false) }}><strong>전용 {Math.floor(a.area)}㎡ {value !== null && Math.floor(value) === Math.floor(a.area) && <Check size={14} aria-hidden="true"/>}</strong><span>{a.supply_pyeong.length ? `공급 약 ${a.supply_pyeong.join('·')}평형` : '공급면적 미확인'}</span><small>{a.min === a.max ? a.min : `${a.min}~${a.max}`}㎡</small></button>)}</div><p className="property-move-note">거래·매물에서 확인한 평형입니다. 같은 전용면적의 타입은 함께 추적해요.</p></>}
+    {!!data?.areas.length && <><div className="property-area-options">{data.areas.map(a => <button type="button" key={a.area} aria-pressed={checked(a.area)} onClick={() => choose(a.area)}><strong>전용 {Math.floor(a.area)}㎡ {checked(a.area) && <Check size={14} aria-hidden="true"/>}</strong><span>{a.supply_pyeong.length ? `공급 약 ${a.supply_pyeong.join('·')}평형` : '공급면적 미확인'}</span><small>{a.min === a.max ? a.min : `${a.min}~${a.max}`}㎡</small></button>)}</div><p className="property-move-note">거래·매물에서 확인한 평형입니다. 같은 전용면적의 타입은 함께 추적해요.</p></>}
     {error && <p className="property-move-note">{error} <button className="property-move-link" type="button" onClick={() => setRev(n => n + 1)}>다시 조회</button></p>}
     {!!data?.warnings.length && <p className="property-move-note">{data.warnings.join(' · ')} · 확인된 자료만 표시해요.</p>}
     {data && !data.areas.length && <p className="property-move-note">이 단지에서 확인된 면적이 없어요. 알고 있는 전용면적을 입력해 주세요.</p>}

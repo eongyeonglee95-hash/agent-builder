@@ -16,9 +16,12 @@ export async function api<T>(path: string, method = 'GET', body?: unknown, signa
   }
   return response.status === 204 ? undefined as T : response.json()
 }
+export type SharedWriteContext = { revision: string; spreadsheet_id: string }
 export function useLocalData(owner: Owner) {
   const { mode, session } = useAuth()
   const [shared, setShared] = useState(false)
+  const [sheetConnection, setSheetConnection] = useState<'loading' | 'connected' | 'unlinked' | 'attention'>('loading')
+  const [writeContext, setWriteContext] = useState<SharedWriteContext | undefined>()
   const [family, setFamily] = useState<Family | null>(null)
   const [snapshot, setSnapshot] = useState<Snapshot>(emptySnapshot)
   const [loading, setLoading] = useState(true)
@@ -29,18 +32,34 @@ export function useLocalData(owner: Owner) {
   useEffect(() => { window.addEventListener('retire:holdings-changed', refresh); return () => window.removeEventListener('retire:holdings-changed', refresh) }, [refresh])
   useEffect(() => {
     const controller = new AbortController()
-    setLoading(true); setError('')
+    setLoading(true); setError(''); setSheetConnection('loading')
     if (loadedOwner.current !== owner) setSnapshot(emptySnapshot)
     loadedOwner.current = owner
-    const timeout = setTimeout(() => controller.abort(new Error('요청 시간이 초과되었습니다. 다시 시도해 주세요.')), 8000)
+    const timeout = setTimeout(() => controller.abort(new Error('요청 시간이 초과되었습니다. 다시 시도해 주세요.')), 30000)
     async function load(): Promise<[Family | null, Snapshot]> {
-      const status = mode === 'web' ? await api<{ data_started: boolean }>('/google/shared/status', 'GET', undefined, controller.signal) : null
+      type SheetStatus = { data_started?: boolean; active: boolean; health?: string }
+      const readStatus = async (): Promise<SheetStatus | undefined> => {
+        try {
+          const status = await api<SheetStatus>(mode === 'web' ? '/google/shared/status' : '/google/status', 'GET', undefined, controller.signal)
+          const needsAttention = status.health === 'attention' || status.health === 'create_rejected' || (mode !== 'web' && !!status.health && status.health !== 'ok')
+          if (!controller.signal.aborted) setSheetConnection(needsAttention ? 'attention' : status.active ? 'connected' : 'unlinked')
+          return status
+        } catch (error) {
+          if (!controller.signal.aborted) setSheetConnection('attention')
+          // A connection check must not hide independently stored local assets.
+          if (mode === 'web' || controller.signal.aborted) throw error
+          return undefined
+        }
+      }
+      const status = await readStatus()
       const useShared = !!status?.data_started || (mode === 'web' && session?.role === 'partner')
       if (!controller.signal.aborted) setShared(useShared)
       if (useShared) {
-        const result = await api<{ family: Family | null; snapshot: Snapshot }>(`/shared-data/dashboard?owner=${owner}`, 'GET', undefined, controller.signal)
+        const result = await api<{ family: Family | null; snapshot: Snapshot } & SharedWriteContext>(`/shared-data/dashboard?owner=${owner}`, 'GET', undefined, controller.signal)
+        if (!controller.signal.aborted) setWriteContext({ revision: result.revision, spreadsheet_id: result.spreadsheet_id })
         return [result.family, result.snapshot]
       }
+      setWriteContext(undefined)
       return Promise.all([api<Family | null>('/family', 'GET', undefined, controller.signal), api<Snapshot>(`/dashboard?owner=${owner}`, 'GET', undefined, controller.signal)])
     }
     load()
@@ -50,9 +69,9 @@ export function useLocalData(owner: Owner) {
         const classes = Object.entries(classInfo).filter(([key]) => key !== 'debt').map(([key, info]) => ({ key, ...info, amount: data.assets.filter(a => a.assetClass === key).reduce((n, a) => n + a.amount, 0) })).filter(a => a.amount > 0)
         setSnapshot({ ...data, classes })
       })
-      .catch(e => { if (!controller.signal.aborted || controller.signal.reason instanceof Error) { setFamily(null); setSnapshot(emptySnapshot); setError(e instanceof Error ? e.message : '자료를 불러오지 못했습니다.') } })
+      .catch(e => { if (!controller.signal.aborted || controller.signal.reason instanceof Error) { setSheetConnection('attention'); setFamily(null); setSnapshot(emptySnapshot); setError(e instanceof Error ? e.message : '자료를 불러오지 못했습니다.') } })
       .finally(() => { clearTimeout(timeout); if (!controller.signal.aborted || controller.signal.reason instanceof Error) setLoading(false) })
     return () => { clearTimeout(timeout); controller.abort('navigation') }
   }, [owner, revision, mode, session?.role])
-  return { family, snapshot, loading, error, refresh, shared }
+  return { family, snapshot, loading, error, refresh, shared, writeContext, sheetConnection }
 }

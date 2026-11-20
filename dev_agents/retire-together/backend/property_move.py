@@ -13,7 +13,7 @@ from backend import storage
 from backend import property as prop
 from backend.property import Address, list_homes
 from backend.storage import InputModel, Money
-from tools.property_move import asking_vs_trades, move_budget, price_gap
+from tools.property_move import asking_vs_trades, move_budget, price_gap, income_price_ratio, capital_shortfall
 from tools.property_watch import group_trades, load_watch_rules, summarize
 
 router = APIRouter(prefix="/api/property-move", tags=["property-move"])
@@ -63,7 +63,21 @@ class Candidate(InputModel):
         return self
 
 
+class PirSettings(InputModel):
+    annual_me: Money | None = None
+    annual_partner: Money | None = None
+    lower: Annotated[float, Field(gt=0, le=100, allow_inf_nan=False)] = Field(default_factory=lambda: load_watch_rules()["pir_min"])
+    upper: Annotated[float, Field(gt=0, le=100, allow_inf_nan=False)] = Field(default_factory=lambda: load_watch_rules()["pir_max"])
+
+    @model_validator(mode="after")
+    def ordered(self):
+        if self.lower >= self.upper:
+            raise ValueError("PIR 최솟값은 최댓값보다 작아야 합니다")
+        return self
+
+
 class MoveInput(InputModel):
+    pir: PirSettings = Field(default_factory=PirSettings)
     version: Annotated[int, Field(strict=True, ge=0)] = 0
     source_home_ids: Annotated[list[UUID], Field(max_length=30)] = []
     cash: Money | None = None
@@ -160,6 +174,16 @@ def read_plan(owner: Owner) -> dict:
     return {**json.loads(row["payload"]), "version": row["version"]} if row else MoveInput().model_dump(mode="json")
 
 
+def _capital(owner: Owner) -> dict:
+    homes = list_homes(owner)
+    dashboard = storage.dashboard(owner)
+    cash = sum(a["amount"] for a in dashboard["assets"] if a["pocket"] == "cash" and a["assetClass"] == "cash")
+    capital = {**homes["total"], "cash": cash,
+               "net": homes["total"]["equity"] + cash,
+               "valuation_missing": any(h["full_value"] <= 0 or ((h["detail"] or {}).get("value_source") or {}).get("kind") == "none" for h in homes["homes"])}
+    return capital
+
+
 def result(plan: dict, owner: Owner) -> dict:
     base, missing, chosen = _base(plan, owner)
     comparisons = [{"id": c["id"], **move_budget(**base, price=c["price"], purchase_costs=c["purchase_costs"]),
@@ -168,15 +192,12 @@ def result(plan: dict, owner: Owner) -> dict:
     with storage.connection() as conn:
         _table(conn)
         tracks = _tracks(conn, owner)
-    homes = list_homes(owner)
     dashboard = storage.dashboard(owner)
-    cash = sum(a["amount"] for a in dashboard["assets"] if a["pocket"] == "cash" and a["assetClass"] == "cash")
-    capital = {**homes["total"], "cash": cash,
-               "net": homes["total"]["equity"] + cash,
-               "valuation_missing": any(h["full_value"] <= 0 or ((h["detail"] or {}).get("value_source") or {}).get("kind") == "none" for h in homes["homes"])}
+    capital = _capital(owner)
     return {"plan": plan, "comparisons": comparisons, "missing_home_ids": missing, "track": {c["id"]: tracks.get(c["id"], []) for c in plan["candidates"]},
             "funds": move_budget(**base, price=None, purchase_costs=None),
             "cash_reference": dashboard["cash"], "capital": capital,
+            "pir": income_price_ratio(None, **PirSettings(**plan.get("pir", {})).model_dump()),
             "valuation_needs_review": [h["asset"]["id"] for h in chosen if ((h["detail"] or {}).get("value_source") or {}).get("kind") in ("none", "purchase")]}
 
 
@@ -238,7 +259,10 @@ def watch(owner: Owner = "together"):
     yms = [f"{(today.year * 12 + today.month - 1 - i) // 12}{(today.month - 1 - i) % 12 + 1:02d}" for i in range(rules["months"])]
     out = []
     districts: dict[str, list[dict] | None] = {}
-    for c in read_plan(owner)["candidates"]:
+    plan = read_plan(owner)
+    pir = PirSettings(**plan.get("pir", {})).model_dump()
+    capital = _capital(owner)
+    for c in plan["candidates"]:
         a = c.get("address") or {}
         members = c.get("members") or ([{"name": "", "jibun": a["jibun"]}] if a.get("jibun") else [])
         if not a.get("sigungu_code") or not members:
@@ -256,6 +280,10 @@ def watch(owner: Owner = "together"):
         rows = group_trades(districts[code], members)
         out.append({"id": c["id"], "name": c["name"], "names": sorted({r["name"] for r in rows}),
                     "summary": summarize(rows, large_area_m2=rules["large_area_m2"])})
+    for item in out:
+        for area in (item["summary"] or {}).get("areas", []):
+            area["pir"] = income_price_ratio(area["latest"]["price"], **pir)
+            area["funding"] = capital_shortfall(area["latest"]["price"], None if capital["valuation_missing"] else capital["net"])
     return {"configured": True, "months": rules["months"], "large_area_m2": rules["large_area_m2"], "watch": out}
 
 

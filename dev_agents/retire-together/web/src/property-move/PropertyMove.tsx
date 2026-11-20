@@ -14,6 +14,8 @@ import { HomeListingSummary, usePublicListings } from './HomeListings'
 import { dateToday, emptyLiving, type Budget, type Candidate, type Living, type MovePlan, type MoveState, type TrackEntry } from './types'
 import './property-move.css'
 import { CapitalStrip } from './ResearchBoard'
+import { Discovery, type DiscoveryResult } from './Discovery'
+import { PirForm } from './Pir'
 
 type Props = { owner: Owner; family: Family | null; hidden: boolean; onChanged: () => void }
 type Dialog = { type: 'home' | 'market' | 'delete'; home: Home | null; start?: 'value' } | { type: 'candidate'; candidate?: Candidate } | { type: 'funds' }
@@ -28,7 +30,7 @@ export type TrackPick = { price: number; price_basis: 'manual' | 'trade' | 'aski
 const pickPrice = (c: Candidate, latest?: { price: number; date: string }): TrackPick | null =>
   latest ? { price: latest.price, price_basis: 'trade', price_date: latest.date } : c.asking_low !== null ? { price: c.asking_low, price_basis: 'asking', price_date: c.asking_date } : c.price !== null ? { price: c.price, price_basis: 'manual', price_date: c.price_date } : null
 
-function HomeLine({ home: h, hidden, family, owner, onEdit, onMarket }: { home: Home; hidden: boolean; family: Family | null; owner: Owner; onEdit: () => void; onMarket: () => void }) {
+function HomeLine({ home: h, hidden, family, owner, onEdit, onMarket, baseline, onBaseline, discoveryBusy }: { baseline: boolean; onBaseline: () => void; discoveryBusy: boolean; home: Home; hidden: boolean; family: Family | null; owner: Owner; onEdit: () => void; onMarket: () => void }) {
   const [expanded, setExpanded] = useState(false)
   const [tab, setTab] = useState('listings')
   const dt = h.detail, m = h.metrics
@@ -39,11 +41,12 @@ function HomeLine({ home: h, hidden, family, owner, onEdit, onMarket }: { home: 
   const stale = (Date.now() - Date.parse(h.asset.as_of)) / 86_400_000 > 90
   const latest = market.trades[0]
   return <ObservationRow
-    title={<button className="flex w-full items-center justify-between gap-2 text-left" aria-label={`${h.asset.name} 상세 ${expanded ? '접기' : '보기'}`} aria-expanded={expanded} aria-controls={`home-detail-${h.asset.id}`} onClick={() => setExpanded(v => !v)}>{h.asset.name}<ChevronDown className={`size-4 shrink-0 ${expanded ? 'rotate-180' : ''}`}/></button>}
+    title={<div><label className="home-baseline-choice"><input type="radio" name="discovery-baseline" aria-label={`${h.asset.name} 비교 기준`} checked={baseline} disabled={discoveryBusy} onChange={onBaseline}/>비교 기준</label><button className="flex w-full items-center justify-between gap-2 text-left" aria-label={`${h.asset.name} 상세 ${expanded ? '접기' : '보기'}`} aria-expanded={expanded} aria-controls={`home-detail-${h.asset.id}`} onClick={() => setExpanded(v => !v)}>{h.asset.name}<ChevronDown className={`size-4 shrink-0 ${expanded ? 'rotate-180' : ''}`}/></button></div>}
     subtitle={<>{dt?.area_m2 ? `전용 ${dt.area_m2}㎡` : '면적 미입력'} · {h.asset.owner === 'joint' ? `공동 · 나 ${h.asset.share_percent}%` : h.asset.owner === 'me' ? family?.me.name || '나' : family?.partner?.name || '배우자'}</>}
     metrics={[
       { label: '등록 시세', value: dt?.value_source?.kind === 'none' ? '확인 필요' : show(h.full_value), detail: `${day(h.asset.as_of)}${stale ? ' · 갱신 필요' : ''}` },
       { label: '최근 실거래', value: latest ? show(latest.price) : market.loading ? '조회 중' : '—', detail: latest ? `${day(latest.date)} · ${latest.floor ?? '—'}층` : market.error ? '조회 실패' : undefined },
+      { label: 'KB 일반평균가', value: dt?.kb_quote ? show(dt.kb_quote.average) : '—', detail: dt?.kb_quote ? `${day(dt.kb_quote.as_of)} · 직접 기록` : undefined },
       { label: '매매 호가', value: asking ? show(asking.low) : listings.loading ? '조회 중' : '—', detail: listings.data?.summary ? `최저 · 광고 ${asking!.count}건${listings.data.stale ? ' · 이전 자료' : ''}` : h.asking ? '직접 기록' : listings.error ? '조회 실패' : undefined },
       { label: owner === 'together' ? '순자산' : '선택 지분 순자산', value: show(m.equity_mine), detail: '등록 시세 기준' },
     ]}>
@@ -167,6 +170,10 @@ function CandidateLine({ candidate: c, budget, track, hidden, busy, revealKey, o
 }
 
 export function PropertyMove({ owner, family, hidden, onChanged, view = 'move' }: Props & { view?: 'move' | 'plan' }) {
+  const [discoveryBaseId, setDiscoveryBaseId] = useState('')
+  const [discoveryBusy, setDiscoveryBusy] = useState(false)
+  const [discovery, setDiscovery] = useState<DiscoveryResult | null>(null)
+  const [editIncome, setEditIncome] = useState(false)
   const [homes, setHomes] = useState<HomeList | null>(null)
   const [data, setData] = useState<MoveState | null>(null)
   const [error, setError] = useState('')
@@ -194,6 +201,7 @@ export function PropertyMove({ owner, family, hidden, onChanged, view = 'move' }
   const show = (n: number | null | undefined) => display(n, hidden)
   if (!homes || !data) return <section className="property-move property-move-loading" role="status">{error ? <><p>{error}</p><button className="property-move-button" onClick={refresh}>다시 불러오기</button></> : '우리 집과 갈아타기 계획을 불러오고 있어요.'}</section>
   const p = data.plan, f = data.funds
+  const discoveryBase = homes.homes.find(h=>h.asset.id===discoveryBaseId)??homes.homes.find(h=>h.detail?.tenure==='live')??homes.homes[0]
   const selectedHomes = homes.homes.filter(h => p.source_home_ids.includes(h.asset.id))
   const budgetOf = (id: string) => data.comparisons.find(b => b.id === id)
   const candidates = [...p.candidates].sort((a, b) => sort === 'price' ? (a.price ?? Infinity) - (b.price ?? Infinity) : (budgetOf(a.id)?.gap ?? Infinity) - (budgetOf(b.id)?.gap ?? Infinity))
@@ -210,9 +218,15 @@ export function PropertyMove({ owner, family, hidden, onChanged, view = 'move' }
     </section>}
     {view === 'plan' && (data.missing_home_ids.length > 0 || data.valuation_needs_review.length > 0) && <p className="property-move-notice">{data.missing_home_ids.length ? '매도할 집이 삭제되었어요. 자금 계획에서 다시 선택해 주세요.' : '선택한 집에 확인이 필요한 시세가 있어요. 실거래 또는 직접 확인한 시세로 갱신해 주세요.'}</p>}
     {view === 'move' && <section className="property-move-section" id="property-move-homes"><div className="property-move-section-head"><div><h2>우리 집</h2></div><Button variant="outline" size="sm" onClick={() => setDialog({ type: 'home', home: null })}><Plus/>{homes.homes.length ? '집 추가' : '우리 집 등록'}</Button></div>
-      <div className="property-move-home-list">{homes.homes.length ? homes.homes.map(h => <HomeLine key={h.asset.id} home={h} hidden={hidden} owner={owner} family={family} onEdit={() => setDialog({ type: 'home', home: h })} onMarket={() => setDialog({ type: 'market', home: h })}/>) : <div className="property-move-empty"><House size={27}/><div><strong>등록한 집이 없습니다.</strong></div></div>}</div>
+      <div className="property-move-home-list">{homes.homes.length ? homes.homes.map(h => <HomeLine key={h.asset.id} baseline={h.asset.id===discoveryBase?.asset.id} discoveryBusy={discoveryBusy} onBaseline={()=>{setDiscoveryBaseId(h.asset.id);setDiscovery(null)}} home={h} hidden={hidden} owner={owner} family={family} onEdit={() => setDialog({ type: 'home', home: h })} onMarket={() => setDialog({ type: 'market', home: h })}/>) : <div className="property-move-empty"><House size={27}/><div><strong>등록한 집이 없습니다.</strong></div></div>}</div>
 
 
+    </section>}
+    {view === 'move' && <section className="property-move-section">
+      <Discovery baseId={discoveryBase?.asset.id??''} onBusyChange={setDiscoveryBusy} owner={owner} hidden={hidden} homes={homes.homes} incomeReady={!!data.pir?.income} criteriaEditing={editIncome} incomeControls={<div className="candidate-income" aria-label="연봉과 PIR 기준">
+        <div className="candidate-income-summary"><span>부부 연봉 <strong>{data.pir?.income==null?'미입력':show(data.pir.income)}</strong></span><span>PIR {data.pir?.lower??p.pir?.lower??'—'}–{data.pir?.upper??p.pir?.upper??'—'}배</span>{data.pir?.price_min!=null&&data.pir?.price_max!=null&&<span>소득 기준 집값 <strong>{show(data.pir.price_min)}–{show(data.pir.price_max)}</strong></span>}<Button variant="outline" size="sm" disabled={discoveryBusy} aria-expanded={editIncome} aria-controls="home-pir-editor" onClick={()=>setEditIncome(v=>!v)}>{editIncome?'접기':data.pir?.income==null?'연봉 입력':'연봉·PIR 수정'}</Button></div>
+        {editIncome&&<div id="home-pir-editor"><PirForm initial={p.pir??{annual_me:null,annual_partner:null,lower:10,upper:15}} onSave={async pir=>{await save({...p,pir});setDiscovery(null);setEditIncome(false)}}/><p className="research-caption">PIR은 집값 ÷ 부부 세전 연봉입니다. 보유 순자산은 추가 필요 자금에 반영하며, 이 가격 범위 안에서 기준 집보다 비싼 단지만 찾습니다.</p></div>}
+      </div>} saved={p.candidates} result={discovery} setResult={setDiscovery} onAdd={async candidates=>{const all=[...p.candidates];for(const c of candidates){if(!all.some(old=>old.id===c.id||(old.name===c.name&&old.address?.jibun===c.address?.jibun&&Math.floor(old.area_m2??0)===Math.floor(c.area_m2??0))))all.push(c)}if(all.length>50)throw new Error(`관심 평형은 최대 50개까지 등록할 수 있어요. 현재 ${p.candidates.length}개입니다.`);await save({...p,candidates:all})}}/>
     </section>}
     {view === 'plan' && <><section className="property-move-section" id="property-move-compare"><div className="property-move-section-head"><div><h2>후보 비교</h2></div><button className="property-move-button" disabled={p.candidates.length >= 50} onClick={() => setDialog({ type: 'candidate' })}><Plus size={15}/>비교할 아파트 추가</button></div>
       {p.candidates.length > 1 && <div className="property-move-compare-toolbar"><select aria-label="후보 정렬" value={sort} onChange={e => setSort(e.target.value)}><option value="gap">더 필요한 돈 적은 순</option><option value="price">낮은 가격순</option></select></div>}
@@ -222,7 +236,7 @@ export function PropertyMove({ owner, family, hidden, onChanged, view = 'move' }
     </section>
     <details className="property-move-section"><summary>가격 기록 더보기</summary><AnalysisHero data={data} hidden={hidden} onEdit={candidate => setDialog({ type: 'candidate', candidate })} onAdd={() => setDialog({ type: 'candidate' })} onDetails={id => setDetailsRequest(old => ({ id, sequence: (old?.sequence ?? 0) + 1 }))}/></details></>}
     {dialog && <Modal title={dialog.type === 'candidate' ? dialog.candidate ? '비교 아파트 수정' : '비교할 아파트 추가' : dialog.type === 'funds' ? '갈아타기 자금 계획' : dialog.type === 'market' ? `${dialog.home?.asset.name} 시세·호가` : dialog.type === 'delete' ? '집 삭제' : dialog.home ? '집 정보' : '우리 집 등록'} onClose={() => setDialog(null)}>
-      {dialog.type === 'candidate' ? <CandidateForm initial={dialog.candidate} onSave={async c => { const exists = p.candidates.some(old => old.id === c.id); await save({ ...p, candidates: exists ? p.candidates.map(old => old.id === c.id ? c : old) : [...p.candidates, c], target_id: null }) }} onDelete={dialog.candidate ? async () => { const rest = p.candidates.filter(c => c.id !== dialog.candidate?.id); await save({ ...p, candidates: rest, target_id: null }) } : undefined}/>
+      {dialog.type === 'candidate' ? <CandidateForm initial={dialog.candidate} onSave={async additions => { const next = [...p.candidates.filter(old => old.id !== dialog.candidate?.id), ...additions]; if (next.length > 50) throw new Error('관심 평형은 최대 50개까지 등록할 수 있어요.'); await save({ ...p, candidates: next, target_id: null }) }} onDelete={dialog.candidate ? async () => { const rest = p.candidates.filter(c => c.id !== dialog.candidate?.id); await save({ ...p, candidates: rest, target_id: null }) } : undefined}/>
         : dialog.type === 'funds' ? <FundsForm plan={p} homes={homes} cashReference={data.cash_reference} onSave={save}/>
         : dialog.type === 'delete' && dialog.home ? <DeleteHome home={dialog.home} onDone={homeSaved} onCancel={() => setDialog({ type: 'home', home: dialog.home })}/>
         : dialog.type === 'market' && dialog.home ? <HomeMarket key={dialog.home.asset.id} home={dialog.home} onChanged={h => { setDialog({ type: 'market', home: h }); changed() }} onUpdateValue={() => setDialog({ type: 'home', home: dialog.home, start: 'value' })}/>

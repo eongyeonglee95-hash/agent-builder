@@ -28,22 +28,30 @@ class ConstraintResult:
 
 
 def load_asset_map(path: Path = ASSET_MAP_PATH) -> dict[str, dict]:
+    from tools.data_context import resolve
+    path = resolve("asset_map.yaml", path)
     data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     return data.get("assets") or {}
 
 
 def load_class_defaults(path: Path = ASSET_MAP_PATH) -> dict[str, dict]:
+    from tools.data_context import resolve
+    path = resolve("asset_map.yaml", path)
     """자산군 → 기본 종목 {ticker, name, status, alternatives}. 보유 없는 자산군을 살 때 쓴다."""
     data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     return data.get("class_defaults") or {}
 
 
 def load_accounts(path: Path = ACCOUNTS_PATH) -> dict[str, dict]:
+    from tools.data_context import resolve
+    path = resolve("accounts.yaml", path)
     data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     return {a["id"]: a for a in data.get("accounts", [])}
 
 
 def load_pools(path: Path = ACCOUNTS_PATH) -> dict[str, dict]:
+    from tools.data_context import resolve
+    path = resolve("accounts.yaml", path)
     """pool id → {label, strategy, accounts: [account ids]}. 풀 = 리밸런싱 단위."""
     data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     pools = {k: dict(v, accounts=[]) for k, v in (data.get("pools") or {}).items()}

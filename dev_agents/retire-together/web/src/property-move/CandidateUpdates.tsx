@@ -1,3 +1,4 @@
+import { ExpertFeed } from './ExpertFeed'
 import { useState } from 'react'
 import { money } from '../model'
 import { usePublicListings } from './HomeListings'
@@ -35,21 +36,16 @@ function ListingFeed({ candidate:c, area, hidden, onEdit }: { candidate: Candida
   </div>
 }
 function NewsFeed({ candidate:c, hidden, track }: { candidate: Candidate; hidden: boolean; track: TrackEntry[] }) {
-  const [saved,setSaved] = useState(stored)
-  const [error,setError] = useState('')
-  const follow: string[] = Array.isArray(saved.follow)?saved.follow:['udaro']
+  const [saved] = useState(stored)
   const matching = captured.filter(r=>normalize(r.name)===normalize(c.name))
-  function toggle(id:string) {
-    try { const fresh=stored();const previous=Array.isArray(fresh.follow)?fresh.follow:['udaro'];const next={...fresh,follow:previous.includes(id)?previous.filter((v:string)=>v!==id):[...previous,id]};localStorage.setItem(storeKey,JSON.stringify(next));setSaved(next);setError('') }
-    catch {setError('정보원 선택을 저장하지 못했어요.')}
-  }
   const captureRow = (r: typeof captured[number]) => <li key={r.id}><strong>{r.name} · {hidden?'••••':`${r.price}억`}</strong><span>{r.area} · {r.floor}</span><small>유다로 제공 캡처 · 게시일·현재 매물 여부 미확인</small>{!hidden && typeof saved.interestNotes?.[r.id]==='string' && <p>{saved.interestNotes[r.id]}</p>}</li>
   return <div className="candidate-feed">
+    <ExpertFeed candidate={c.name}/>
     {!!track.length && <ul>{track.slice(0,5).map(r=><li key={r.day}><strong>{r.day} · {r.price_basis==='asking'?'호가 기록':r.price_basis==='trade'?'실거래 기록':'가격 기록'}</strong><span>{hidden?'••••':money(r.price)}</span>{!hidden && r.note && <p>{r.note}</p>}</li>)}</ul>}
     {!!matching.length && <ul>{matching.map(captureRow)}</ul>}
     {!track.length && !matching.length && <p>이 단지에 연결된 소식이 없습니다.</p>}
     <a className="candidate-source-link" href={`https://search.naver.com/search.naver?where=news&query=${encodeURIComponent(c.name)}`} target="_blank" rel="noreferrer">{c.name} 뉴스 검색 ↗</a>
-    <details><summary>정보원 관리</summary><p>선택은 이 브라우저에 저장 · 게시물 자동 수집 전</p>{sources.map(s=><div className="candidate-source" key={s.id}><label><input type="checkbox" checked={follow.includes(s.id)} onChange={()=>toggle(s.id)}/>{s.name}</label><a href={s.url} target="_blank" rel="noreferrer">원문 ↗</a></div>)}{error && <p role="alert">{error}</p>}</details>
+    <details><summary>채널 원문</summary>{sources.map(s=><a className="candidate-source-link" key={s.id} href={s.url} target="_blank" rel="noreferrer">{s.name} ↗</a>)}</details>
     <details><summary>이전 캡처 {captured.length}건</summary><ul className="candidate-archive">{captured.map(captureRow)}</ul></details>
   </div>
 }

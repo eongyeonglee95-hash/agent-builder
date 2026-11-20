@@ -61,3 +61,27 @@ def asking_vs_trades(asking: int | None, trades: list[dict]) -> dict:
             "premium_latest_pct": pct(asking, int(newest["price"])) if asking is not None else None,
             "premium_median": asking - median if asking is not None else None,
             "premium_median_pct": pct(asking, median) if asking is not None else None}
+
+
+def income_price_ratio(price: int | None, annual_me: int | None, annual_partner: int | None,
+                       lower: float, upper: float) -> dict:
+    """세전 부부 연소득 대비 집값. 신규 대출·보유 자금·저축 기간과 독립적."""
+    from math import isfinite
+    if not all(isfinite(v) for v in (lower, upper)) or not 0 < lower < upper:
+        raise ValueError("PIR 범위를 확인해 주세요")
+    if any(v is not None and (type(v) is not int or v < 0) for v in (price, annual_me, annual_partner)):
+        raise ValueError("금액은 0 이상의 정수여야 합니다")
+    income = None if annual_me is None or annual_partner is None else annual_me + annual_partner
+    ratio = price / income if price and income else None
+    status = None if ratio is None else "below" if ratio < lower else "above" if ratio > upper else "within"
+    return {"ratio": ratio, "status": status, "income": income,
+            "lower": lower, "upper": upper,
+            "price_min": round(income * lower) if income else None,
+            "price_max": round(income * upper) if income else None}
+
+
+def capital_shortfall(price: int | None, net: int | None) -> dict:
+    """전체 주택 순자산+현금 대비 부족액. 신규 대출·세금·거래비용 제외."""
+    if price is None or price <= 0 or net is None:
+        return {"needed": None, "surplus": None}
+    return {"needed": max(0, price - net), "surplus": max(0, net - price)}

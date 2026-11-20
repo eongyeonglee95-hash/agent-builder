@@ -12,6 +12,25 @@ from tools.sheets import API, TABS
 
 TAB = "공유자료_v1"
 HEADER = ["operation_id", "parent_revision", "kind", "part", "parts", "payload_json"]
+ASSETS_VIEW = "우리 자산"
+
+
+def asset_table(state):
+    from backend.shared_data_schema import projection
+    from backend.shared_data_view import dashboard
+    people = {r["member_id"]: r["payload"].get("name", "") for r in state["records"] if r["kind"] == "profile"}
+    rows = [["앱에서 저장한 우리 자산 · 수정은 둘이서은퇴 앱에서 해 주세요"],
+            ["자산", "소유자", "계좌", "주머니", "자산군", "금액(원)", "기준일", "집계 방식"]]
+    labels = {"retirement": "노후", "cash": "현금", "property": "부동산", "debt": "대출",
+              "stock": "주식", "mixed": "혼합", "long_bond": "장기채", "mid_bond": "중기채", "gold": "금", "commodity": "원자재"}
+    # Effective rows match dashboard totals: don't double-count account details.
+    view = dashboard(state, projection(state, state["members"]["me"]), "together")["snapshot"]
+    for p in view["assets"] + view["debts"]:
+        who = "공동" if p["owner"] == "joint" else people.get(state["members"][p["owner"]], p["owner"])
+        rows.append([p["name"], who, p["account"], labels[p["pocket"]], labels[p["assetClass"]], p["amount"], p["as_of"], "세부 자산" if p.get("parent_id") else "등록 금액"])
+    order = {"노후": 0, "현금": 1, "부동산": 2, "대출": 3}
+    rows[2:] = sorted(rows[2:], key=lambda r: (order[r[3]], r[1], r[2], r[0]))
+    return rows
 
 
 class Journal:
@@ -19,7 +38,7 @@ class Journal:
         self.api, self.sid = api, sid
 
     def meta(self):
-        return self.api.call("GET", f"{API}/{self.sid}", params={"fields": "sheets(properties(sheetId,title))"})
+        return self.api.call("GET", f"{API}/{self.sid}", params={"fields": "sheets(properties(sheetId,title,gridProperties))"})
 
     def raw(self):
         titles = {s["properties"]["title"] for s in self.meta().get("sheets", [])}
@@ -59,6 +78,12 @@ class Journal:
         # stringValue prevents formula execution and preserves exact money in JSON.
         requests.append({"appendCells": {"sheetId": tab_id, "fields": "userEnteredValue", "rows": [
             {"values": [{"userEnteredValue": {"stringValue": cell}} for cell in row]} for row in values]}})
+        # A readable materialized view is updated in the same atomic batch.
+        # The journal remains authoritative; no legacy source tabs are cleared.
+        from backend.shared_sheet_template import template_requests
+        if TAB not in tabs:
+            meta["sheets"].append({"properties": {"sheetId": tab_id, "title": TAB}})
+        requests.extend(template_requests(state, meta))
         self.api.call("POST", f"{API}/{self.sid}:batchUpdate", json={"requests": requests})
 
 

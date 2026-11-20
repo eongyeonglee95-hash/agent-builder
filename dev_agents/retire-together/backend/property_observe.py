@@ -62,12 +62,12 @@ def collect_month(kind: str, sgg: str, ym: str) -> dict:
     try:
         rows = _fetch(kind, sgg, ym)
     except (requests.RequestException, ValueError) as e:
-        with storage.connection() as conn:
+        with storage.connection(shared=False) as conn:
             _table(conn)
             conn.execute("INSERT INTO property_obs_run VALUES (?, ?, ?, ?, 'failed', 0, ?)", (kind, sgg, ym, now, str(e)[:200]))
         raise
     new = changed = 0
-    with storage.connection() as conn:
+    with storage.connection(shared=False) as conn:
         _table(conn)
         seen_in_month: dict[str, int] = {}
         for raw in rows:
@@ -87,7 +87,7 @@ def collect_month(kind: str, sgg: str, ym: str) -> dict:
 
 def latest(kind: str, sgg: str) -> list[dict]:
     """거래마다 가장 최근에 본 버전의 원자료(+first_seen)."""
-    with storage.connection() as conn:
+    with storage.connection(shared=False) as conn:
         _table(conn)
         rows = conn.execute("""SELECT uid, payload, first_seen, last_seen FROM property_obs o WHERE kind=? AND sgg=? AND last_seen =
                                (SELECT MAX(last_seen) FROM property_obs WHERE kind=o.kind AND uid=o.uid)""", (kind, sgg)).fetchall()
@@ -98,7 +98,7 @@ def latest(kind: str, sgg: str) -> list[dict]:
 def save_listings(source: str, complex_key: str, listings: list[dict], complete: bool) -> dict:
     """한 단지의 광고 관측. 광고 ID별 버전(가격 등 변경 시 새 버전). 부분 관측이면 run에 표시해 이탈 계산에서 뺀다."""
     now, new, changed = storage.now(), 0, 0
-    with storage.connection() as conn:
+    with storage.connection(shared=False) as conn:
         _table(conn)
         for item in listings:
             ver = _version(item)
@@ -130,7 +130,7 @@ def months(start: str, end: str) -> list[str]:
 def backfill(start: str, end: str, sggs: list[str] = SEOUL_SGG, kinds=("trade", "rent"), skip_done: bool = True) -> None:
     """과거 원자료 일괄 수집. 이미 성공한 (종류·구·월)은 건너뛴다. 실패는 기록하고 계속한다."""
     import sys, time
-    with storage.connection() as conn:
+    with storage.connection(shared=False) as conn:
         _table(conn)
         done = {(r["kind"], r["scope"], r["ym"]) for r in conn.execute("SELECT kind, scope, ym FROM property_obs_run WHERE status='ok'")}
     for kind in kinds:

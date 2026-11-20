@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { ArrowLeft, ArrowRight, Check, Info, Trash2 } from 'lucide-react'
-import { api } from './local-data'
+import { api, type SharedWriteContext } from './local-data'
 import { assetOwnerLabel, classInfo, money, type Asset, type Family, type Owner } from './model'
 
 const roles = { wife: '아내', husband: '남편', partner: '배우자' }
@@ -25,22 +25,23 @@ export function ProfileForm({ family, onSaved }: { family: Family | null; onSave
       onSaved()
     } catch (e) { setError(e instanceof Error ? e.message : '저장하지 못했습니다.') } finally { setBusy(false) }
   }
-  return <form onSubmit={submit}>
+  return <form className="profile-form" onSubmit={submit}>
     <p className="form-intro">자산은 바로 등록할 수 있어요.<br/>이름과 목표는 편할 때 채워 주세요.</p>
     {(['me', ...(withPartner ? ['partner'] : [])] as ('me' | 'partner')[]).map(key => <fieldset className="profile-fields" key={key}><legend>{key === 'me' ? '내 정보' : '배우자 정보'}</legend><label className="form-label">이름 또는 별명<input name={`${key}-name`} defaultValue={family?.[key]?.name ?? (key === 'me' ? '나' : '배우자')} maxLength={40} required autoComplete="off"/></label><details className="optional-fields" open={family?.[key]?.age != null || undefined}><summary>나이·가족 역할 추가하기 <span>선택</span></summary><div className="form-grid"><label className="form-label">현재 만 나이<input name={`${key}-age`} type="number" min="18" max="110" step="1" defaultValue={family?.[key]?.age ?? ''} placeholder="나중에 입력해도 돼요"/></label><div className="form-label" role="radiogroup" aria-label={`${key === 'me' ? '나' : '배우자'} 가족 역할`}>가족 역할<div className="chip-group">{([['', '선택하지 않음'], ['wife', '아내'], ['husband', '남편'], ['partner', '배우자']] as const).map(([value, label]) => <label className="chip" key={value}><input type="radio" name={`${key}-role`} value={value} defaultChecked={(family?.[key]?.role ?? '') === value}/>{label}</label>)}</div></div></div></details></fieldset>)}
     <label className="checkbox-label"><input type="checkbox" checked={withPartner} onChange={e => setWithPartner(e.target.checked)}/>배우자 정보도 함께 입력하기</label>
     <label className="checkbox-label"><input type="checkbox" checked={withGoal} onChange={e => setWithGoal(e.target.checked)}/>은퇴 목표도 정해 두기 · 선택</label>
     {withGoal && <fieldset className="profile-fields"><legend>우리의 은퇴 목표</legend><div className="form-grid"><label className="form-label">목표 은퇴 나이 (나 기준)<input name="retirement_age" type="number" min="18" max="100" step="1" defaultValue={family?.retirement_age ?? ''} placeholder="아직 모르면 비워 두세요"/></label><label className="form-label">목표 순자산 (만원)<input name="target_amount" type="number" min="1" max="100000000000" step="1" defaultValue={family?.target_amount != null ? family.target_amount / 10_000 : ''} placeholder="아직 모르면 비워 두세요"/></label></div><p className="form-help">목표는 원하는 시점과 금액이며, 은퇴 가능 여부를 계산한 결과는 아닙니다.</p></fieldset>}
-    <ErrorBox error={error}/><button type="submit" className="primary-button full-width" disabled={busy}>{busy ? '저장 중…' : '내 정보 저장'}<Check size={16}/></button>
+    <ErrorBox error={error}/><div className="profile-actions"><button type="submit" className="primary-button full-width" disabled={busy}>{busy ? '저장 중…' : '내 정보 저장'}<Check size={16}/></button></div>
   </form>
 }
 
 type Kind = 'pension' | 'stock' | 'cash' | 'property' | 'debt'
 const kinds: Record<Kind, string> = { pension: '연금', stock: '주식·ETF', cash: '예금·현금', property: '집·부동산', debt: '대출·부채' }
 const classification = (kind: Kind): Asset['assetClass'] => kind === 'pension' ? 'mixed' : kind === 'stock' ? 'stock' : kind
-export function AssetForm({ family, asset, owner, initialKind, parent, onSaved }: {
-  onProfile?: () => void; initialKind?: 'stock' | 'property'; family: Family | null; asset: Asset | null; owner: Owner; parent?: Asset | null; onSaved: (asset: Asset) => void
+export function AssetForm({ family, asset, owner, initialKind, parent, shared: initialShared, onSaved }: {
+  shared?: SharedWriteContext; onProfile?: () => void; initialKind?: 'stock' | 'property'; family: Family | null; asset: Asset | null; owner: Owner; parent?: Asset | null; onSaved: (asset: Asset) => void
 }) {
+  const [shared] = useState(initialShared)
   const initial: Kind = asset ? asset.pocket === 'retirement' ? 'pension' : asset.pocket === 'property' || asset.pocket === 'debt' ? asset.pocket : asset.assetClass === 'cash' ? 'cash' : 'stock' : initialKind ?? 'pension'
   const [kind, setKind] = useState<Kind>(initial)
   const [person, setPerson] = useState<Asset['owner']>(parent?.owner ?? asset?.owner ?? (owner === 'partner' ? 'partner' : 'me'))
@@ -68,14 +69,14 @@ export function AssetForm({ family, asset, owner, initialKind, parent, onSaved }
     }
     setBusy(true)
     try {
-      const saved = await api<Asset>(asset ? `/assets/${asset.id}` : '/assets', asset ? 'PUT' : 'POST', { ...review, ...(asset ? { version: asset.version } : { request_id: requestId }) })
+      const saved = shared ? await api<Asset>('/shared-data/assets', 'POST', { operation_id: requestId, expected_revision: shared.revision, expected_spreadsheet_id: shared.spreadsheet_id, asset_id: asset?.id ?? requestId, asset: review }) : await api<Asset>(asset ? `/assets/${asset.id}` : '/assets', asset ? 'PUT' : 'POST', { ...review, ...(asset ? { version: asset.version } : { request_id: requestId }) })
       onSaved(saved)
     } catch (e) { setError(e instanceof Error ? e.message : '저장하지 못했습니다.') } finally { setBusy(false) }
   }
   return <form onSubmit={submit}>
     <div hidden={!!review}>
       <p className="form-intro">{parent ? `${parent.account} 안의 자산입니다. 계좌 총액과 중복해 더하지 않아요.` : asset ? '금액과 기준일을 바꾸면 홈에도 바로 반영돼요.' : '종류와 금액부터 알려주세요. 이름·가족 정보·은퇴 목표는 나중에 채워도 괜찮아요.'}</p>
-      {!parent && <div className="form-grid"><label className="form-label">자산 종류<select name="kind" aria-label="자산 종류" value={kind} disabled={!!asset?.parent_id} onChange={e => { const next = e.target.value as Kind; setKind(next); setAssetClass(classification(next)); if (next !== 'property' && next !== 'debt' && person === 'joint') setPerson('me') }}>{Object.entries(kinds).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label><label className="form-label">누구의 자산인가요?<select name="owner" value={person} onChange={e => setPerson(e.target.value as Asset['owner'])} disabled={!!asset?.parent_id}><option value="me">나{family ? ` · ${family.me.name}` : ''}</option><option value="partner">배우자{family?.partner ? ` · ${family.partner.name}` : ''}</option>{(kind === 'property' || kind === 'debt') && <option value="joint">부부 공동 소유</option>}</select></label></div>}
+      {!parent && <div className="form-grid"><label className="form-label">자산 종류<select name="kind" aria-label="자산 종류" value={kind} disabled={!!asset?.parent_id} onChange={e => { const next = e.target.value as Kind; setKind(next); setAssetClass(classification(next)); if (next !== 'property' && next !== 'debt' && person === 'joint') setPerson('me') }}>{Object.entries(kinds).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label><label className="form-label">누구의 자산인가요?<select name="owner" value={person} onChange={e => setPerson(e.target.value as Asset['owner'])} disabled={!!asset?.parent_id || (!!shared && !!asset)}><option value="me">나{family ? ` · ${family.me.name}` : ''}</option><option value="partner">배우자{family?.partner ? ` · ${family.partner.name}` : ''}</option>{(kind === 'property' || kind === 'debt') && <option value="joint">부부 공동 소유</option>}</select></label></div>}
       {parent ? <label className="form-label">세부 자산 이름<input name="name" defaultValue={asset?.name ?? ''} placeholder="예: 국내 주식형 ETF" maxLength={100} required/></label> : <label className="form-label">{kind === 'property' ? '집·부동산 이름' : kind === 'debt' ? '대출 이름' : '계좌·자산 이름'}<input name="account" defaultValue={asset?.account ?? ''} placeholder={kind === 'property' ? '예: 우리 집' : kind === 'debt' ? '예: 주택담보대출' : kind === 'pension' ? '예: 미래에셋 연금저축 (구)' : kind === 'stock' ? '예: 키움 주식계좌' : '예: 우리은행 예금'} maxLength={100} required/></label>}
       {kind === 'pension' && !parent && <label className="form-label">어느 연금인가요?<select name="pension_layer" aria-label="연금 층" value={layer} onChange={e => setLayer(Number(e.target.value) as 2 | 3 | 4)}><option value={2}>퇴직연금 — DC · IRP</option><option value={3}>개인연금 — 연금저축 (세제적격)</option><option value={4}>추가연금 — 연금보험 · ISA (세제비적격)</option></select><small>연금 화면의 탑에서 이 층에 쌓여요. 세액공제를 받은 계좌면 개인연금, 아니면 추가연금이에요.</small></label>}
       {person === 'joint' && <label className="form-label">내 지분 (%)<input name="share" type="number" min="1" max="99" step="1" value={share} onChange={e => setShare(Number(e.target.value))} required/><small>나 {share}% · 배우자 {100 - share}%. 전체 금액은 한 번만 등록해요.</small></label>}
@@ -88,8 +89,9 @@ export function AssetForm({ family, asset, owner, initialKind, parent, onSaved }
   </form>
 }
 
-export function DeleteAsset({ asset, onDeleted, onCancel }: { asset: Asset; onDeleted: () => void; onCancel: () => void }) {
+export function DeleteAsset({ asset, shared: initialShared, onDeleted, onCancel }: { shared?: SharedWriteContext; asset: Asset; onDeleted: () => void; onCancel: () => void }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  return <><p className="modal-lead">이 자산을 목록에서 삭제할까요?</p><p>{asset.name} · {money(asset.full_amount ?? asset.amount)}<br/>{asset.owner === 'joint' ? '공동 소유 기록이 부부 전체 목록에서 삭제됩니다.' : '현재 자산 합계에서도 제외됩니다.'} 이전 변경 이력은 로컬 DB에 보관됩니다.</p><ErrorBox error={error}/><div className="button-row delete-actions"><button className="secondary-button" disabled={busy} onClick={onCancel}>돌아가기</button><button className="danger-button" disabled={busy} onClick={async () => { setBusy(true); try { await api(`/assets/${asset.id}?version=${asset.version}`, 'DELETE'); onDeleted() } catch (e) { setError(e instanceof Error ? e.message : '삭제하지 못했습니다.'); setBusy(false) } }}><Trash2 size={15}/>{busy ? '삭제 중…' : '삭제하기'}</button></div></>
+  const [shared] = useState(initialShared)
+  return <><p className="modal-lead">이 자산을 목록에서 삭제할까요?</p><p>{asset.name} · {money(asset.full_amount ?? asset.amount)}<br/>{asset.owner === 'joint' ? '공동 소유 기록이 부부 전체 목록에서 삭제됩니다.' : '현재 자산 합계에서도 제외됩니다.'} 이전 변경 이력은 {shared ? '구글 시트와 백업' : '로컬 DB'}에 보관됩니다.</p><ErrorBox error={error}/><div className="button-row delete-actions"><button className="secondary-button" disabled={busy} onClick={onCancel}>돌아가기</button><button className="danger-button" disabled={busy} onClick={async () => { setBusy(true); try { if (shared) await api('/shared-data/assets', 'POST', { operation_id: crypto.randomUUID(), expected_revision: shared.revision, expected_spreadsheet_id: shared.spreadsheet_id, asset_id: asset.id }); else await api(`/assets/${asset.id}?version=${asset.version}`, 'DELETE'); onDeleted() } catch (e) { setError(e instanceof Error ? e.message : '삭제하지 못했습니다.'); setBusy(false) } }}><Trash2 size={15}/>{busy ? '삭제 중…' : '삭제하기'}</button></div></>
 }

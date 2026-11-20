@@ -58,7 +58,7 @@ def test_watch_failure_is_local_to_district_and_shared_requests_are_reused(monke
     from fastapi import HTTPException
     from backend import property_move as move
     monkeypatch.setattr(move.prop, "market_key", lambda: "test-key")
-    monkeypatch.setattr(move, "load_watch_rules", lambda: {"months": 2, "large_area_m2": 135})
+    monkeypatch.setattr(move, "load_watch_rules", lambda: {"months": 2, "large_area_m2": 135, "pir_min": 10, "pir_max": 15})
     monkeypatch.setattr(move, "read_plan", lambda owner: {"candidates": [
         {"id": str(i), "name": str(i), "address": {"sigungu_code": code, "jibun": "서울특별시 강남구 개포동 185"}}
         for i, code in enumerate(["11680", "11680", "11710", "11710"])

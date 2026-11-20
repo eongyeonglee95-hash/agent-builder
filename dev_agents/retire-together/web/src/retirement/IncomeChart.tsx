@@ -1,19 +1,21 @@
 import { useEffect, useId, useRef, useState, type CSSProperties, type PointerEvent } from 'react'
 import { ChevronLeft, ChevronRight, LockKeyhole, MousePointer2 } from 'lucide-react'
 import type { PensionTaxRule, Row } from '../workbook/retirement'
-import { amount, LAYERS, PEOPLE, type Scope } from './presentation'
+import { amount, extra, LAYERS, PEOPLE, type Scope } from './presentation'
 import { PensionTaxNotice } from './PensionTaxNotice'
 import './income-chart.css'
 
 const man = (value: number) => (value / 10000).toLocaleString('ko-KR', { maximumFractionDigits: 1 })
-const incomeLayers = LAYERS.filter(layer => layer.id < 4)
 const color = (layer: number) => `var(--income-layer-${layer})`
 
-export function IncomeChart({ rows, scope, year, onYearChange, onLayerSelect, hidden, showNeed, taxRule }: {
+export function IncomeChart({ rows, scope, year, onYearChange, onLayerSelect, hidden, showNeed, taxRule, includeExtra = false }: {
   rows: Row[]; scope: Scope; year: number; onYearChange: (year: number) => void;
   onLayerSelect: (layer: number) => void; hidden: boolean; showNeed: boolean
+  includeExtra?: boolean
   taxRule?: PensionTaxRule
 }) {
+  const incomeLayers = LAYERS.filter(layer => includeExtra || layer.id < 4)
+  const totalFor = (row: Row) => (amount(row, scope) ?? 0) + (includeExtra ? extra(row, scope) : 0)
   const uid = useId().replaceAll(':', '')
   const container = useRef<HTMLDivElement>(null)
   const [width, setWidth] = useState(760)
@@ -24,7 +26,7 @@ export function IncomeChart({ rows, scope, year, onYearChange, onLayerSelect, hi
     if (container.current) observer.observe(container.current)
     return () => observer.disconnect()
   }, [])
-  useEffect(() => { setHoverYear(null); setFocusedLayer(null) }, [scope, hidden, width])
+  useEffect(() => { setHoverYear(null); setFocusedLayer(null) }, [scope, hidden, width, includeExtra])
   useEffect(() => {
     if (hoverYear == null) return
     const dismiss = (event: KeyboardEvent) => { if (event.key === 'Escape') setHoverYear(null) }
@@ -36,16 +38,16 @@ export function IncomeChart({ rows, scope, year, onYearChange, onLayerSelect, hi
   const hovered = rows.find(row => row.year === hoverYear)
   const cursor = hovered ?? selected
   const first = rows[0].year, last = rows[rows.length - 1].year
-  const selectedTotal = amount(selected, scope) ?? 0
+  const selectedTotal = totalFor(selected)
   const ageText = (row: Row) => PEOPLE.filter(([who]) => (scope === 'together' || who === scope) && row.ages[who] != null)
     .map(([who, name]) => `${name} ${row.ages[who]}세`).join(' · ')
-  const heights = rows.map(row => [0, ...[1, 2, 3].map(layer => amount(row, scope, layer) ?? 0)])
+  const heights = rows.map(row => [0, ...incomeLayers.map(layer => amount(row, scope, layer.id) ?? 0)])
   const stacked = heights.map(values => values.map((_, index) => values.slice(0, index + 1).reduce((sum, v) => sum + v, 0)))
   const targetRow = showNeed ? rows.find(row => row.retired && row.need_real != null && row.need_real > 0) : undefined
   const target = targetRow?.need_real ?? 0
   const selectedTarget = showNeed && selected.retired ? selected.need_real : null
   const gap = selectedTarget != null && selectedTarget > 0 ? selectedTotal - selectedTarget : null
-  const maxValue = Math.max(10000, target, ...stacked.map(values => values[3]))
+  const maxValue = Math.max(10000, target, ...stacked.map(values => values[incomeLayers.length]))
   const tickSize = 10 ** Math.floor(Math.log10(maxValue / 3))
   const tickStep = Math.ceil(maxValue / 3 / tickSize) * tickSize
   const topValue = tickStep * 3
@@ -71,7 +73,7 @@ export function IncomeChart({ rows, scope, year, onYearChange, onLayerSelect, hi
   }
   if (last !== first) tickYears.push(last)
   const cursorX = x(cursor.year + .5)
-  const cursorTotal = amount(cursor, scope) ?? 0
+  const cursorTotal = totalFor(cursor)
   const cursorValues = stacked[rows.findIndex(row => row.year === cursor.year)]
   const nationalStart = rows.find(row => (amount(row, scope, 1) ?? 0) > 0)?.year
   const pointerYear = (event: PointerEvent<SVGSVGElement>) => {
@@ -95,7 +97,7 @@ export function IncomeChart({ rows, scope, year, onYearChange, onLayerSelect, hi
         onPointerMove={e => { if (e.buttons === 1) selectYear(pointerYear(e)); else if (e.pointerType === 'mouse') setHoverYear(pointerYear(e)) }}
         onPointerLeave={() => setHoverYear(null)} onPointerCancel={() => setHoverYear(null)} className="tower-income-svg">
         <title id={`${uid}-title`}>연도별 월 연금 누적 영역 그래프</title>
-        <desc id={`${uid}-desc`}>국민연금, 퇴직연금, 개인연금의 월액을 쌓은 그래프입니다. {selected.year}년 월 합계 {selectedTotal.toLocaleString('ko-KR')}원. 세전, 오늘의 돈 기준. 아래 연도 조절기로 각 연도를 확인할 수 있습니다.</desc>
+        <desc id={`${uid}-desc`}>{incomeLayers.map(layer => layer.name).join(', ')}의 월액을 쌓은 그래프입니다. {selected.year}년 월 합계 {selectedTotal.toLocaleString('ko-KR')}원. 세전, 오늘의 돈 기준. 아래 연도 조절기로 각 연도를 확인할 수 있습니다.</desc>
         <defs>
           {incomeLayers.map(layer => <linearGradient key={layer.id} id={`${uid}-fill-${layer.id}`} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor={color(layer.id)} stopOpacity={.8}/><stop offset="100%" stopColor={color(layer.id)} stopOpacity={.3}/>
@@ -134,7 +136,7 @@ export function IncomeChart({ rows, scope, year, onYearChange, onLayerSelect, hi
       {hovered && width >= 500 && <div className="tower-income-tooltip" role="tooltip" style={{ left: Math.max(8, Math.min(width - 218, cursorX + (cursorX > width * .6 ? -226 : 18))), top: 28 }}>
         <div><strong>{hovered.year}년</strong><span>{ageText(hovered)}</span></div>
         {incomeLayers.map(layer => <p key={layer.id}><span><i style={{ background: color(layer.id) }}/>{layer.name}</span><b>{man(amount(hovered, scope, layer.id) ?? 0)}만 원</b></p>)}
-        <footer><span>월 합계</span><strong>{man(amount(hovered, scope) ?? 0)}만 원</strong></footer><small>클릭하면 이 시점으로 선택해요</small>
+        <footer><span>월 합계</span><strong>{man(totalFor(hovered))}만 원</strong></footer><small>클릭하면 이 시점으로 선택해요</small>
       </div>}
     </div>}
     <div className="tower-income-navigation">
@@ -156,6 +158,6 @@ export function IncomeChart({ rows, scope, year, onYearChange, onLayerSelect, hi
         <span className="tower-income-legend-status">{start == null ? '준비 정보 없음' : selected.year < start ? `${start}년부터 수령` : value > 0 ? '수령 중' : '수령 기간 종료'}</span>
       </button>{layer.id === 3 && !hidden && taxRule && taxChecks.length > 0 && <PensionTaxNotice key={`${selected.year}-${scope}`} checks={taxChecks} rule={taxRule} year={selected.year}/>}</div>
     })}</div>
-    <div className="tower-income-footer"><p>국민연금은 종신 · 그래프 끝은 계산 범위 · 4층 추가연금은 기본 합계에 넣지 않음</p><span><MousePointer2 size={12}/>색을 짚으면 해당 연금이 강조돼요</span></div>
+    <div className="tower-income-footer"><p>국민연금은 종신 · 그래프 끝은 계산 범위 · {includeExtra ? '4층 포함' : '4층 목돈은 월 합계에서 제외'}</p><span><MousePointer2 size={12}/>색을 짚으면 해당 연금이 강조돼요</span></div>
   </div>
 }

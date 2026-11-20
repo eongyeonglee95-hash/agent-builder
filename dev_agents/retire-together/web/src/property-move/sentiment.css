@@ -1,0 +1,50 @@
+.sentiment-dashboard { color:var(--foreground); font-size:var(--text-sm); }
+.sentiment-controls,.sentiment-date { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.sentiment-controls { justify-content:space-between; padding:12px 0; border-bottom:1px solid var(--border); }
+.sentiment-controls input,.sentiment-controls select { min-height:40px; border:1px solid var(--input); border-radius:8px; background:var(--background); color:var(--foreground); padding:6px 10px; font:inherit; }
+.sentiment-dashboard button,.sentiment-dashboard input,.sentiment-dashboard select { accent-color:var(--primary); }
+.sentiment-dashboard :focus-visible { outline:2px solid var(--primary); outline-offset:3px; }
+.sentiment-dashboard a { text-decoration:underline; text-underline-offset:3px; display:inline-flex; align-items:center; gap:6px; }
+.sentiment-dashboard h3 { font-size:var(--text-base); font-weight:650; }
+.sentiment-latest { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); margin:16px 0 24px; border-top:1px solid var(--border); }
+.sentiment-latest button { display:flex; flex-direction:column; align-items:flex-start; gap:5px; padding:14px; text-align:left; border-bottom:1px solid var(--border); background:var(--background); }
+.sentiment-latest button:hover { background:var(--muted); }
+.sentiment-latest button[aria-pressed=true] { background:var(--brand-tint); box-shadow:inset 0 -2px var(--primary); }
+.sentiment-latest strong { font-size:var(--text-xl); font-variant-numeric:tabular-nums; }
+.sentiment-latest small { color:var(--muted-foreground); font-size:var(--text-xs); }
+.sentiment-matrix { margin-bottom:24px; }
+.sentiment-matrix table { width:100%; border-collapse:separate; border-spacing:3px; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.sentiment-matrix th { text-align:left; font-weight:500; }
+.sentiment-matrix thead th { font-size:var(--text-xs); color:var(--muted-foreground); padding:8px; }
+.sentiment-matrix tbody th { min-width:160px; padding:8px 12px 8px 0; }
+.sentiment-matrix th small { display:block; font-size:var(--text-xs); color:var(--muted-foreground); }
+.sentiment-matrix th button { min-height:32px; text-align:left; }
+.sentiment-cell { text-align:center; min-width:66px; padding:12px 8px; font-size:var(--text-xs); border-radius:3px; background:var(--muted); }
+.sentiment-selected th button { font-weight:700; text-decoration:underline; text-underline-offset:4px; }
+.sentiment-rise { color:var(--up); }
+.sentiment-fall { color:var(--down); }
+.sentiment-cell.sentiment-rise { background:var(--up-soft); }
+.sentiment-cell.sentiment-fall { background:var(--down-soft); }
+.sentiment-cell.sentiment-missing { color:var(--muted-foreground); background:var(--grey-50); }
+.sentiment-detail { padding:16px 0; border-top:1px solid var(--border); }
+.sentiment-chart { width:100%; max-height:260px; display:block; margin:12px 0; overflow:visible; }
+.sentiment-chart text { fill:var(--muted-foreground); font-size:var(--text-xs); }
+.sentiment-gridline { stroke:var(--border); stroke-width:1; }
+.sentiment-line { stroke:var(--primary); stroke-width:2; }
+.sentiment-dot { fill:var(--primary); }
+.sentiment-empty { min-height:130px; display:flex; align-items:center; justify-content:center; color:var(--muted-foreground); background:var(--grey-50); margin:16px 0; padding:20px; }
+.sentiment-notice { color:var(--muted-foreground); padding:10px 0; font-size:var(--text-sm); }
+.sentiment-sources { display:flex; gap:12px 24px; flex-wrap:wrap; padding:20px 0; border-top:1px solid var(--border); }
+.sentiment-sources h3,.sentiment-sources p { flex-basis:100%; }
+.sentiment-research { border-top:1px solid var(--border); padding:18px 0; }
+.sentiment-research summary { cursor:pointer; font-weight:600; min-height:32px; }
+.sentiment-research .sentiment-row { display:block; }
+@media(max-width:640px) {
+ .sentiment-latest { grid-template-columns:repeat(2,minmax(0,1fr)); }
+ .sentiment-controls { justify-content:flex-start; }
+ .sentiment-date { order:3; width:100%; gap:2px; }
+ .sentiment-date input { max-width:155px; }
+ .sentiment-latest button { padding:12px 8px; }
+ .sentiment-chart { min-height:170px; }
+}
+.sentiment-dashboard .research-modes button[aria-pressed=true] { color:var(--foreground); background:var(--background); font-weight:700; }

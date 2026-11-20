@@ -29,7 +29,7 @@ export function useSheetStatus(poll = false) {
 
 export function AssetConnectionButton({ onClick }: { onClick: () => void }) {
   return <button className="asset-connect" onClick={onClick} aria-haspopup="dialog">
-    <FileSpreadsheet size={25} aria-hidden="true"/><span><strong>내 자산 연결</strong><small>Google 시트</small></span><ArrowRight size={20} aria-hidden="true"/>
+    <FileSpreadsheet size={25} aria-hidden="true"/><span><strong>구글 시트로 관리하기</strong><small>우리 자산 · 연결과 버전</small></span><ArrowRight size={20} aria-hidden="true"/>
   </button>
 }
 

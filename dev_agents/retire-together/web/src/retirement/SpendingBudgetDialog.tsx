@@ -39,9 +39,15 @@ export function SpendingBudgetDialog({ data, save, close, returnFocus }: {
 }) {
   const [plan] = useState(() => structuredClone(data.plan))
   const [draft, setDraft] = useState(() => toDraft(data.plan.spending_budget ?? data.spending_budget_template))
+  const [mode, setMode] = useState<'direct' | 'items'>('direct')
+  const [direct, setDirect] = useState(() => data.plan.monthly_need == null ? '' : String(data.plan.monthly_need / 10000))
+  const directValid = direct.trim() === '' || (Number.isFinite(Number(direct)) && Number(direct) >= 0 && Number(direct) <= 1e8)
+  const directTotal = direct.trim() === '' ? null : Math.round(Number(direct) * 10000)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const preview = calculate(draft)
+  const valid = mode === 'direct' ? directValid : preview != null
+  const total = mode === 'direct' ? directTotal : preview?.total ?? null
   const field = (key: Key, label: string, unit = '만 원') => <span className="tower-budget-input">
     <Input type="number" inputMode={key in counts ? 'numeric' : 'decimal'} aria-label={label} required min={key in counts ? 1 : 0}
       max={counts[key] ?? 1e8} step={key in counts ? 1 : .0001} value={draft[key]}
@@ -52,24 +58,26 @@ export function SpendingBudgetDialog({ data, save, close, returnFocus }: {
     {field(key, label, annual ? '만 원 / 년' : '만 원 / 월')}
   </label>
   async function submit() {
-    if (!preview || busy) return
+    if (!valid || busy) return
     setBusy(true); setError('')
     try {
-      if (await save({ ...plan, spending_budget: preview.budget, monthly_need: preview.total, apply_spending_budget: true })) close()
+      if (await save(mode === 'direct' ? { ...plan, monthly_need: directTotal, apply_spending_budget: false } : { ...plan, spending_budget: preview!.budget, monthly_need: preview!.total, apply_spending_budget: true })) close()
       else setError('적용하지 못했어요. 입력한 항목은 이 창에 남아 있습니다. 다른 화면에서 계획을 바꿨다면 닫고 새로고침한 뒤 다시 적용해 주세요.')
     } catch (e) { setError(e instanceof Error ? e.message : '적용하지 못했어요. 다시 시도해 주세요.') }
     finally { setBusy(false) }
   }
   return <Dialog open onOpenChange={open => { if (!open && !busy) close() }}>
-    <DialogContent className="tower-plan-dialog tower-budget-dialog" showCloseButton={!busy}
+    <DialogContent className="tower-budget-dialog" showCloseButton={!busy}
       onEscapeKeyDown={e => { if (busy) e.preventDefault() }} onPointerDownOutside={e => { if (busy) e.preventDefault() }}
       onCloseAutoFocus={e => { e.preventDefault(); returnFocus() }}>
-      <DialogHeader className="tower-budget-header"><DialogTitle><Calculator size={20}/>생활비 계산</DialogTitle>
-        <DialogDescription>은퇴 후 부부가 쓸 돈을 오늘 물가로 잡아보세요. 항목을 바꾸면 월 합계가 바로 달라져요.</DialogDescription>
+      <DialogHeader className="tower-budget-header"><DialogTitle><Calculator size={20}/>생활비 설정</DialogTitle>
+        <DialogDescription>부부의 월 생활비를 직접 입력하거나 항목별로 계산해 보세요.</DialogDescription>
       </DialogHeader>
       <form className="tower-budget-form" onSubmit={e => { e.preventDefault(); submit() }}>
+        <div className="tower-budget-scroll" role="region" aria-label="생활비 입력 항목" tabIndex={0}>
         <fieldset className="tower-budget-body" disabled={busy}>
-          <div className="tower-budget-context"><span>{plan.spending_budget ? '저장한 항목에서 이어서' : '검토용 초안 · 적용 전에는 저장되지 않아요'}</span><span>현재 목표 <b>{plan.monthly_need == null ? '미설정' : `월 ${man(plan.monthly_need)}만 원`}</b></span></div>
+          <div className="tower-budget-modes" role="group" aria-label="생활비 입력 방식"><Button type="button" variant="outline" aria-pressed={mode === 'direct'} onClick={() => { setMode('direct'); setError('') }}>총액 직접 입력</Button><Button type="button" variant="outline" aria-pressed={mode === 'items'} onClick={() => { setMode('items'); setError('') }}>항목별 계산</Button></div>
+          {mode === 'direct' ? <label className="tower-budget-direct"><span>부부 월 생활비 · 오늘의 돈</span><span className="tower-budget-input"><Input type="number" inputMode="decimal" aria-label="은퇴 후 부부 월 생활비" min={0} max={1e8} step={.0001} value={direct} placeholder="예: 500" onChange={e => { setDirect(e.target.value); setError('') }}/><span>만 원 / 월</span></span><small>비우면 생활비 비교를 해제해요. 저장한 항목별 예산은 유지돼요.</small></label> : <><div className="tower-budget-context"><span>{plan.spending_budget ? '저장한 항목에서 이어서' : '검토용 초안 · 적용 전에는 저장되지 않아요'}</span><span>현재 목표 <b>{plan.monthly_need == null ? '미설정' : `월 ${man(plan.monthly_need)}만 원`}</b></span></div>
           <section className="tower-budget-food" aria-labelledby="spending-food-title">
             <div className="tower-budget-section-title"><h3 id="spending-food-title"><Utensils size={16}/>식비</h3><span>월 <b data-testid="budget-food">{preview ? man(preview.food) : '—'}</b>만 원</span></div>
             <div className="tower-budget-food-fields">
@@ -97,12 +105,15 @@ export function SpendingBudgetDialog({ data, save, close, returnFocus }: {
           </section>
           <p className="tower-budget-note">세금·보험료를 자동 산정하는 계산기는 아니에요. 큰 간병비·자녀 지원금은 별도 목돈으로 준비하고, 같은 비용을 여러 항목에 중복해서 넣지 않도록 확인해 주세요.</p>
           <p className="tower-budget-note">이 목표는 실제로 쓸 생활비입니다. 화면의 연금은 세전 금액이라, 연금에서 빠지는 세금은 비교에 아직 반영되지 않아요.</p>
+          </>}
         </fieldset>
+        </div>
         <div className="tower-budget-footer">
-          <div className="tower-budget-total" aria-live="polite"><span>우리의 월 생활비<small>오늘 돈 · 부부 합계</small></span><strong><span data-testid="budget-total">{preview ? man(preview.total) : '—'}</span><small>만 원</small></strong></div>
-          {!preview && <p className="tower-budget-validation">모든 항목을 확인해 주세요. 쓰지 않는 비용은 0으로 입력할 수 있어요.</p>}
+          {mode === 'items' && <p className="tower-budget-scroll-hint">위아래로 스크롤해 전체 항목을 확인하세요.</p>}
+          <div className="tower-budget-total" aria-live="polite"><span>우리의 월 생활비<small>오늘 돈 · 부부 합계</small></span><strong><span data-testid="budget-total">{valid && total != null ? man(total) : '—'}</span><small>만 원</small></strong></div>
+          {!valid && <p className="tower-budget-validation">입력값을 확인해 주세요. 쓰지 않는 비용은 0으로 입력할 수 있어요.</p>}
           {error && <p className="tower-error" role="alert">{error}</p>}
-          <div className="tower-budget-actions"><Button type="button" variant="outline" disabled={busy} onClick={close}>취소</Button><Button type="submit" disabled={busy || !preview}>{busy ? '적용하는 중…' : preview ? `월 ${man(preview.total)}만 원을 생활비 목표로 적용` : '생활비 목표로 적용'}</Button></div>
+          <div className="tower-budget-actions"><Button type="button" variant="outline" disabled={busy} onClick={close}>취소</Button><Button type="submit" disabled={busy || !valid}>{busy ? '적용하는 중…' : mode === 'direct' && total == null ? '생활비 비교 해제' : valid && total != null ? `월 ${man(total)}만 원을 생활비 목표로 적용` : '생활비 목표로 적용'}</Button></div>
         </div>
       </form>
     </DialogContent>

@@ -16,7 +16,7 @@ from pydantic import Field, TypeAdapter, ValidationError
 from backend.storage import AssetInput, InputModel, Money, Person
 
 KINDS = {"profile", "family_goal", "pension", "retirement", "asset", "account", "pool",
-         "holding", "property_detail", "property_plan", "property_track", "decision", "rules"}
+         "holding", "trade_record", "additional_plan", "additional_payment", "property_detail", "property_plan", "property_track", "decision", "rules"}
 IMMUTABLE = {"decision", "rules"}
 
 
@@ -187,10 +187,36 @@ def validate(state, members):
                         fail()
                 if "costs_complete" in e and type(e["costs_complete"]) is not bool:
                     fail()
+            elif kind == "trade_record":
+                from backend.trade_journal import Entry
+                if set(p) != {"input", "record"}:
+                    fail()
+                entry = Entry.model_validate(p["input"])
+                if str(entry.request_id) != rid or ("pool", entry.pool_id) not in indexed:
+                    fail()
+                if entry.kind == "trade" and (entry.account_id not in accounts or accounts[entry.account_id]["member_id"] != member):
+                    fail()
+                if any(p["record"].get(k) != v for k, v in entry.model_dump(mode="json").items()):
+                    fail()
+                expected = entry.qty * entry.price if entry.kind == "trade" else None
+                if p["record"].get("amount") != expected or p["record"].get("id") != rid:
+                    fail()
+            elif kind in {"additional_plan", "additional_payment"}:
+                from backend.additional_pensions import Plan, Payment
+                aid = rid if kind == "additional_plan" else p.get("asset_id")
+                if aid not in assets or assets[aid]["member_id"] != member or assets[aid]["payload"]["pocket"] != "retirement":
+                    fail()
+                if kind == "additional_plan":
+                    r["payload"] = Plan.model_validate(p).model_dump(mode="json")
+                else:
+                    UUID(rid)
+                    if p.get("request_id") != rid or not isinstance(p.get("recorded_at"), str):
+                        fail()
+                    Payment.model_validate({k: v for k, v in p.items() if k not in {"asset_id", "recorded_at"}})
             elif kind == "property_detail":
                 if rid not in assets or assets[rid]["member_id"] != member or assets[rid]["payload"]["pocket"] != "property":
                     fail()
-                allowed = {"address", "area_m2", "purchase_price", "purchase_month", "tenure", "deposit", "monthly_rent", "loan_ids", "deposit_asset_id", "request_id", "value_source", "listings", "version", "updated_at"}
+                allowed = {"address", "area_m2", "purchase_price", "purchase_month", "tenure", "deposit", "monthly_rent", "loan_ids", "deposit_asset_id", "request_id", "value_source", "listings", "kb_quote", "version", "updated_at"}
                 if set(p) - allowed:
                     fail()
                 home = assets[rid]["payload"]
@@ -198,6 +224,11 @@ def validate(state, members):
                 normalized = HomeInput(**fields, name=home["name"], owner="joint" if member == "joint" else aliases[member],
                     share_percent=home.get("share_percent")).model_dump(mode="json", exclude_unset=True)
                 r["payload"] = {**p, **{k: normalized[k] for k in fields}}
+                if p.get("kb_quote") is not None:
+                    from backend.property import KBQuote
+                    quote = KBQuote.model_validate(p["kb_quote"])
+                    if quote.area_m2 != p.get("area_m2"):
+                        fail()
                 for listing in p.get("listings", []):
                     Listing.model_validate(listing)
                 for aid in [*p.get("loan_ids", []), *([p["deposit_asset_id"]] if p.get("deposit_asset_id") else [])]:

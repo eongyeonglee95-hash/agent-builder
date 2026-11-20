@@ -121,13 +121,15 @@ export function AuthGate({ children }: { children: ReactNode }) {
 }
 
 type AccountMenuProps = {
+  sidebar?: boolean
+  onSheets?: () => void
   onProfile?: () => void
   onFamily?: () => void
   onNotifications?: () => void
   dataMode?: { isDemo: boolean; asOf: string; onChange: (demo: boolean) => void }
 }
 
-export function AccountMenu({ onProfile, onFamily, onNotifications, dataMode }: AccountMenuProps = {}) {
+export function AccountMenu({ onProfile, onFamily, onNotifications, dataMode, sidebar = false, onSheets }: AccountMenuProps = {}) {
   const { mode, session } = useAuth()
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -144,12 +146,13 @@ export function AccountMenu({ onProfile, onFamily, onNotifications, dataMode }: 
     } catch (e) { setError(e instanceof Error ? e.message : '연결을 확인해 주세요.') }
     finally { setBusy(false) }
   }
-  return <><button className="auth-account" aria-label="마이페이지" title="마이페이지" aria-haspopup="dialog" onClick={() => setOpen(true)}><UserRound size={22} aria-hidden="true"/></button>
-    {open && <Modal title="마이페이지" onClose={() => setOpen(false)}><div className="account-page">
+  return <><button className={sidebar ? "sidebar-account" : "auth-account"} aria-label={sidebar ? "우리 가족 · 설정" : "마이페이지"} aria-haspopup="dialog" onClick={() => setOpen(true)}><UserRound size={22} aria-hidden="true"/>{sidebar && <><span><strong>우리 가족 · 설정</strong><small>내 정보 · 연결 계정</small></span><ChevronRight size={16} aria-hidden="true"/></>}</button>
+    {open && <Modal title={sidebar ? "우리 가족 · 설정" : "마이페이지"} onClose={() => setOpen(false)}><div className="account-page">
       <div className="account-identity"><UserRound size={28} aria-hidden="true"/><div><strong>{session ? 'Google 계정으로 로그인 중' : '이 컴퓨터의 가계 노트'}</strong><p>{session?.email ?? '저장된 내 정보와 자산을 관리해요.'}</p>{session && <span>{session.role === 'owner' ? '오너' : '배우자'}</span>}</div></div>
       <nav className="account-actions" aria-label="내 계정 관리">
         {onProfile && <button onClick={() => navigate(onProfile)}><Settings size={20} aria-hidden="true"/><span>내 정보 · 설정</span><ChevronRight size={18} aria-hidden="true"/></button>}
         {onFamily && <button onClick={() => navigate(onFamily)}><Users size={20} aria-hidden="true"/><span>우리 가족</span><ChevronRight size={18} aria-hidden="true"/></button>}
+        {onSheets && <button onClick={() => navigate(onSheets)}><Settings size={20} aria-hidden="true"/><span>구글 시트 · 연결 관리</span><ChevronRight size={18} aria-hidden="true"/></button>}
         {onNotifications && <button onClick={() => navigate(onNotifications)}><Bell size={20} aria-hidden="true"/><span>알림 · 안내</span><ChevronRight size={18} aria-hidden="true"/></button>}
       </nav>
       {dataMode && <section className="account-view"><h3>화면에 보여줄 자료</h3><div role="group" aria-label="데이터 보기">

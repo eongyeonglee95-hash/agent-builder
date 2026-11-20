@@ -42,9 +42,11 @@ class Entry(InputModel):
 
 @contextmanager
 def database():
-    DB_PATH.parent.mkdir(parents=True,exist_ok=True,mode=0o700)
-    with sqlite3.connect(DB_PATH,timeout=10) as db:
-        DB_PATH.chmod(0o600)
+    from tools.data_context import resolve
+    path = resolve("trade-journal.sqlite3", DB_PATH)
+    path.parent.mkdir(parents=True,exist_ok=True,mode=0o700)
+    with sqlite3.connect(path,timeout=10) as db:
+        path.chmod(0o600)
         db.execute('CREATE TABLE IF NOT EXISTS entries (id TEXT PRIMARY KEY, pool_id TEXT NOT NULL, event_date TEXT NOT NULL, recorded_at TEXT NOT NULL, input TEXT NOT NULL, body TEXT NOT NULL)')
         yield db
 

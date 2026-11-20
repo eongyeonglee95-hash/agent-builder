@@ -1,0 +1,120 @@
+/* Only this independent entry loads these overrides. No controls are removed. */
+body.pension-live .live-preview-bar{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:8px 24px;background:var(--brand-dark);color:var(--brand-ink);font:400 var(--text-xs)/1.5 var(--font-sans)}
+body.pension-live .live-preview-bar a{color:inherit;text-decoration:underline;text-underline-offset:3px;flex-shrink:0;min-height:32px;display:flex;align-items:center}
+body.pension-live .tower-workspace{max-width:1440px}
+body.pension-live .tower-intro{margin-bottom:20px;gap:16px;flex-wrap:wrap}
+body.pension-live .tower-intro h1{font-size:var(--text-2xl)}
+body.pension-live .tower-intro-actions{gap:16px;flex-wrap:wrap}
+body.pension-live .tower-toolbar{gap:16px}
+body.pension-live .tower-toolbar button,body.pension-live .tower-scope button{min-height:44px}
+body.pension-live .tower-scope button{border-radius:8px}
+body.pension-live .tower-hero{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;align-items:stretch}
+body.pension-live .tower-tower-card{border-radius:16px}
+body.pension-live .tower-tower-heading{padding:22px 24px 12px}
+body.pension-live .tower-tower-heading h2{font-size:var(--text-lg)}
+body.pension-live .tower-tower-heading span{font-size:var(--text-xs);color:var(--muted-foreground)}
+body.pension-live .tower-tower-view{grid-template-columns:minmax(160px,.75fr) minmax(0,1.4fr);padding:8px 20px 18px;gap:16px;min-height:0;align-items:center}
+body.pension-live .tower-sculpture{align-self:center}
+body.pension-live .tower-pagoda{width:100%;max-width:290px;height:auto;margin:auto}
+body.pension-live .tower-layers{gap:0}
+body.pension-live .tower-layer-row{border:0;border-bottom:1px solid var(--border);border-radius:0;background:transparent;padding:8px 0;grid-template-columns:minmax(0,1fr) auto;gap:4px}
+body.pension-live .tower-layer-row[data-selected=true]{background:var(--grey-50)}
+body.pension-live .tower-layer-row .tower-layer-button{grid-template-columns:1fr;grid-template-areas:'name' 'principal' 'gauge';padding:6px 10px;box-shadow:none}
+body.pension-live .tower-layer-row .tower-layer-name{font-size:var(--text-sm)}
+body.pension-live .tower-layer-row .tower-layer-name svg{margin-left:auto}
+body.pension-live .tower-layer-row .tower-layer-principal{display:grid;gap:3px;min-width:0}
+body.pension-live .tower-layer-row .tower-layer-amount{font-size:var(--text-xl)}
+body.pension-live .tower-layer-row .tower-layer-gauge{margin-top:4px;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center}
+body.pension-live .tower-layer-track{height:4px;box-shadow:none}
+body.pension-live .tower-layer-gauge b{font-size:var(--text-xs)}
+body.pension-live .tower-layer-edit{min-height:44px;justify-self:start;margin:0 10px;padding:8px 12px;white-space:normal;font-size:var(--text-xs);background:var(--background);border-color:var(--input)}
+body.pension-live .tower-savings-actions{display:flex;flex-direction:column;gap:6px;padding:0 8px}
+body.pension-live .tower-savings-actions .tower-layer-edit{margin:0}
+body.pension-live .tower-summary{display:flex;flex-direction:column;padding:22px;border:1px solid var(--border);border-radius:16px;background:var(--background);color:var(--foreground);box-shadow:none}
+body.pension-live .tower-summary:before{content:none}
+body.pension-live .tower-summary .tower-summary-kicker,body.pension-live .tower-summary .tower-summary-ages,body.pension-live .tower-summary .tower-monthly-label,body.pension-live .tower-summary .tower-total small,body.pension-live .tower-summary .tower-summary-note,body.pension-live .tower-summary .tower-coverage-label,body.pension-live .tower-summary .tower-coverage-label button,body.pension-live .tower-summary .tower-excluded,body.pension-live .tower-summary .tower-nominal-summary,body.pension-live .tower-summary .tower-gap p{color:var(--muted-foreground)}
+body.pension-live .tower-summary .tower-nominal-summary b,body.pension-live .tower-summary .tower-applied-budget strong{color:var(--foreground)}
+body.pension-live .tower-summary .tower-gap em,body.pension-live .tower-summary .tower-nominal-summary>small{color:var(--brand)}
+body.pension-live .tower-summary .tower-gap,body.pension-live .tower-summary .tower-nominal-summary,body.pension-live .tower-summary .tower-applied-budget{border-color:var(--border);background:transparent}
+body.pension-live .tower-summary .tower-gap{border-left:0;margin-top:16px;padding:16px 0 0;border-top:1px solid var(--border);align-self:stretch}
+body.pension-live .tower-summary .tower-total strong{font-size:var(--text-3xl)}
+body.pension-live .tower-income-actions{flex-wrap:wrap;gap:12px}
+body.pension-live .tower-summary .tower-budget-open{width:100%;justify-content:center;min-height:44px;border:0;background:var(--brand);color:var(--brand-ink);font-size:var(--text-sm)}
+body.pension-live .tower-summary .tower-budget-open:hover{background:var(--brand-dark)}
+body.pension-live .tower-summary .tower-summary-action{min-height:44px;border-color:var(--input);color:var(--foreground)}
+body.pension-live .tower-summary .tower-summary-action:hover{background:var(--grey-50)}
+body.pension-live .tower-summary .tower-coverage-track{background:var(--grey-100)}
+body.pension-live .tower-flow{margin-top:20px;padding:24px;border-radius:16px;border:1px solid var(--border);background:var(--background)}
+body.pension-live .tower-section-heading{gap:16px;flex-wrap:wrap}
+body.pension-live .tower-milestones{flex-wrap:wrap}
+body.pension-live .tower-milestones button{min-height:44px}
+body.pension-live .tower-income-navigation{padding-top:16px}
+body.pension-live .tower-income-navigation button{min-width:44px;min-height:44px}
+body.pension-live .tower-income-slider input{min-height:44px;cursor:ew-resize;touch-action:pan-y}
+body.pension-live .tower-spending{border-radius:16px}
+body.pension-live .tower-workspace button:focus-visible{outline-color:var(--brand)}
+
+/* Breakpoints follow the space left by the app sidebar, not the browser width. */
+body.pension-live .tower-workspace{container:pension-content / inline-size}
+body.pension-live .tower-hero{align-items:start}
+body.pension-live .tower-summary{gap:0;min-width:0}
+body.pension-live .tower-summary>*{grid-area:auto;min-width:0}
+body.pension-live .tower-summary .tower-excluded{margin-top:16px;padding-top:0}
+body.pension-live .tower-summary .tower-applied-budget{margin-top:12px;padding:12px 0;border:0;border-radius:0;border-bottom:1px solid var(--border)}
+body.pension-live .tower-summary .tower-applied-budget>span{color:var(--muted-foreground)}
+body.pension-live .tower-summary .tower-coverage{margin-top:12px}
+body.pension-live .tower-summary .tower-nominal-summary{margin-top:12px;padding-top:12px}
+body.pension-live .tower-layer-row .tower-layer-button{min-width:0}
+body.pension-live .tower-layer-row .tower-layer-name{white-space:normal}
+body.pension-live .tower-layer-row .tower-layer-gauge{grid-template-columns:1fr;gap:3px}
+body.pension-live .tower-layer-edit{margin:0 8px;max-width:120px}
+body.pension-live .tower-income-chart{border:0;border-radius:0;box-shadow:none;padding:0;background:transparent}
+body.pension-live .tower-flow .tower-income-chart{margin-top:16px}
+body.pension-live .tower-income-slider input{min-height:24px}
+@container pension-content (max-width:1050px){
+ body.pension-live .tower-hero{grid-template-columns:minmax(0,1fr)}
+ body.pension-live .tower-summary{order:-1;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-areas:'title title' 'income gap' 'note gap' 'budget nominal' 'coverage nominal' 'excluded excluded' 'basis basis';gap:4px 24px;padding:20px 24px}
+ body.pension-live .tower-summary .tower-pension-title{grid-area:title}
+ body.pension-live .tower-summary .tower-summary-ages{grid-area:ages}
+ body.pension-live .tower-summary .tower-monthly-label{grid-area:label;margin-top:12px}
+ body.pension-live .tower-summary .tower-income-actions{grid-area:income;justify-content:flex-start}
+ body.pension-live .tower-summary .tower-summary-note{grid-area:note}
+ body.pension-live .tower-summary .tower-applied-budget{grid-area:budget}
+ body.pension-live .tower-summary .tower-coverage{grid-area:coverage}
+ body.pension-live .tower-summary .tower-gap{grid-area:gap;align-self:start;margin:12px 0 0;padding:0;border:0}
+ body.pension-live .tower-summary .tower-nominal-summary{grid-area:nominal;align-self:start}
+ body.pension-live .tower-summary .tower-excluded{grid-area:excluded;margin-top:12px}
+ body.pension-live .tower-summary .tower-budget-open{width:auto;padding-inline:16px}
+ body.pension-live .tower-tower-view{grid-template-columns:minmax(180px,.7fr) minmax(0,1.3fr)}
+}
+@container pension-content (max-width:620px){
+ body.pension-live .tower-intro-actions{width:100%;align-items:stretch;flex-direction:column-reverse;gap:8px}
+ body.pension-live .tower-intro .tower-toolbar{display:flex;flex-direction:row;flex-wrap:wrap;gap:8px 16px;margin:0}
+ body.pension-live .tower-scope{flex-wrap:wrap}
+ body.pension-live .tower-summary{display:flex;padding:18px;gap:0}
+ body.pension-live .tower-summary .tower-gap{margin-top:12px;padding-top:12px;border-top:1px solid var(--border)}
+ body.pension-live .tower-summary .tower-income-actions{flex-wrap:wrap;gap:8px 12px}
+ body.pension-live .tower-summary .tower-monthly-label{margin-top:10px}
+ body.pension-live .tower-summary .tower-total{margin:0}
+ body.pension-live .tower-summary .tower-budget-open{flex:0 1 auto;width:auto}
+ body.pension-live .tower-summary .tower-nominal-summary{align-self:stretch}
+ body.pension-live .tower-tower-view{grid-template-columns:minmax(0,1fr);padding:8px 16px 16px}
+ body.pension-live .tower-pagoda{max-width:220px}
+ body.pension-live .tower-tower-heading{padding:18px 16px 8px}
+ body.pension-live .tower-layer-row{grid-template-columns:minmax(0,1fr) auto;padding-block:10px}
+ body.pension-live .tower-layer-edit{padding:8px;max-width:100px;margin-inline:4px}
+ body.pension-live .tower-savings-actions{padding-inline:4px}
+ body.pension-live .tower-extra-choice{max-width:100%}
+ body.pension-live .tower-flow{padding:20px 14px}
+ body.pension-live .tower-income-date-ages{white-space:normal}
+}
+@media(prefers-reduced-motion:reduce){body.pension-live .tower-workspace *{transition:none!important;scroll-behavior:auto!important}}
+@container pension-content (max-width:620px){
+ body.pension-live .tower-summary .tower-gap{align-self:stretch}
+ body.pension-live .tower-layer-row{grid-template-columns:minmax(0,1fr)}
+ body.pension-live .tower-layer-edit{justify-self:start;margin-left:10px;max-width:none}
+ body.pension-live .tower-savings-actions{flex-direction:row;flex-wrap:wrap;padding-inline:10px}
+ body.pension-live .tower-savings-actions .tower-layer-edit{margin:0}
+}
+
+body.pension-live .tower-summary .tower-calculation-basis{grid-area:basis;color:var(--muted-foreground)}

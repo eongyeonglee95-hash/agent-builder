@@ -78,11 +78,17 @@ class AssetUpdate(AssetInput):
 def now():
     return datetime.now(timezone.utc).isoformat()
 
+def database_path():
+    from tools.data_context import resolve
+    return resolve("financial.sqlite3", DB_PATH)
+
+
 @contextmanager
-def connection():
-    DB_PATH.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-    conn = sqlite3.connect(DB_PATH, timeout=5)
-    DB_PATH.chmod(0o600)
+def connection(*, shared=True):
+    path = database_path() if shared else DB_PATH
+    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    conn = sqlite3.connect(path, timeout=5)
+    path.chmod(0o600)
     conn.row_factory = sqlite3.Row
     try:
         conn.executescript("""
