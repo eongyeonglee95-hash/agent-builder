@@ -64,16 +64,20 @@ function place() {
   const slot = document.getElementById('theme-slot')
   const target = slot ?? document.body
   if (host.parentElement !== target) target.appendChild(host)
+  const changed = host.classList.contains('in-nav') !== !!slot
   host.classList.toggle('in-nav', !!slot)
+  if (changed && host.childElementCount) render()
 }
 new MutationObserver(place).observe(document.body, { childList: true, subtree: true })
 place()
+const swatch = (id: ThemeId) => id === 'light' ? THEMES[id].vars['--page-bg'] : THEMES[id].swatch
 const dot = (hex: string) => `<i style="background:${hex}"></i>`
 function render() {
-  host.dataset.open = String(open)
+  const expanded = open || host.classList.contains('in-nav')
+  host.dataset.open = String(expanded)
   const current = THEMES[state.theme]
-  host.innerHTML = open ? `<div class="bm-bar" role="toolbar" aria-label="화면 테마 고르기"><em>테마</em>${(Object.keys(THEMES) as ThemeId[]).map(id => `<button type="button" data-theme="${id}" aria-pressed="${id === state.theme}" title="${THEMES[id].ref}">${dot(THEMES[id].swatch)}<span>${THEMES[id].name}</span></button>`).join('')}
-      <button type="button" class="bm-close" aria-label="테마 바 접기">접기</button></div>` : `<button type="button" class="bm-toggle" aria-label="테마 변경" aria-expanded="false">${dot(current.swatch)}테마 · ${current.name}</button>`
+  host.innerHTML = expanded ? `<div class="bm-bar" role="toolbar" aria-label="화면 테마 고르기">${(Object.keys(THEMES) as ThemeId[]).map(id => `<button type="button" data-theme="${id}" aria-pressed="${id === state.theme}" aria-label="${THEMES[id].name} 테마" title="${THEMES[id].name}">${dot(swatch(id))}</button>`).join('')}
+      <button type="button" class="bm-close" aria-label="테마 바 접기">접기</button></div>` : `<button type="button" class="bm-toggle" aria-label="테마 변경" title="${current.name} 테마 · 변경하기" aria-expanded="false">${dot(swatch(state.theme))}</button>`
 }
 host.addEventListener('click', e => {
   const t = e.target as HTMLElement

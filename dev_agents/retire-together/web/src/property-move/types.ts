@@ -9,7 +9,10 @@ export type Candidate = {
   asking_low: number | null; asking_high: number | null; asking_date: string | null
   purchase_costs: number | null; memo: string; living: Living
 }
+export type PirSettings = {annual_me:number|null;annual_partner:number|null;lower:number;upper:number}
+export type PirResult = {ratio:number|null;status:"below"|"within"|"above"|null;income:number|null;lower:number;upper:number;price_min:number|null;price_max:number|null}
 export type MovePlan = {
+  pir?: PirSettings;
   version: number; source_home_ids: string[]; cash: number | null; sale_costs: number | null
   new_loan: number; monthly_saving: number; target_month: string | null; target_id: string | null; candidates: Candidate[]
 }
@@ -25,7 +28,7 @@ export type TrackEntry = {
 }
 export type Capital = { value: number; loans: number; deposit: number; equity: number; cash: number; net: number; valuation_missing: boolean }
 export type Monthly = { month: string; count: number; median: number }
-export type MoveState = { capital?: Capital; plan: MovePlan; comparisons: Budget[]; funds: Budget; cash_reference: number; missing_home_ids: string[]; valuation_needs_review: string[]; track: Record<string, TrackEntry[]> }
+export type MoveState = { pir?: PirResult; capital?: Capital; plan: MovePlan; comparisons: Budget[]; funds: Budget; cash_reference: number; missing_home_ids: string[]; valuation_needs_review: string[]; track: Record<string, TrackEntry[]> }
 export type PriceCheck = {
   configured: boolean; months: number; trades: { name: string; area: number; price: number; date: string; floor: number | null; kind: string }[]
   analysis: { count: number; latest: number | null; latest_date: string | null; low: number | null; high: number | null; median: number | null; first_date: string | null; last_date: string | null; asking: number | null

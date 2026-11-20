@@ -50,7 +50,7 @@ def _vworld_point(address: str, kind: str) -> dict | None:
 def geocode(address: str, kind: str = "parcel") -> dict | None:
     """주소 → {lat, lng, approx}. 한 번 찾은 주소는 저장해 다시 묻지 않는다.
     새로 나뉜 필지(예: 재건축 후 60-3)가 아직 없으면 본번(60)으로 다시 찾고 approx=True로 표시한다. 그래도 없으면 None."""
-    with storage.connection() as conn:
+    with storage.connection(shared=False) as conn:
         _table(conn)
         row = conn.execute("SELECT lat, lng, approx FROM property_geo WHERE address=?", (address,)).fetchone()
     if row:
@@ -58,7 +58,7 @@ def geocode(address: str, kind: str = "parcel") -> dict | None:
     point, approx = _vworld_point(address, kind), False
     if point is None and kind == "parcel" and "-" in address.rsplit(" ", 1)[-1]:
         point, approx = _vworld_point(address.rsplit("-", 1)[0], kind), True
-    with storage.connection() as conn:
+    with storage.connection(shared=False) as conn:
         _table(conn)
         conn.execute("INSERT OR REPLACE INTO property_geo VALUES (?, ?, ?, ?, ?)", (address, point and point["lat"], point and point["lng"], int(approx), storage.now()))
     return {**point, "approx": approx} if point else None
@@ -170,7 +170,7 @@ def refresh(points: list[dict] | None = None) -> dict:
     for kind, fetch in (("department", fetch_departments), ("park", parks), ("hospital", fetch_hospitals)):
         try:
             rows = fetch()
-            with storage.connection() as conn:
+            with storage.connection(shared=False) as conn:
                 _table(conn)
                 conn.execute("INSERT OR REPLACE INTO property_place VALUES (?, ?, ?)", (kind, json.dumps(rows, ensure_ascii=False), storage.now()))
             status[kind] = {"ok": True, "count": len(rows)}
@@ -180,7 +180,7 @@ def refresh(points: list[dict] | None = None) -> dict:
 
 
 def stored() -> tuple[dict, dict]:
-    with storage.connection() as conn:
+    with storage.connection(shared=False) as conn:
         _table(conn)
         rows = conn.execute("SELECT * FROM property_place").fetchall()
     return {r["kind"]: json.loads(r["payload"]) for r in rows}, {r["kind"]: r["fetched_at"] for r in rows}

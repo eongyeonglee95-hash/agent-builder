@@ -4,6 +4,7 @@ import pytest
 
 @pytest.fixture(autouse=True)
 def _no_real_sheets(monkeypatch, tmp_path):
+    monkeypatch.setenv("RETIRE_SHARED_READ_CACHE_SECONDS", "0")
     monkeypatch.setenv("RETIRE_AUTH_MODE", "local")
     monkeypatch.setenv("RETIRE_AUTH_DB", str(tmp_path / "auth.sqlite3"))
     monkeypatch.setenv("RETIRE_GOOGLE_WEB_CLIENT", str(tmp_path / "web-client.json"))

@@ -90,7 +90,7 @@ def _cached_public_complex(bcode: str, name: str, jibun: str | None, kind: str) 
     key = (bcode, name, jibun, kind)
     cache_key = json.dumps(key, ensure_ascii=False)
     ttl = load_watch_rules()["listing_cache_days"] * 86400
-    with storage.connection() as conn:
+    with storage.connection(shared=False) as conn:
         conn.execute("CREATE TABLE IF NOT EXISTS property_listing_cache (cache_key TEXT PRIMARY KEY, fetched REAL NOT NULL, payload TEXT NOT NULL)")
         stored = conn.execute("SELECT fetched, payload FROM property_listing_cache WHERE cache_key=?", (cache_key,)).fetchone()
     hit = (stored["fetched"], json.loads(stored["payload"])) if stored else None
@@ -102,7 +102,7 @@ def _cached_public_complex(bcode: str, name: str, jibun: str | None, kind: str) 
         if hit:
             return {**hit[1], "stale": True}
         raise
-    with storage.connection() as conn:
+    with storage.connection(shared=False) as conn:
         conn.execute("INSERT OR REPLACE INTO property_listing_cache VALUES (?, ?, ?)", (cache_key, time.time(), json.dumps(data, ensure_ascii=False)))
     return data
 

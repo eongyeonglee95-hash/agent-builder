@@ -1,0 +1,51 @@
+.tower-layer-row .tower-payout-choice{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:4px 16px;min-width:0;margin:0;padding:4px 12px;border:0}
+.tower-payout-choice label{display:inline-flex;align-items:center;gap:6px;min-height:44px;font-size:var(--text-xs);cursor:pointer;color:var(--foreground)}
+.tower-payout-choice input{margin:0;accent-color:var(--brand);width:16px;height:16px}
+.tower-payout-choice input:focus-visible{outline:2px solid var(--brand);outline-offset:3px}
+.tower-summary .tower-pension-title{grid-column:1/-1;font-size:var(--text-lg);font-weight:700;line-height:1.4;margin:0 0 12px;color:inherit;letter-spacing:-.02em}
+.tower-summary .tower-total{flex-wrap:wrap;min-width:0}
+.tower-summary .tower-lump-sum{flex-basis:100%;font-size:var(--text-sm);font-weight:400;line-height:1.5}
+.tower-summary .tower-lump-sum b{font-weight:600}
+.tower-layer-row .tower-payout-choice{order:-1}
+.tower-workspace .tower-summary{display:flex;flex-direction:column}
+.tower-income-chart:has([data-testid="income-chart-layer-4"]) .tower-income-legend{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media(max-width:600px){.tower-income-chart:has([data-testid="income-chart-layer-4"]) .tower-income-legend{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+.tower-payout-title{display:flex;align-items:center;font-size:var(--text-sm);font-weight:600;color:var(--foreground)}
+.tower-payout-options{display:flex;flex-wrap:wrap;gap:4px 12px}
+.tower-layer-row:has(.tower-payout-choice) .tower-layer-name{display:none}
+.tower-workspace .tower-summary{align-self:start}
+.tower-workspace .tower-summary .tower-income-actions{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:8px}
+.tower-workspace .tower-summary .tower-income-actions .tower-budget-open{width:auto;min-height:44px;padding:8px;font-size:var(--text-xs);white-space:nowrap;margin:0}
+.tower-workspace .tower-summary .tower-total{margin:0;display:flex;flex-direction:column;align-items:flex-start;gap:4px}
+.tower-workspace .tower-summary .tower-monthly-value{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px}
+.tower-workspace .tower-summary .tower-monthly-value strong{font-size:var(--text-2xl);overflow-wrap:anywhere}
+.tower-workspace .tower-summary .tower-monthly-value small{font-size:var(--text-xs)}
+.tower-summary .tower-calculation-basis{grid-column:1/-1;margin-top:16px;font-size:var(--text-xs);line-height:1.6}
+.tower-calculation-basis summary{display:flex;align-items:center;gap:6px;width:fit-content;min-height:44px;cursor:pointer;list-style:none}
+.tower-calculation-basis summary::-webkit-details-marker{display:none}
+.tower-calculation-basis summary:focus-visible{outline:2px solid currentColor;outline-offset:3px}
+.tower-calculation-basis p{margin:4px 0 0}
+
+/* One moving selection surface connects the two payout states. Native radios
+   retain keyboard behavior and a visible focus ring above the surface. */
+.tower-workspace .tower-payout-options{position:relative;isolation:isolate;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0;padding:3px;border:1px solid var(--border);border-radius:8px;background:var(--grey-100);max-width:100%}
+.tower-payout-options::before{content:"";position:absolute;z-index:-1;inset:3px auto 3px 3px;width:calc((100% - 6px)/2);border-radius:5px;background:var(--background);transform:translateX(0);transition:transform 220ms cubic-bezier(.16,1,.3,1)}
+.tower-payout-options[data-capital=true]::before{transform:translateX(100%)}
+.tower-workspace .tower-payout-options label{padding:0 8px;justify-content:center;font-weight:500;line-height:1.4}
+.tower-payout-options label:has(input:checked){font-weight:600}
+.tower-workspace .tower-monthly-value,.tower-workspace .tower-lump-sum{font-variant-numeric:tabular-nums}
+.tower-workspace .tower-lump-sum{animation:pension-result-in 180ms ease-out}
+@keyframes pension-result-in{from{opacity:.5}to{opacity:1}}
+/* Bounded bars settle together; numbers and timeline dragging update instantly. */
+.tower-workspace .tower-layer-track>i,.tower-workspace .tower-coverage-track i{transition:width 220ms cubic-bezier(.16,1,.3,1)}
+.tower-workspace .tower-coverage-track i{border:0;box-shadow:inset -2px 0 var(--grey-900)}
+.tower-workspace .tower-tier-stone{transition:transform 220ms cubic-bezier(.16,1,.3,1)}
+.tower-workspace .tower-tier:hover .tower-tier-stone{transform:none}
+.tower-workspace .tower-tier:is([aria-pressed=true],:focus-visible) .tower-tier-stone{transform:translateY(-3px)}
+@media(hover:hover) and (pointer:fine){.tower-workspace .tower-tier:hover:not([aria-pressed=true]) .tower-tier-stone{transform:translateY(-2px)}}
+@media(prefers-reduced-motion:reduce){
+  .tower-workspace .tower-lump-sum{animation:none}
+  .tower-workspace .tower-payout-options::before{transition:none}
+  .tower-workspace .tower-tier .tower-tier-stone{transform:none!important}
+}

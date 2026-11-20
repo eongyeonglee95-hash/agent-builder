@@ -13,7 +13,7 @@ export type LoanRef = { id: string; name: string; amount: number; owner: string;
 export type Home = {
   asset: { id: string; name: string; owner: 'me' | 'partner' | 'joint'; share_percent: number | null; amount: number; as_of: string; version: number }
   value: number; full_value: number
-  detail: null | { address: Address | null; area_m2: number | null; pyeong: number | null; purchase_price: number | null; purchase_month: string | null; tenure: Tenure; deposit: number | null; monthly_rent: number | null; loan_ids: string[]; listings?: Listing[]; value_source?: ValueSource | null; version: number }
+  detail: null | { address: Address | null; area_m2: number | null; pyeong: number | null; purchase_price: number | null; purchase_month: string | null; tenure: Tenure; deposit: number | null; monthly_rent: number | null; loan_ids: string[]; listings?: Listing[]; kb_quote?: { average: number; as_of: string; area_m2: number } | null; value_source?: ValueSource | null; version: number }
   loans: LoanRef[]; deposit: { id: string; amount: number; mine: number } | null
   asking: { low: number; high: number; count: number } | null
   metrics: { gain: number | null; gain_rate: number | null; held_months: number | null; equity: number; ltv: number | null; gain_mine: number | null; loans_mine: number; deposit_mine: number; equity_mine: number }
@@ -133,6 +133,7 @@ export function KeySetup({ onDone }: { onDone: () => void }) {
 // ── 호가·매물 (직접 적는 칸, 시세와 따로) ──
 export function HomeMarket({ home, onChanged, onUpdateValue }: { home: Home; onChanged: (h: Home) => void; onUpdateValue: () => void }) {
   const [listings, setListings] = useState<Listing[]>(home.detail?.listings ?? [])
+  const [kb, setKb] = useState({ price: toMan(home.detail?.kb_quote?.average), date: home.detail?.kb_quote?.as_of ?? today() })
   const [form, setForm] = useState({ price: '', floor: '', memo: '' })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -143,6 +144,17 @@ export function HomeMarket({ home, onChanged, onUpdateValue }: { home: Home; onC
     try { const h = await api<Home>(`/property/${home.asset.id}/listings`, 'PUT', { listings: next, detail_version: version }); setListings(h.detail?.listings ?? []); setVersion(h.detail?.version ?? version); onChanged(h); return true }
     catch (e) { setError(e instanceof Error ? e.message : '저장하지 못했어요.'); return false } finally { setBusy(false) }
   }
+  async function saveKB(clear = false) {
+    setBusy(true); setError('')
+    try {
+      const h = await api<Home>(`/property/${home.asset.id}/kb-quote`, 'PUT', { detail_version: version,
+        quote: clear ? null : { average: fromMan(kb.price), as_of: kb.date, area_m2: home.detail?.area_m2 } })
+      setVersion(h.detail?.version ?? version)
+      if (clear) setKb({ price: '', date: today() })
+      onChanged(h)
+    } catch (e) { setError(e instanceof Error ? e.message : 'KB 시세를 저장하지 못했어요.') }
+    finally { setBusy(false) }
+  }
   const prices = listings.map(l => l.price)
   return <div className="pe">
     <section className="pm-block">
@@ -151,6 +163,16 @@ export function HomeMarket({ home, onChanged, onUpdateValue }: { home: Home; onC
       <div className="pm-actions">{home.detail?.address?.sigungu_code && <button type="button" className="primary-button pm-update" disabled={busy} onClick={async () => { setBusy(true); setError(''); try { const h = await api<Home>(`/property/${home.asset.id}/refresh`, 'POST'); setVersion(h.detail?.version ?? version); onChanged(h) } catch (e) { setError(e instanceof Error ? e.message : '갱신하지 못했어요.') } finally { setBusy(false) } }}>최근 실거래가로 시세 갱신</button>}
         <button type="button" className="secondary-button pm-update" onClick={onUpdateValue}>직접 입력</button></div>
       <p className="pe-note">지금 시세: {money(home.full_value)} · {sourceLabel(home.detail?.value_source)}</p>
+    </section>
+    <section className="pm-block">
+      <div className="pm-head"><h3>KB 일반평균가</h3><a href="https://kbland.kr/" target="_blank" rel="noreferrer">KB부동산 ↗</a></div>
+      <p className="pe-note">전용 {home.detail?.area_m2 ?? '—'}㎡에 해당하는 매매 일반평균가와 기준일을 기록해요.</p>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <MoneyField label="KB 일반평균가" value={kb.price} onChange={price => setKb(v => ({ ...v, price }))}/>
+        <label className="pe-field"><span className="pe-field-label">KB 시세 기준일</span><input type="date" max={today()} value={kb.date} onChange={e => setKb(v => ({ ...v, date: e.target.value }))}/></label>
+      </div>
+      <div className="pm-actions"><button type="button" className="primary-button" disabled={busy || !version || !home.detail?.area_m2 || !fromMan(kb.price) || !kb.date || kb.date > today()} onClick={() => saveKB()}>KB 시세 저장</button>
+        {home.detail?.kb_quote && <button type="button" className="secondary-button" disabled={busy} onClick={() => saveKB(true)}>KB 기록 삭제</button>}</div>
     </section>
     <section className="pm-block">
       <div className="pm-head"><h3>호가 · 매물</h3><span>참고용 · 순자산에는 넣지 않아요</span></div>
@@ -181,7 +203,7 @@ function loadPostcode() {
   postcodeLoad ??= new Promise((resolve, reject) => { const s = document.createElement('script'); s.src = POSTCODE_SRC; s.async = true; s.onload = () => resolve(); s.onerror = () => { postcodeLoad = null; reject(new Error('load')) }; document.head.appendChild(s) })
   return postcodeLoad
 }
-export function AddressSearch({ onPick }: { onPick: (a: Address) => void }) {
+export function AddressSearch({ onPick, allowNameOnly = true }: { onPick: (a: Address) => void; allowNameOnly?: boolean }) {
   const box = useRef<HTMLDivElement>(null)
   const [failed, setFailed] = useState(false)
   useEffect(() => {
@@ -193,7 +215,7 @@ export function AddressSearch({ onPick }: { onPick: (a: Address) => void }) {
     }).catch(() => live && setFailed(true))
     return () => { live = false }
   }, [onPick])
-  if (failed) return <p className="pe-note">주소 검색을 불러오지 못했어요(인터넷 연결 확인). 아래 ‘주소 없이 이름만 적기’로 계속할 수 있어요.</p>
+  if (failed) return <p className="pe-note">주소 검색을 불러오지 못했어요. {allowNameOnly ? '아래 ‘주소 없이 이름만 적기’로 계속할 수 있어요.' : '인터넷 연결을 확인한 뒤 검색을 다시 열어 주세요.'}</p>
   return <div className="pe-postcode" ref={box}><p className="pe-note">주소 검색을 불러오는 중…</p></div>
 }
 

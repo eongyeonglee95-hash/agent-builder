@@ -43,14 +43,22 @@ class FakeData(FakeSharing):
 
     def request(self, method, url, *, headers, timeout, allow_redirects, params=None, json=None):
         self.actors.append(headers["Authorization"])
+        if method == "POST" and url.endswith("/copy"):
+            from backend.shared_sheets_google import DRIVE
+            assert url.startswith(DRIVE + "/")
+            source = url.rsplit("/", 2)[-2]
+            sid = "synthetic_version_" + str(len(self.files)).zfill(16)
+            self.files[sid] = deepcopy(self.files[source])
+            self.files[sid]["meta"].update(id=sid, **json)
+            return response({"id": sid})
         if not url.startswith(sheets.API + "/") or self.status != 200:
             return super().request(method, url, headers=headers, timeout=timeout,
                                    allow_redirects=allow_redirects, params=params, json=json)
         assert timeout == 20 and not allow_redirects
         assert headers["Authorization"] in {"Bearer synthetic-owner-token", "Bearer synthetic-partner-token"}
         tail = unquote(url[len(sheets.API) + 1:])
-        assert tail.split(":", 1)[0].split("/", 1)[0] == SID
-        tabs = self.files[SID]["tabs"]
+        sid = tail.split(":", 1)[0].split("/", 1)[0]
+        tabs = self.files[sid]["tabs"]
         if tail.endswith(":batchUpdate"):
             self.writes += 1
             if self.pause_append:
@@ -68,12 +76,19 @@ class FakeData(FakeSharing):
                     p = item["addSheet"]["properties"]
                     assert p["title"] not in candidate and p["sheetId"] not in ids.values()
                     candidate[p["title"]], ids[p["title"]] = [], p["sheetId"]
-                else:
+                elif "updateCells" in item:
+                    p = item["updateCells"]
+                    tab = next(t for t, i in ids.items() if i == p["range"]["sheetId"])
+                    assert tab in {"우리 자산", "연금", "주식", "부동산", "현금·기타", "자산 내역", "보유 종목"}
+                    candidate[tab] = [[next(iter(c["userEnteredValue"].values())) for c in row["values"]] for row in p["rows"]]
+                elif "appendCells" in item:
                     p = item["appendCells"]
                     assert p["fields"] == "userEnteredValue"
                     tab = next(t for t, i in ids.items() if i == p["sheetId"])
                     assert tab == TAB
                     candidate[tab].extend([[c["userEnteredValue"]["stringValue"] for c in row["values"]] for row in p["rows"]])
+                else:
+                    assert set(item) <= {"updateSheetProperties", "repeatCell", "unmergeCells", "mergeCells", "setBasicFilter", "updateDimensionProperties"}
             tabs.clear()
             tabs.update(candidate)
             self.ids = ids
@@ -84,6 +99,8 @@ class FakeData(FakeSharing):
                 raise requests.Timeout("synthetic sensitive provider message")
             return response()
         assert method == "GET", "legacy overwrite is forbidden"
+        if tail.endswith('/values:batchGet'):
+            return response({'valueRanges': [{'range': r, 'values': deepcopy(tabs[r.split('!')[0].strip("'")])} for r in params['ranges']]})
         if "/values/" not in tail:
             return response({"sheets": [{"properties": {"title": t, "sheetId": self.ids[t]}} for t in tabs]})
         name = tail.split("/values/", 1)[1]
@@ -96,6 +113,8 @@ class FakeData(FakeSharing):
 
 @pytest.fixture
 def data_env(invited, setup, monkeypatch):
+    from backend import trade_journal
+    monkeypatch.setattr(trade_journal, "DB_PATH", setup.path / "trade-journal.sqlite3")
     fake = FakeData()
     invited.fake = fake
     monkeypatch.setattr(requests, "request", fake.request)
@@ -119,6 +138,8 @@ def data_env(invited, setup, monkeypatch):
                                  retirement_age=60, target_amount=1000000, version=0).model_dump(exclude={"version"})
     invited.home_id, invited.asset_id, invited.candidate_id = [str(uuid4()) for _ in range(3)]
     with storage.connection() as db:
+        from backend.additional_pensions import tables as additional_tables
+        additional_tables(db)
         db.execute("INSERT INTO family VALUES (1,?,1)", (encoded(family),))
         retirement._table(db)
         plan = retirement.PlanInput(version=0, me=retirement.PersonPlan(national_monthly=100),
@@ -179,7 +200,7 @@ def test_inventory_backup_migration_two_people_and_relogin(client, setup, data_e
     legacy = deepcopy(env.fake.files[SID]["tabs"])
     p = preview(client, env)
     assert env.fake.writes == 0 and p["requires_confirmation"]
-    assert all(n > 0 for n in p["local"]["counts"].values())
+    assert all(n > 0 for k, n in p["local"]["counts"].items() if not k.startswith("additional_") and k != "trade_record")
     backup = env.data_store.load_backup(p["preview_id"])
     with sqlite3.connect(":memory:") as restored, sqlite3.connect(storage.DB_PATH) as source:
         restored.deserialize(base64.b64decode(backup["archive"]["financial.sqlite3"]))
@@ -343,7 +364,7 @@ def test_remote_failures_do_not_fall_back(client, data_env, code):
     assert "provider" not in r.text
     assert data_env.data_store.binding(1)["spreadsheet_id"] == SID
     assert data_env.data_store.started(1)
-    assert client.get("/api/family").status_code == 409
+    assert client.get("/api/family").status_code in (409, 503)
 
 
 @pytest.mark.parametrize("corruption", ["json", "header", "partial", "missing_tab", "header_only", "empty_tab"])

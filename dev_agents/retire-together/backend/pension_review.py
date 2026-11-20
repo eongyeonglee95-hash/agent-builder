@@ -181,6 +181,28 @@ def numeric_evidence(accounts, household):
 
 
 def evidence():
+    from backend.auth_config import mode, load_config
+    if mode() != 'web':
+        return _evidence()
+    from backend.shared_data_store import DataStore
+    from backend.shared_workspace import SharedWorkspace
+    from tools.data_context import workspace
+    config = load_config()
+    store = DataStore(config.db_path)
+    with store.connection() as db:
+        row = db.execute("SELECT m.user_id,m.id AS member_id,m.role,m.household_id,h.owner_user_id FROM memberships m JOIN households h ON h.id=m.household_id WHERE m.active=1 AND m.role='owner'").fetchone()
+    if row is None or not store.started(row['household_id']):
+        return _evidence()
+    view = SharedWorkspace(config, dict(row), '/api/workbook/review', 'GET', {}, 'read-only')
+    token = workspace.set(view.root)
+    try:
+        return _evidence()
+    finally:
+        workspace.reset(token)
+        view.close()
+
+
+def _evidence():
     from backend import workbook
     from backend.plan import build
     from backend.portfolio import SHORT_NAMES, _raw

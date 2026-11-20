@@ -40,6 +40,18 @@ WHEN OLD.spreadsheet_id IS NOT NULL AND NEW.spreadsheet_id IS NOT OLD.spreadshee
 BEGIN SELECT RAISE(ABORT, 'sheet binding is immutable'); END;
 CREATE TRIGGER IF NOT EXISTS keep_sheet_binding BEFORE DELETE ON household_sheets
 BEGIN SELECT RAISE(ABORT, 'sheet binding must be retained'); END;
+CREATE TABLE IF NOT EXISTS sheet_versions (
+ household_id INTEGER NOT NULL, spreadsheet_id TEXT NOT NULL,
+ title TEXT NOT NULL, created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ PRIMARY KEY(household_id,spreadsheet_id)
+);
+CREATE TABLE IF NOT EXISTS current_sheet (
+ household_id INTEGER PRIMARY KEY, spreadsheet_id TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS sheet_copies (
+ operation_id TEXT PRIMARY KEY, household_id INTEGER NOT NULL,
+ source_id TEXT NOT NULL, title TEXT NOT NULL, spreadsheet_id TEXT
+);
 """
 
 
@@ -130,7 +142,28 @@ class SheetStore(AuthStore):
     def binding(self, household_id: int) -> dict | None:
         with self.connection() as db:
             row = db.execute("SELECT * FROM household_sheets WHERE household_id=?", (household_id,)).fetchone()
-        return dict(row) if row else None
+            current = db.execute("SELECT spreadsheet_id FROM current_sheet WHERE household_id=?", (household_id,)).fetchone()
+        result = dict(row) if row else None
+        if result and current:
+            result.update(spreadsheet_id=current[0], ready=1)
+        return result
+
+    def remember_version(self, household_id, sid, title):
+        with self.connection() as db:
+            db.execute("INSERT INTO sheet_versions(household_id,spreadsheet_id,title) VALUES (?,?,?) "
+                       "ON CONFLICT(household_id,spreadsheet_id) DO UPDATE SET title=excluded.title", (household_id, sid, title))
+
+    def versions(self, household_id):
+        with self.connection() as db:
+            return [dict(r) for r in db.execute("SELECT spreadsheet_id,title,created_at FROM sheet_versions WHERE household_id=? ORDER BY created_at DESC, rowid DESC", (household_id,))]
+
+    def select_version(self, household_id, sid):
+        with self.connection() as db:
+            db.execute("INSERT INTO current_sheet VALUES (?,?) ON CONFLICT(household_id) DO UPDATE SET spreadsheet_id=excluded.spreadsheet_id", (household_id, sid))
+
+    def version_selected(self, household_id):
+        with self.connection() as db:
+            return db.execute("SELECT 1 FROM current_sheet WHERE household_id=?", (household_id,)).fetchone() is not None
 
     def reserve(self, household_id: int, kind: str, sid: str | None = None) -> dict:
         with self.connection() as db:

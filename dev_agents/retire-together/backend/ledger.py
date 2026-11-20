@@ -21,6 +21,9 @@ CACHE_SECONDS = 5
 
 
 def open_sheets():
+    from tools.data_context import workspace
+    if workspace.get() is not None:
+        return None  # The isolated workspace was populated from the shared journal.
     from backend import auth_config
     if auth_config.mode() == "web":
         from backend.shared_sheets import open_for_request

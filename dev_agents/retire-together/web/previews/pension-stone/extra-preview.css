@@ -1,0 +1,4 @@
+.extra-copy-preview{width:min(100% - 32px,380px);margin:64px auto;padding:24px;background:var(--background);border:1px solid var(--border);border-radius:14px;font-family:var(--font-sans)}
+.extra-copy-preview>p{margin:0 0 24px;font-size:var(--text-xs);color:var(--muted-foreground)}
+.extra-copy-preview .tower-extra-summary{padding:0;border:0;margin:0}
+.extra-copy-preview>a{display:block;margin-top:24px;padding-top:16px;border-top:1px solid var(--border);font-size:var(--text-xs);color:var(--brand);text-decoration:underline;text-underline-offset:3px}

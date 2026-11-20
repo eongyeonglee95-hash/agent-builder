@@ -77,6 +77,9 @@ def _int_or_none(v):
 def _earlier_buy_values(account_id: str, latest: Path | None) -> dict[tuple[str, int], tuple[int, str]]:
     """같은 계좌의 이전 등록(이전 스냅샷, 처음 캡처 등록 파일)에서 (종목, 수량) → (매입금액, 기준일).
     최신 잔고에 매입금액이 없을 때만 쓰고, 종목과 수량이 정확히 같을 때만 맞춘다 — 수량이 바뀌었으면 매입금액도 바뀌었으니 쓰지 않는다."""
+    from tools.data_context import workspace
+    if workspace.get() is not None:
+        return {}  # Never fill shared holdings from pre-migration local captures.
     from tools.store import SAMPLES
     files = [f for f in sorted((registration.snapshot_dir() / account_id).glob("*.csv")) if f != latest]
     files += sorted(SAMPLES.glob("**/holdings_parsed_*.csv")) + sorted(SAMPLES.glob("**/balance_*.csv"))

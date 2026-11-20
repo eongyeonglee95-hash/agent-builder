@@ -70,7 +70,7 @@ requests.request = fake_request
 
 with TemporaryDirectory(prefix='retire-share06-browser-') as folder:
     root = Path(folder)
-    os.environ.update({
+    os.environ.update({'RETIRE_SHARED_READ_CACHE_SECONDS': '0',
         'RETIRE_AUTH_MODE': 'web', 'RETIRE_AUTH_ORIGIN': origin, 'RETIRE_AUTH_BOOTSTRAP': '1', 'RETIRE_AUTH_ALLOW_HTTP': '1',
         'RETIRE_GOOGLE_WEB_CLIENT': str(root / 'client.json'), 'RETIRE_AUTH_DB': str(root / 'auth.sqlite3'), 'RETIRE_SHEETS': 'on',
         'RETIRE_UPLOAD_DIR': str(root / 'uploads'), 'RETIRE_SNAPSHOT_DIR': str(root / 'snapshots'),
@@ -78,6 +78,9 @@ with TemporaryDirectory(prefix='retire-share06-browser-') as folder:
         'RETIRE_STRATEGIES_PATH': str(root / 'strategies.yaml'), 'RETIRE_DECISIONS_PATH': str(root / 'DECISIONS.md'),
     })
     storage.DB_PATH = root / 'financial.sqlite3'
+    from backend import trade_journal, pension_review
+    trade_journal.DB_PATH = root / 'trade-journal.sqlite3'
+    pension_review.DB_PATH = root / 'pension-review.sqlite3'
     (root / 'client.json').write_text(json.dumps({'web': {'client_id': 'synthetic.apps.googleusercontent.com', 'client_secret': 'synthetic', 'redirect_uris': [origin + '/api/auth/google/callback']}}))
     (root / 'client.json').chmod(0o600)
     (root / 'accounts.yaml').write_text('accounts: []\npools: {}\n')

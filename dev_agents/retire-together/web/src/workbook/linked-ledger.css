@@ -1,0 +1,3 @@
+.linked-ledger .ux-read-grid .xl-input { background:var(--input-soft); }
+.linked-ledger .ux-read-grid .ux-input-label { display:none; }
+.linked-ledger .ux-read-grid .xl-input .xl-edit { padding-left:8px; }

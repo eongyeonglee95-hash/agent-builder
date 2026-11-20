@@ -148,8 +148,8 @@ DECISIONS 2026-11-02.
 - [결정] 1. 갈아타기 화면의 전체 자금 합계에 무엇을 넣을지(집 매도금·현금 주머니·연금 제외 등) 사용자 확인
 - [ ] 2. 정한 규칙을 `CALCULATION_RULES.md` §6-M에 쓰고 계산·테스트 반영
 
-### PROP-AUTO · P2 [보류] · 세금 자동 계산·후보 자동 탐색·호가 자동 수집
-호가 자동 수집 보류 결정 유지.
+### PROP-AUTO · P2 [보류] · 세금 자동 계산·호가 자동 수집
+호가 자동 수집 보류 결정 유지. 요청형 후보 탐색은 2026-11-19 OpenAI 연결 완료: 실거래 선별 → AI 설명 → 직접 관심 추가.
 
 ## 6. 홈·화면 공통
 
@@ -222,10 +222,24 @@ IRP 단계로 보류(DECISIONS 2026-10-26).
 끝난 것(자동 검수까지): SHARE-02 로그인·세션·고정 오너, SHARE-03 공통 시트(실제 Google 파일 API 확인), SHARE-04 배우자 초대 서버, SHARE-05 자료 공유·이전 도구, SHARE-06 초대·수락·재연결 화면.
 
 ### SHARE-07 · P1 · 금융 화면 공유 연결과 두 계정 통합 검수
-점검 도구·자동 회귀는 끝남. 워크북·종목·연금·부동산 화면은 아직 공유 API로 안 바뀜. 근거 `research/SHARE_07_VALIDATION.md`·`SHARE_06_VALIDATION.md`.
+오너의 기존 홈·자산·종목·연금·리밸런싱·부동산 상세와 엑셀 워크북을 공유 시트에 연결함(2026-11-19). 배우자 owner-relative 금융 화면 전환과 실제 두 기기 검증은 남음. 근거 `research/SHARE_07_VALIDATION.md`·`SHARE_06_VALIDATION.md`.
 - [ ] 1. 화면별 공유 API 미전환 범위 확인 → 영역별 작업으로 나누기
 - [ ] 2. 금융 화면 연결
 - [사용자] 3. 실제 두 계정·두 기기: Picker·공유/수락/해제·이전/복구·HTTPS 확인
+
+### DEPLOY-01 · P2 [보류] · 클라우드 배포 (우리 부부 먼저)
+2026-11-19 사용자: 아직 배포 일정 없음. 기능 고도화를 끝낸 뒤, 빨라야 11-30 주(다다음 주) 예상. 클라우드 서버 + 새로 산 도메인, 처음엔 우리 부부만 휴대폰·PC로. 그때까지 새 저장 데이터는 `data/local/` 아래에 두고, 경로는 환경변수로 바꿀 수 있게, 열쇠는 코드에 넣지 않는다.
+- [ ] 1. 작업 폴더의 커밋 안 된 변경 정리 → `dev_agents/retire-together/`만 커밋 기록째 새 저장소로 분리(`.claude/skills/wiki-research`·`.claude/agents/wiki-updater` 같이 옮김)
+- [사용자] 2. 도메인 구입(Cloudflare) · Fly.io 가입 · R2 백업 버킷 · Anthropic API 키 · 구글 콘솔에 `https://도메인/api/auth/google/callback` 추가하고 동의 화면을 프로덕션으로(테스트 상태면 시트 연결이 7일마다 끊김)
+- [ ] 3. Dockerfile·`fly.toml`: 서버 1대 + 볼륨 1GB에 `data/` 전체, API가 `web/dist`를 같이 서빙(이미 `backend/main.py`에 있음), Agent용 Claude CLI 포함. 운영 모드: `RETIRE_AUTH_MODE=web`, HTTPS 쿠키, 첫 오너 등록 뒤 bootstrap 닫기
+- [ ] 4. 백업: SQLite 5개는 Litestream → R2(실시간), `snapshots/`·`uploads/`는 하루 1번 → 복원 시험까지 해야 끝
+- [ ] 5. 지금 PC 데이터 옮기기(인증 DB는 새 주소로 다시 만들기) → 실제 확인: 로그인·시트 연결·배우자 초대·휴대폰 화면·다른 계정 차단
+
+### OPEN-01 · P2 [보류] · 지인 부부에게 공개 (DEPLOY-01 뒤)
+지금은 한 가구 전용(고정 오너 1명 + 배우자, 파일·SQLite). 여러 가구를 받으려면:
+- [ ] 1. 데이터를 Postgres(Supabase) 하나로 모으고 모든 기록에 가구 ID, RLS로 자기 가구만 → 다른 가구 데이터를 읽어 보는 테스트 필수
+- [ ] 2. 구성: 화면 Vercel, 로그인·DB·파일 Supabase, FastAPI 계산 서버는 별도(Fly.io 등)
+- [ ] 3. 공개 전: 개인정보처리방침·동의, 구글 앱 검수(사용자 100명 넘으면), AI 대화 사용량 한도, 열쇠는 서버 비밀 설정에만
 
 ## 10. 증권사 연결·리포트 (2026-11-14~15 Codex 백로그에서 옮김, 원문 `archive/backlog-codex-2026-11-15.md`)
 
@@ -280,3 +294,14 @@ IRP 단계로 보류(DECISIONS 2026-10-26).
 - [사용자] HOME-DESIGN 원본 대시보드 복구 · PERSONAL-CONTRIBUTIONS 3층 납입 계획(2026-11-07)
 - [결정] PROPERTY-OBSERVATORY-SITE 부동산 관측실 시안(`sites/property-observatory/`, `web/public/previews/property-observatory/`) · PROPERTY-RESEARCH-CONCEPTS(`web/public/previews/property-futures.html`) 확인
 - [결정] DESIGN-DIRECTIONS 4방향 디자인 시안(소나무·모래빛·인디고·흑연) 중 고르기 — `web/public/previews/design-directions.html`
+
+### PROPERTY-SEOUL-HEATMAP · P1 · 시황의 서울 25개 구 등락 지도
+- [ ] 동일 공식 출처·정의의 주간/월간 구별 지수를 확보하고 관측기간·발표일·출처를 함께 저장한다. 미공표·미확인 값은 결측 처리한다.
+- [ ] 시황 첫 화면에 구별 등락 지도와 강남·서초·송파 비교를 연결한다. 기존 관심 단지 실거래 히트맵과 지수의 모집단을 구분한다. 현재는 배치 방향만 정했으며 실데이터 연결은 미완료다.
+
+### PROPERTY-SENTIMENT-HISTORY · P1 · 심리·금리 공식 시계열 연결 마무리
+2026-11-20: 일간/주간/월간·날짜·서울/전국 선택, 12기간 히트맵·추이, KB 직접 수집 어댑터와 로컬 캐시 구현. 실제 KB 서버는 현재 환경에서 연결 종료/빈 응답으로 검증 미완료. AI 조사 없이 화면 진입 시 캐시 조회·하루 1회 갱신 시도.
+- [ ] KB 공식 응답 계약과 주간/월간 실수치 검증, 발표일 메타데이터 확보. 현재 관측기간 기준이며 당시 공개 상태의 재현은 아님.
+- [ ] 한국부동산원 매매수급·한국은행 주담대/신용대출·COFIX·전세대출 및 실제 일간 공급원 연결. 빈 수치를 임의로 채우지 않는다.
+- [ ] 선택 기간의 KB/부동산원 개별 보고서 링크와 발표일 연결. 현재는 기관 자료실 링크.
+- [ ] 서버 미접속 중에도 쌓이는 정기 수집 스케줄. 현재는 화면 조회 시 갱신.

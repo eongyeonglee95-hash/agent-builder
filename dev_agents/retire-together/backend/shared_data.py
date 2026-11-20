@@ -13,7 +13,7 @@ from backend.shared_data_google import Journal, events, head
 from backend.shared_data_schema import IMMUTABLE, Record, fail, fingerprint, key, projection, summary, validate
 from backend.shared_data_source import local_sources, merge, sheet_sources
 from backend.shared_data_store import DataStore
-from backend.storage import InputModel
+from backend.storage import InputModel, AssetInput
 from tools.sheets import SheetsError
 
 router = APIRouter(prefix="/api/shared-data", tags=["shared-data"])
@@ -22,6 +22,7 @@ router = APIRouter(prefix="/api/shared-data", tags=["shared-data"])
 class Commit(InputModel):
     operation_id: UUID
     expected_revision: Annotated[str, Field(pattern=r"^[a-f0-9]{64}$")]
+    expected_spreadsheet_id: str | None = None
 
 
 class MigrationCommit(InputModel):
@@ -72,6 +73,8 @@ class Service:
 
     def access(self, *, owner=False):
         self.store.owner(self.identity) if owner else self.store.member(self.identity)
+        if self.store.binding(self.identity["household_id"])["spreadsheet_id"] != self.sid:
+            fail("현재 관리 시트가 바뀌었습니다. 새로고침 후 다시 확인해 주세요.")
         # Always verify fixed owner, and read/write with the actor's own grant.
         SharingGoogle(self.config, self.store, self.identity["owner_user_id"]).owned(self.sid)
         if self.identity["role"] != "owner":
@@ -85,7 +88,7 @@ class Service:
         return raw, validate(state, self.members)
 
     def result(self, raw, state, **extra):
-        return {"revision": fingerprint(raw), "state": state, "summary": summary(state),
+        return {"revision": fingerprint(raw), "spreadsheet_id": self.sid, "state": state, "summary": summary(state),
                 "viewer": projection(state, self.member_id), "permissions": self.store.permissions(self.identity["household_id"]), **extra}
 
     def authorize_changes(self, before, after):
@@ -95,6 +98,8 @@ class Service:
             previous, changed = old.get(k), new.get(k)
             if previous == changed:
                 continue
+            if k[0] == "trade_record" and previous:
+                raise HTTPException(403, "기존 체결·보류 기록은 변경할 수 없습니다.")
             if k[0] in IMMUTABLE:
                 raise HTTPException(403, "공통 투자 규칙·기존 결정 이력은 이 저장 요청으로 변경할 수 없습니다.")
             if previous and changed and previous["member_id"] != changed["member_id"]:
@@ -123,17 +128,29 @@ class Service:
         if fingerprint(found["state"]) != fingerprint(expected):
             fail("저장 결과가 직접 편집되었습니다. 백업 대조 후 복구해 주세요.")
         self.store.finish(op, fingerprint(expected))
+        from backend.shared_read_cache import clear
+        clear(self.config.db_path)
         self.store.activate(self.identity["household_id"], ready=True)
         return self.result(raw, state, replayed=True, backup_id=receipt["backup_id"])
 
     def commit(self, op, kind, request_hash, raw, before, after, extra_backup=None):
         after = validate(after, self.members)
+        from backend.shared_ledger import read_tables, reconcile
+        sheet_cells = read_tables(self.journal) if before else None
+        if before and kind != 'recovery':
+            if extra_backup and 'sheet_cells' in extra_backup:
+                if sheet_cells != extra_backup['sheet_cells']:
+                    fail('불러오는 동안 시트가 다시 바뀌었습니다. 다시 불러와 주세요.')
+            elif reconcile(before, sheet_cells)[1]:
+                fail('구글 시트에 아직 불러오지 않은 수정이 있습니다. 표로 보기에서 시트 변경 불러오기를 먼저 눌러 주세요.')
         backup = self.store.backup(kind, {"spreadsheet_id": self.sid, "members": self.members,
-            "raw": raw, "before": before, "proposed": after, **(extra_backup or {})})
+            "raw": raw, "before": before, "proposed": after, "sheet_cells": sheet_cells, **(extra_backup or {})})
         self.store.begin(op, self.identity, kind, request_hash, backup)
         self.store.activate(self.identity["household_id"])
         if self.journal.raw() != raw:
             fail("백업 뒤 공유 자료가 바뀌었습니다. 다시 불러온 뒤 새 요청으로 저장해 주세요.")
+        if sheet_cells is not None and read_tables(self.journal) != sheet_cells:
+            fail('저장 직전에 시트가 바뀌었습니다. 다시 불러와 주세요.')
         try:
             self.journal.append(op, fingerprint(raw), kind, after)
         except HTTPException:
@@ -146,6 +163,8 @@ class Service:
         if fingerprint(got) != fingerprint(after) or summary(got) != summary(after):
             fail("저장 후 건수·합계·명의 대조가 일치하지 않습니다. 백업을 확인해 주세요.")
         self.store.finish(op, fingerprint(after))
+        from backend.shared_read_cache import clear
+        clear(self.config.db_path)
         self.store.activate(self.identity["household_id"], ready=True)
         return self.result(got_raw, got, backup_id=backup, replayed=False)
 
@@ -194,6 +213,9 @@ class Service:
         op, rh = str(data.operation_id), fingerprint(data.model_dump(mode="json"))
         with self.store.operation():
             self.access()
+            if ((data.expected_spreadsheet_id is not None or self.store.version_selected(self.identity["household_id"]))
+                    and data.expected_spreadsheet_id != self.sid):
+                fail("현재 관리 시트가 바뀌었습니다. 초안을 보관하고 새로고침해 주세요.")
             replay = self.replay(op, rh)
             if replay:
                 return replay
@@ -221,6 +243,9 @@ class Service:
         op, rh = str(data.operation_id), fingerprint(data.model_dump(mode="json"))
         with self.store.operation():
             self.access(owner=True)
+            if ((data.expected_spreadsheet_id is not None or self.store.version_selected(self.identity["household_id"]))
+                    and data.expected_spreadsheet_id != self.sid):
+                fail("현재 관리 시트가 바뀌었습니다. 다시 대조해 주세요.")
             replay = self.replay(op, rh)
             if replay:
                 return replay
@@ -265,8 +290,8 @@ def write_result(action):
 @router.get("")
 def read(request: Request):
     s = service(request)
-    s.access()
-    raw, state = s.current()
+    from backend.shared_read_cache import current
+    raw, state = current(s)
     return s.result(raw, state)
 
 
@@ -274,9 +299,11 @@ def read(request: Request):
 def dashboard(request: Request, owner: Literal["together", "me", "partner"] = "together"):
     from backend.shared_data_view import dashboard as project
     s = service(request)
-    s.access()
-    _, state = s.current()
-    return project(state, projection(state, s.member_id), owner)
+    from backend.shared_read_cache import current
+    raw, state = current(s)
+    result = project(state, projection(state, s.member_id), owner)
+    result["family"]["version"] = len(events(raw))
+    return {**result, "revision": fingerprint(raw), "spreadsheet_id": s.sid}
 
 
 @router.post("/migration/preview")
@@ -342,3 +369,180 @@ def recovery_preview(backup_id: UUID, request: Request):
 @router.post("/recovery")
 def recover(data: Recovery, request: Request):
     return write_result(lambda: service(request).recover(data))
+
+# File version operations share the authenticated fixed-member boundary.
+from backend.sheet_versions import router as versions_router
+router.include_router(versions_router)
+
+class AssetChange(Commit):
+    asset_id: UUID
+    asset: AssetInput | None = None
+
+
+@router.post("/assets")
+def change_asset(data: AssetChange, request: Request):
+    from backend.storage import now
+    s = service(request)
+    s.access()
+    raw, before = s.current()
+    receipt = s.store.receipt(str(data.operation_id))
+    stamp = now()
+    if receipt:
+        if receipt["user_id"] != s.identity["user_id"] or receipt["kind"] != "save":
+            fail("다른 저장에 사용한 요청 ID입니다.")
+        backup = s.store.load_backup(receipt["backup_id"])
+        if backup["spreadsheet_id"] != s.sid:
+            fail("저장 위치가 바뀌었습니다. 현재 자료를 다시 불러와 주세요.")
+        raw, before = backup["raw"], backup["before"]
+        proposed = next((r for r in backup["proposed"]["records"] if r["kind"] == "asset" and r["id"] == str(data.asset_id)), None)
+        if proposed:
+            stamp = proposed["payload"].get("updated_at", stamp)
+    if data.expected_spreadsheet_id != s.sid or data.expected_revision != fingerprint(raw):
+        fail("자료나 현재 관리 시트가 바뀌었습니다. 새로고침 후 다시 확인해 주세요.")
+    rid = str(data.asset_id)
+    previous = next((r for r in before["records"] if r["kind"] == "asset" and r["id"] == rid), None)
+    upsert, delete = [], []
+    if data.asset is None:
+        delete = [Deletion(kind="asset", id=rid)]
+    else:
+        parsed = data.asset
+        values = parsed.model_dump(mode="json", exclude={"owner"})
+        viewer = projection(before, s.member_id)
+        member = "joint" if parsed.owner == "joint" else viewer[parsed.owner]
+        if member == "joint" and viewer["me"] != s.members["me"]:
+            values["share_percent"] = 100 - values["share_percent"]
+        payload = {**(previous["payload"] if previous else {"source": "manual"}), **values,
+                   "updated_at": stamp, "version": (previous["payload"].get("version", 0) if previous else 0) + 1}
+        upsert = [Record(kind="asset", id=rid, member_id=member, payload=payload)]
+    saved = s.save(Save(operation_id=data.operation_id, expected_revision=data.expected_revision,
+        expected_spreadsheet_id=data.expected_spreadsheet_id, upsert=upsert, delete=delete))
+    if data.asset is None:
+        return saved
+    from backend.shared_data_view import dashboard as project
+    snap = project(saved["state"], saved["viewer"], "together")["snapshot"]
+    rows = snap["assets"] + snap["debts"] + [g["account"] for g in snap["account_groups"]] + [r for g in snap["account_groups"] for r in g["details"]]
+    return next(r for r in rows if r["id"] == rid)
+
+
+@router.get('/ledger')
+def ledger_view(request: Request):
+    from backend.shared_ledger import tables, read_tables, reconcile
+    from backend.shared_sheet_template import sections
+    s = service(request)
+    s.access()
+    raw, state = s.current()
+    meta = s.journal.meta()
+    pending, issue = [], ''
+    try:
+        _, pending = reconcile(state, read_tables(s.journal))
+    except HTTPException as error:
+        issue = str(error.detail)
+    tabs = sections(state)
+    permissions = s.store.permissions(s.identity['household_id'])
+    records = {key(r): r for r in state['records']}
+    for title, tab in tables(state).items():
+        tab['editable'] = [e if records[tuple(k)]['member_id'] in {s.member_id, 'joint', 'household'} or permissions.get(records[tuple(k)]['member_id']) else {} for k, e in zip(tab['keys'], tab['editable'])]
+        tabs[title] = {**tab, 'rows': [[title + ' · 앱과 같은 자산 장부'], tab['headers'], *tab['rows']], 'headers': [1], 'summary': [], 'numbers': []}
+    return {'revision': fingerprint(raw), 'spreadsheet_id': s.sid, 'tabs': tabs,
+            'sheet_ids': {p['properties']['title']: p['properties']['sheetId'] for p in meta.get('sheets', [])},
+            'pending': pending, 'issue': issue}
+
+
+@router.post('/ledger/sync')
+def sync_ledger(data: Commit, request: Request):
+    from backend.shared_ledger import read_tables, reconcile
+    s = service(request)
+    op, rh = str(data.operation_id), fingerprint(data.model_dump(mode='json'))
+    with s.store.operation():
+        s.access(owner=True)
+        if data.expected_spreadsheet_id != s.sid:
+            fail('연결된 파일이 바뀌었습니다. 다시 불러와 주세요.')
+        replay = s.replay(op, rh)
+        if replay:
+            return replay
+        raw, before = s.current()
+        if fingerprint(raw) != data.expected_revision:
+            fail('앱 자료가 바뀌었습니다. 다시 불러온 뒤 시트 변경을 반영해 주세요.')
+        cells = read_tables(s.journal)
+        after, changes = reconcile(before, cells)
+        if not changes:
+            return s.result(raw, before, changed=0)
+        s.authorize_changes(before, after)
+        return {**s.commit(op, 'save', rh, raw, before, after, {'sheet_cells': cells}), 'changed': len(changes)}
+
+
+class LedgerEdit(Commit):
+    tab: Literal['자산 내역', '보유 종목']
+    row_id: str
+    column: Annotated[int, Field(ge=0, le=10)]
+    value: str | int | None
+
+
+@router.post('/ledger/edit')
+def edit_ledger(data: LedgerEdit, request: Request):
+    from backend.shared_ledger import tables, native_rows, reconcile
+    s = service(request)
+    op, rh = str(data.operation_id), fingerprint(data.model_dump(mode='json'))
+    with s.store.operation():
+        s.access(owner=True)
+        if data.expected_spreadsheet_id != s.sid:
+            fail('연결된 파일이 바뀌었습니다. 다시 불러와 주세요.')
+        replay = s.replay(op, rh)
+        if replay:
+            return replay
+        raw, before = s.current()
+        if fingerprint(raw) != data.expected_revision:
+            fail('다른 화면에서 자료가 바뀌었습니다. 다시 불러와 주세요.')
+        cells = {title: [[title], tab['headers'], *native_rows(tab)] for title, tab in tables(before).items()}
+        row = next((r for r in cells[data.tab][2:] if r[11] == data.row_id), None)
+        if row is None:
+            fail('수정할 행을 찾지 못했습니다. 다시 불러와 주세요.')
+        row[data.column] = '' if data.value is None else data.value
+        after, _ = reconcile(before, cells)
+        s.authorize_changes(before, after)
+        return s.commit(op, 'save', rh, raw, before, after)
+
+
+@router.get('/ledger.xlsx')
+def export_ledger(request: Request):
+    from io import BytesIO
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment
+    from openpyxl.utils import get_column_letter
+    from fastapi.responses import Response
+    from backend.shared_ledger import tables
+    from backend.shared_sheet_template import sections
+    s = service(request)
+    s.access()
+    _, state = s.current()
+    views = sections(state)
+    inputs = tables(state)
+    order = ['우리 자산', '보유 종목', '자산 내역', '연금', '주식', '부동산', '현금·기타']
+    book = Workbook(); book.remove(book.active)
+    for title in order:
+        sheet = book.create_sheet(title)
+        rows = [[title], inputs[title]['headers'], *inputs[title]['rows']] if title in inputs else views[title]['rows']
+        for row in rows:
+            sheet.append(row)
+        if title in views:
+            for r, row in enumerate(views[title]['summary'], 2):
+                for c, value in enumerate(row, 10):
+                    sheet.cell(r, c, value)
+        for row in sheet:
+            for cell in row:
+                cell.font = Font(name='Arial', size=11)
+                if isinstance(cell.value, str):
+                    cell.data_type = 's'  # User names are text, never executable formulas.
+                elif isinstance(cell.value, (int, float)):
+                    cell.number_format = '#,##0;[Red](#,##0);0'
+                    cell.alignment = Alignment(horizontal='right')
+                if cell.row <= 2:
+                    cell.font = Font(name='Arial', size=11, bold=True)
+                    cell.fill = PatternFill('solid', fgColor='EEF2F0')
+        for c in range(1, sheet.max_column+1):
+            sheet.column_dimensions[get_column_letter(c)].width = 24 if c <= 2 else 18
+        sheet.freeze_panes = 'B3'
+        if len(rows) > 2:
+            sheet.auto_filter.ref = f'A2:{get_column_letter(len(rows[1]))}{len(rows)}'
+    output = BytesIO(); book.save(output)
+    return Response(output.getvalue(), media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', headers={'Content-Disposition': 'attachment; filename="retire-together.xlsx"'})

@@ -3,6 +3,7 @@ import { ArrowRight, Check, ExternalLink, RefreshCw } from 'lucide-react'
 import { api } from '../local-data'
 import { useAuth } from './AuthGate'
 import { chooseSheet, type PickerCredentials } from './picker'
+import SheetVersions from './SheetVersions'
 import InviteManager from './InviteManager'
 import SharedDataPanel, { type MigrationPreview } from './SharedDataPanel'
 import './shared-sheet-access.css'
@@ -56,13 +57,13 @@ export default function SharedSheetAccess({ onChanged = () => {}, initialTab = '
   const linked = !!status?.spreadsheet?.spreadsheet_id
   return <section className="shared-sheet-access" aria-label="Google 시트 접근 권한" aria-busy={loading || busy}>
     <p className="share-account">{session?.email}</p>
-    {status?.active && <div className="share-tabs" role="group" aria-label="공유 설정 메뉴">{[['file', '공통 시트'], ['data', '우리 자료'], ...(owner ? [['invite', '배우자 초대']] : [])].map(([id, label]) => <button key={id} disabled={busy} className="secondary-button" aria-pressed={tab === id} onClick={() => openTab(id)}>{label}</button>)}</div>}
+    {status?.active && <div className="share-tabs" role="group" aria-label="공유 설정 메뉴">{[['file', '공통 시트'], ['data', '우리 자료'], ...(owner && status.data_started ? [['versions', '시트 버전']] : []), ...(owner ? [['invite', '배우자 초대']] : [])].map(([id, label]) => <button key={id} disabled={busy} className="secondary-button" aria-pressed={tab === id} onClick={() => openTab(id)}>{label}</button>)}</div>}
     {loading ? <p role="status">시트 접근 상태를 확인하고 있어요…</p> : <>
       {tab === 'file' && status && <>
         {!status.data_started && <ol className="share-steps" aria-label="자료 연결 순서">{['Google 연결', '시트 선택', '내 자료 확인'].map((label, index) => <li key={label} className={index < step ? 'is-done' : index === step ? 'is-current' : ''} aria-current={index === step ? 'step' : undefined}><span aria-hidden="true">{index < step ? <Check size={14}/> : index + 1}</span>{label}</li>)}</ol>}
         <div className="share-next-step">
           {!status.connected ? <>
-            <h3>{linked ? '사용하던 시트를 다시 연결해 주세요' : '내 자료를 Google에 연결해요'}</h3>
+            <h3>{linked ? '사용하던 시트를 다시 연결해 주세요' : '구글 시트로 우리 자산을 관리해요'}</h3>
             <p>{linked ? '연결된 파일은 기억하고 있어요. Google에서 접근만 다시 허용하면 같은 파일을 사용해요.' : 'Google 로그인은 완료됐어요. 가계 노트를 저장할 시트에 접근하도록 한 번 더 허용해 주세요.'}</p>
             <button className="primary-button" disabled={busy} onClick={() => void run(connect)}>Google에서 접근 허용<ArrowRight size={16}/></button>
           </> : status.active ? <>
@@ -100,6 +101,7 @@ export default function SharedSheetAccess({ onChanged = () => {}, initialTab = '
       </>}
       {tab !== 'file' && !status?.active && <p>공통 시트의 연결 상태를 먼저 확인해 주세요.<button className="text-link" onClick={() => setTab('file')}>공통 시트 확인</button></p>}
       {tab === 'data' && status?.active && <SharedDataPanel started={!!status.data_started} initialPreview={preview} onChanged={() => { void refresh(); onChanged() }}/>}
+      {tab === 'versions' && status?.active && status.data_started && owner && <SheetVersions onChanged={() => { void refresh(); onChanged() }}/>}
       {tab === 'invite' && status?.active && owner && <InviteManager/>}
     </>}
     {(error || callbackError) && <p role="alert" className="form-error">{error || callbackError}</p>}{notice && <p role="status">{notice}</p>}

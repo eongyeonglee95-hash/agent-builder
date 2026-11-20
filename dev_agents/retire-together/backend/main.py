@@ -41,6 +41,8 @@ app.include_router(workbook.router)       # 엑셀처럼 보는 첫 화면·한 
 app.include_router(portfolio.router)      # 리밸런싱 시트 포트폴리오 고르기·직접 설정 — Claude 담당
 app.include_router(retirement.router)     # RETIRE-01 은퇴 시트 연금 계획·수령 시뮬레이션 — Claude 담당
 app.include_router(property.router)       # PROPERTY-02 부동산 메뉴 집 등록(주소·산 가격·거주 형태·대출 연결) — Claude 담당
+from backend import property_discovery
+app.include_router(property_discovery.router)
 app.include_router(property_move.router)  # PROPERTY-MOVE 갈아타기 목표·후보·자금 계획 — Codex
 
 

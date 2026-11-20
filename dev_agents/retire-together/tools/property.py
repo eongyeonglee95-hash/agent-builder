@@ -56,7 +56,7 @@ _FIELDS = {
     "name": ("aptNm", "아파트"), "price": ("dealAmount", "거래금액"), "area": ("excluUseAr", "전용면적"),
     "year": ("dealYear", "년"), "month": ("dealMonth", "월"), "day": ("dealDay", "일"), "floor": ("floor", "층"),
     "dong": ("umdNm", "법정동"), "cancel": ("cdealType", "해제여부"), "kind": ("dealingGbn", "거래유형"),
-    "jibun": ("jibun", "지번"), "apt_seq": ("aptSeq",),
+    "build_year": ("buildYear", "건축년도"), "jibun": ("jibun", "지번"), "apt_seq": ("aptSeq",),
 }
 
 
@@ -84,6 +84,7 @@ def parse_trades(xml_text: str) -> list[dict]:
         floor = get("floor")
         rows.append({"name": get("name"), "dong": get("dong"), "area": area, "price": price, "date": date,
                      "jibun": get("jibun"), "apt_seq": get("apt_seq"),
+                     "build_year": int(get("build_year")) if get("build_year").isdigit() else None,
                      "floor": int(floor) if floor.lstrip("-").isdigit() else None, "kind": get("kind")})
     return rows
 

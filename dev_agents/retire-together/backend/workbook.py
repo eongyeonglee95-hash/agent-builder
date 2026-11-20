@@ -55,7 +55,8 @@ class DecisionInput(RebalanceInput):
 
 
 def decisions_path() -> Path:
-    return Path(os.environ.get("RETIRE_DECISIONS_PATH") or DECISIONS_PATH)
+    from tools.data_context import resolve
+    return resolve("decisions.md", Path(os.environ.get("RETIRE_DECISIONS_PATH") or DECISIONS_PATH))
 
 
 def _short(label: str) -> str:
