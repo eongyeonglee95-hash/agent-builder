@@ -1,3 +1,4 @@
+import { NativeSelect } from '../components/ui/native-select'
 import { useEffect, useState } from 'react'
 import { ChevronDown, ChevronUp, RefreshCw } from 'lucide-react'
 import { api } from '../local-data'
@@ -74,7 +75,7 @@ export function ObservationBoard({ owner, hidden, brief, onManage }: { owner: Ow
     <div className="flex flex-wrap items-end justify-between gap-3">
       <div className="flex min-w-0 flex-wrap items-end gap-3">
         <label className="flex min-w-0 flex-col text-xs text-grey-600">단지·지역<Input aria-label="관심 단지 검색" type="search" value={query} onChange={e => setQuery(e.target.value)} placeholder="단지명 또는 지역" className="mt-1 w-full sm:w-60"/></label>
-        <label className="text-xs text-grey-600">정렬<select aria-label="관심 단지 정렬" className="mt-1 block h-9 rounded-md border border-input bg-background px-2 text-sm text-grey-900" value={sort} onChange={e => setSort(e.target.value)}><option value="name">단지명</option><option value="asking">기록 호가 낮은 순</option><option value="gap">추가 자금 적은 순</option></select></label>
+        <label className="text-xs text-grey-600">정렬<NativeSelect aria-label="관심 단지 정렬" className="mt-1 block h-9 rounded-md border border-input bg-background px-2 text-sm text-grey-900" value={sort} onChange={e => setSort(e.target.value)}><option value="name">단지명</option><option value="asking">기록 호가 낮은 순</option><option value="gap">추가 자금 적은 순</option></NativeSelect></label>
       </div>
       <div className="flex gap-2"><Button variant="outline" size="sm" disabled={trades.loading} onClick={() => setRevision(n => n + 1)}><RefreshCw className="size-3.5"/>새로고침</Button><Button size="sm" onClick={onManage}>단지·자금 관리</Button></div>
     </div>
@@ -93,7 +94,7 @@ export function ObservationBoard({ owner, hidden, brief, onManage }: { owner: Ow
         const expanded = open === c.id
         return <ObservationRow key={c.id}
           title={<button className="flex w-full items-start justify-between gap-2 text-left" aria-expanded={expanded} aria-controls={`observation-${c.id}`} onClick={() => setOpen(expanded ? null : c.id)}>{c.name}{expanded ? <ChevronUp className="size-4 shrink-0"/> : <ChevronDown className="size-4 shrink-0"/>}</button>}
-          subtitle={summary?.summary?.areas.length ? <select aria-label={`${c.name} 전용면적`} className="mt-1 max-w-full rounded-md border border-input bg-background p-1 text-xs" value={chosenArea ?? ''} onChange={e => setAreas(old => ({ ...old, [c.id]: Number(e.target.value) }))}><option value="" disabled>평형 선택</option>{chosenArea != null && !area && <option value={chosenArea}>전용 {chosenArea}㎡대 · 거래 없음</option>}{summary.summary.areas.map(a => <option value={a.area} key={a.area}>전용 {a.area}㎡대</option>)}</select> : c.area_m2 ? `전용 ${c.area_m2}㎡` : '평형 미지정'}
+          subtitle={summary?.summary?.areas.length ? <NativeSelect aria-label={`${c.name} 전용면적`} className="mt-1 max-w-full rounded-md border border-input bg-background p-1 text-xs" value={chosenArea ?? ''} onChange={e => setAreas(old => ({ ...old, [c.id]: Number(e.target.value) }))}><option value="" disabled>평형 선택</option>{chosenArea != null && !area && <option value={chosenArea}>전용 {chosenArea}㎡대 · 거래 없음</option>}{summary.summary.areas.map(a => <option value={a.area} key={a.area}>전용 {a.area}㎡대</option>)}</NativeSelect> : c.area_m2 ? `전용 ${c.area_m2}㎡` : '평형 미지정'}
           metrics={[
             { label: '기록 호가', value: <Amount value={originalArea ? c.asking_low : null} fmt="manwon" hidden={hidden}/>, detail: originalArea && c.asking_low != null ? day(c.asking_date) : undefined },
             { label: '최근 실거래', value: <Amount value={area?.latest.price} fmt="manwon" hidden={hidden}/>, detail: area ? `${day(area.latest.date)} · ${area.latest.floor ?? '—'}층` : summary?.missing },

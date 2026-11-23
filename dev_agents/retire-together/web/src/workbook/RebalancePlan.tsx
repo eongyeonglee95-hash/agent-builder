@@ -1,3 +1,4 @@
+import { Input } from '../components/ui/input'
 import type React from 'react'
 import { AdditionalPensionCard, type AdditionalPension } from './AdditionalPensionCard'
 import { TradeJournal } from './TradeJournal'
@@ -298,7 +299,7 @@ function PoolCard({ index, pool, cards, input, busy, cash, onCash, run, onError,
         </p>
         {(plan.reduce.length > 0 || plan.increase.length > 0) ? (plan.mix?.length ? <MixRows mix={plan.mix} leftover={plan.leftover}/> : <FlowBars plan={plan}/>)
           : (plan.kind === 'buy_needs_cash' || (pool.mode === 'buy_only' && cash > 0)) ? <label className="flex flex-wrap items-center gap-2 text-base text-grey-700">이번 달 넣을 돈
-            <input inputMode="numeric" defaultValue={cash ? cash.toLocaleString('ko-KR') : ''} placeholder="예: 3,000,000" aria-label={`${name} 이번 달 납입`}
+            <Input inputMode="numeric" defaultValue={cash ? cash.toLocaleString('ko-KR') : ''} placeholder="예: 3,000,000" aria-label={`${name} 이번 달 납입`}
               onBlur={e => onCash(Number(e.target.value.replace(/[^\d]/g, '')) || 0)} onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
               className="h-10 w-40 rounded-md border border-grey-300 bg-white px-3 text-right text-base tabular-nums"/>원</label>
           : <span/>}
@@ -338,7 +339,7 @@ function CustomDialog({ open, onOpenChange, card, run }: { open: boolean; onOpen
       <DialogHeader><DialogTitle>직접 설정 비율</DialogTitle></DialogHeader>
       <div className="flex flex-col gap-2">
         {ALL_CLASSES.map(([k, l]) => <label key={k} className="flex items-center justify-between gap-3 text-base">{l}
-          <span className="flex items-center gap-1"><input inputMode="numeric" value={draft[k] ?? ''} placeholder="0" aria-label={`${l} 비율(%)`}
+          <span className="flex items-center gap-1"><Input inputMode="numeric" value={draft[k] ?? ''} placeholder="0" aria-label={`${l} 비율(%)`}
             onChange={e => setDraft(d => ({ ...d, [k]: e.target.value.replace(/[^\d]/g, '') }))} className="h-10 w-20 rounded-md border border-grey-300 px-2 text-right tabular-nums"/>%</span></label>)}
         <p className={cn('text-base font-semibold', sum === 100 ? 'text-grey-900' : 'text-up')}>합계 {sum}%{sum !== 100 && ' — 100%로 맞춰 주세요'}</p>
         <Button size="lg" disabled={sum !== 100} onClick={() => run(async () => {

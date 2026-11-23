@@ -1,3 +1,4 @@
+import { Input } from '../components/ui/input'
 import { useCallback, useState, type FormEvent } from 'react'
 import { Check, Search } from 'lucide-react'
 import { AddressSearch, sourceLabel, type Address, type HomeList } from '../property-entry'
@@ -6,7 +7,7 @@ import { AreaPicker } from './AreaPicker'
 import { dateToday, emptyLiving, type Candidate, type MovePlan } from './types'
 
 export function Amount({ label, value, onChange, hint }: { label: string; value: number | null; onChange: (n: number | null) => void; hint?: string }) {
-  return <label className="property-move-field"><span>{label}</span><span className="property-move-amount-input"><input aria-label={label} inputMode="numeric" value={value === null ? '' : (value / 10_000).toLocaleString('ko-KR', { maximumFractionDigits: 4 })} placeholder="미입력" onChange={e => { const raw = e.target.value.replace(/[^\d.]/g, ''); if (!/^\d{0,11}(\.\d{0,4})?$/.test(raw)) return; onChange(raw === '' ? null : Math.round(Number(raw) * 10_000)) }}/><span>만원</span></span><small>{value !== null ? money(value) : hint ?? '모르면 비워 두세요. 0원과 구분해요.'}</small></label>
+  return <label className="property-move-field"><span>{label}</span><span className="property-move-amount-input"><Input aria-label={label} inputMode="numeric" value={value === null ? '' : (value / 10_000).toLocaleString('ko-KR', { maximumFractionDigits: 4 })} placeholder="미입력" onChange={e => { const raw = e.target.value.replace(/[^\d.]/g, ''); if (!/^\d{0,11}(\.\d{0,4})?$/.test(raw)) return; onChange(raw === '' ? null : Math.round(Number(raw) * 10_000)) }}/><span>만원</span></span><small>{value !== null ? money(value) : hint ?? '모르면 비워 두세요. 0원과 구분해요.'}</small></label>
 }
 
 export const LIVING_FIELDS = [['school', '학군·통학', '예: ○○초 도보 5분, 중학교 배정 확인 필요'], ['commute', '출퇴근·교통', '예: 회사까지 지하철 35분, 2호선 도보 8분'], ['life', '생활·단지', '예: 2008년 입주 1,200세대, 관리비 25만, 마트 도보'], ['concerns', '단점·확인할 것', '예: 대로변 소음, 주차 1.1대, 수리 필요']] as const
@@ -31,7 +32,7 @@ export function CandidateForm({ initial, onSave, onDelete }: { initial?: Candida
   return <form className="property-move property-move-form" onSubmit={submit}>
     <button type="button" className="property-move-address-button" onClick={() => setSearch(v => !v)}><Search size={17}/>{d.address ? d.address.building || d.name : '아파트 이름으로 검색'}<span>검색</span></button>
     {search && <><AddressSearch onPick={pick} allowNameOnly={false}/><p className="property-move-note">주소 검색어는 카카오 우편번호 서비스로 전송돼요.</p></>}
-    {d.address && !search && <><label className="property-move-field"><span>단지 이름</span><input readOnly required maxLength={100} value={d.name} onChange={e => set('name', e.target.value)} placeholder="희망하는 아파트"/></label>
+    {d.address && !search && <><label className="property-move-field"><span>단지 이름</span><Input readOnly required maxLength={100} value={d.name} onChange={e => set('name', e.target.value)} placeholder="희망하는 아파트"/></label>
     <p className="property-move-note">{d.address.road || d.address.jibun}</p>
     <AreaPicker address={d.address} name={d.name} value={d.area_m2} onChange={v => set('area_m2', v)} selected={areas} onSelection={next => { setAreas(next); set('area_m2', null) }}/>
     <label className="property-move-field"><span>비교 메모</span><textarea rows={2} maxLength={300} placeholder="예: 출퇴근 30분, 남향, 수리 필요" value={d.memo} onChange={e => set('memo', e.target.value)}/></label></>}
@@ -56,7 +57,7 @@ export function FundsForm({ plan, homes, cashReference, onSave }: { plan: MovePl
     <p className="property-move-note">등록한 현금 주머니 {money(cashReference)} 참고 · 이 중 사용할 금액만 입력하세요.</p>
     <div className="property-move-form-grid"><Amount label="매도세금·비용" value={d.sale_costs} onChange={v => set('sale_costs', v)} hint="양도세·매도 중개비 등 확인한 합계"/><Amount label="추가 대출 가정" value={d.new_loan} onChange={v => set('new_loan', v ?? 0)} hint="승인 가능한 대출액과 다를 수 있어요."/></div>
     <p className="property-move-note">세금은 자동 계산하지 않아요. 매도세금·비용을 비우면 해당 금액이 빠진 잠정 계획입니다. 추가 대출은 자기자금과 구분해요.</p>
-    <div className="property-move-form-grid"><label className="property-move-field"><span>이사 목표 시점</span><input type="month" min={dateToday().slice(0, 7)} max="2199-12" value={d.target_month ?? ''} onChange={e => set('target_month', e.target.value || null)}/></label><Amount label="매달 더 모을 돈" value={d.monthly_saving} onChange={v => set('monthly_saving', v ?? 0)}/></div>
+    <div className="property-move-form-grid"><label className="property-move-field"><span>이사 목표 시점</span><Input type="month" min={dateToday().slice(0, 7)} max="2199-12" value={d.target_month ?? ''} onChange={e => set('target_month', e.target.value || null)}/></label><Amount label="매달 더 모을 돈" value={d.monthly_saving} onChange={v => set('monthly_saving', v ?? 0)}/></div>
     {error && <p className="property-move-error" role="alert">{error}</p>}
     <div className="property-move-form-actions"><button className="property-move-button primary" disabled={busy}><Check size={15}/>{busy ? '저장 중…' : '자금 계획 저장'}</button></div>
   </form>

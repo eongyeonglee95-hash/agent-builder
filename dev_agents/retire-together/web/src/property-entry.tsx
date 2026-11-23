@@ -1,3 +1,5 @@
+import { Input } from './components/ui/input'
+import { Button } from './components/ui/button'
 // PROPERTY-02 집 등록·수정 — 한 화면에 질문 하나씩 (주소 → 명의 → 산 가격 → 시세 → 거주 형태 → 대출 → 확인).
 // 저장은 /api/property 한 번. 장부에는 집·대출·보증금이 각각 행으로 들어가 엑셀 보고서·홈 합계에 그대로 잡힌다.
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
@@ -42,7 +44,7 @@ function MoneyField({ label, value, onChange, autoFocus, hint }: { label: string
   const won = fromMan(value)
   return <label className="pe-money">
     <span className="pe-field-label">{label}</span>
-    <span className="pe-money-input"><input inputMode="numeric" autoFocus={autoFocus} value={value ? Number(value).toLocaleString('ko-KR') : ''} placeholder="0" onChange={e => onChange(e.target.value.replace(/[^\d]/g, '').slice(0, 9))}/><em>만원</em></span>
+    <span className="pe-money-input"><Input inputMode="numeric" autoFocus={autoFocus} value={value ? Number(value).toLocaleString('ko-KR') : ''} placeholder="0" onChange={e => onChange(e.target.value.replace(/[^\d]/g, '').slice(0, 9))}/><em>만원</em></span>
     <small>{won ? money(won) : hint ?? '만원 단위로 입력해요. 예: 82000 → 8억 2,000만원'}</small>
     <span className="pe-quick">{QUICK.map(([label, man]) => <button type="button" key={label} onClick={e => { e.preventDefault(); onChange(String(Math.min((Number(value) || 0) + man, 999_999_999))) }}>{label}</button>)}
       {value && <button type="button" className="pe-quick-clear" onClick={e => { e.preventDefault(); onChange('') }}>지우기</button>}</span>
@@ -60,7 +62,7 @@ function AreaField({ value, onChange }: { value: string; onChange: (v: string) =
     <div className="pe-chips">{AREAS.map(a => <button type="button" key={a} className={m2 === a ? 'on' : ''} onClick={() => { setTyped(''); onChange(m2 === a ? '' : String(a)) }}>{a}㎡ · {toTypePy(a)}평형</button>)}</div>
     <div className="pe-area-row">
       <div className="pe-seg" role="group" aria-label="면적 단위">{([['m2', '전용 ㎡'], ['py', '평형']] as const).map(([k, l]) => <button type="button" key={k} className={unit === k ? 'on' : ''} aria-pressed={unit === k} onClick={() => { setUnit(k); setTyped('') }}>{l}</button>)}</div>
-      <span className="pe-unit-input"><input inputMode="decimal" placeholder="직접" value={typed} onChange={e => { const t = e.target.value.replace(/[^\d.]/g, '').slice(0, 6); setTyped(t); const n = Number(t); onChange(!n ? '' : unit === 'm2' ? String(n) : String(Math.round(n * SQM * SUPPLY * 10) / 10)) }}/><em>{unit === 'm2' ? '㎡' : '평형'}</em></span>
+      <span className="pe-unit-input"><Input inputMode="decimal" placeholder="직접" value={typed} onChange={e => { const t = e.target.value.replace(/[^\d.]/g, '').slice(0, 6); setTyped(t); const n = Number(t); onChange(!n ? '' : unit === 'm2' ? String(n) : String(Math.round(n * SQM * SUPPLY * 10) / 10)) }}/><em>{unit === 'm2' ? '㎡' : '평형'}</em></span>
     </div>
     {m2 > 0 && <small>{unit === 'py' && typed ? `${typed}평형 → 전용 약 ${m2}㎡로 저장해요. 계약서·등기부의 전용면적을 알면 ‘전용 ㎡’로 넣는 게 정확해요.` : `전용 ${m2}㎡ (${(m2 / SQM).toFixed(1)}평) · 보통 ${toTypePy(m2)}평형 안팎`}</small>}
   </div>
@@ -83,14 +85,14 @@ function YearMonth({ label, value, onChange }: { label: string; value: string; o
   }
   const ago = value ? (() => { const [vy, vm] = value.split('-').map(Number); const n = (now.getFullYear() - vy) * 12 + now.getMonth() + 1 - vm; return n >= 12 ? `${Math.floor(n / 12)}년${n % 12 ? ` ${n % 12}개월` : ''} 전` : n > 0 ? `${n}개월 전` : '이번 달' })() : ''
   return <label className="pe-field"><span className="pe-field-label">{label}</span>
-    <input inputMode="numeric" value={text} placeholder="예: 201905" onChange={e => type(e.target.value)}/>
+    <Input inputMode="numeric" value={text} placeholder="예: 201905" onChange={e => type(e.target.value)}/>
     <small>{bad ? '연도와 월을 확인해 주세요 (미래는 안 돼요)' : value ? `${Number(value.slice(0, 4))}년 ${Number(value.slice(5))}월 · ${ago}` : '연도와 월을 숫자로만 쳐요'}</small>
   </label>
 }
 function AsOf({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const [open, setOpen] = useState(value !== today())
   if (!open) return <p className="pe-note">{value.replace(/-/g, '.')} 오늘 기준으로 저장해요. <button type="button" className="pe-inline-link" onClick={() => setOpen(true)}>다른 날짜로</button></p>
-  return <label className="pe-field"><span className="pe-field-label">시세 기준일</span><input type="date" value={value} max={today()} onChange={e => onChange(e.target.value || today())}/>
+  return <label className="pe-field"><span className="pe-field-label">시세 기준일</span><Input type="date" value={value} max={today()} onChange={e => onChange(e.target.value || today())}/>
     <small><button type="button" className="pe-inline-link" onClick={() => { onChange(today()); setOpen(false) }}>오늘로</button></small></label>
 }
 
@@ -124,8 +126,8 @@ export function KeySetup({ onDone }: { onDone: () => void }) {
   if (!open) return <p className="pe-note">실거래가를 자동으로 불러오려면 공공데이터포털 인증키가 한 번 필요해요. <button type="button" className="pe-inline-link" onClick={() => setOpen(true)}>인증키 넣기</button></p>
   return <div className="pe-keybox">
     <p className="pe-note">1. <a href="https://www.data.go.kr/data/15126468/openapi.do" target="_blank" rel="noreferrer">공공데이터포털 ‘국토교통부 아파트 매매 실거래가 상세 자료’</a>에서 활용 신청(무료) → 2. 마이페이지의 ‘일반 인증키’를 복사해 아래에 붙여 넣기. 키는 이 컴퓨터에만 저장돼요.</p>
-    <div className="pe-keyrow"><input value={key} placeholder="인증키 붙여 넣기" onChange={e => setKey(e.target.value.trim())}/>
-      <button type="button" className="primary-button" disabled={key.length < 10} onClick={async () => { try { await api('/property/market/key', 'PUT', { key }); onDone() } catch (e) { setError(e instanceof Error ? e.message : '저장하지 못했어요.') } }}>저장</button></div>
+    <div className="pe-keyrow"><Input value={key} placeholder="인증키 붙여 넣기" onChange={e => setKey(e.target.value.trim())}/>
+      <Button variant="default" type="button" className="primary-button" disabled={key.length < 10} onClick={async () => { try { await api('/property/market/key', 'PUT', { key }); onDone() } catch (e) { setError(e instanceof Error ? e.message : '저장하지 못했어요.') } }}>저장</Button></div>
     {error && <p className="form-error">{error}</p>}
   </div>
 }
@@ -160,8 +162,8 @@ export function HomeMarket({ home, onChanged, onUpdateValue }: { home: Home; onC
     <section className="pm-block">
       <div className="pm-head"><h3>실거래가</h3><span>시세에 반영</span></div>
       {home.detail?.address?.sigungu_code ? <Trades sigungu={home.detail.address.sigungu_code} name={name} area={home.detail.area_m2} jibun={home.detail.address.jibun}/> : <p className="pe-note">주소를 검색해 저장하면 실거래가를 불러올 수 있어요.</p>}
-      <div className="pm-actions">{home.detail?.address?.sigungu_code && <button type="button" className="primary-button pm-update" disabled={busy} onClick={async () => { setBusy(true); setError(''); try { const h = await api<Home>(`/property/${home.asset.id}/refresh`, 'POST'); setVersion(h.detail?.version ?? version); onChanged(h) } catch (e) { setError(e instanceof Error ? e.message : '갱신하지 못했어요.') } finally { setBusy(false) } }}>최근 실거래가로 시세 갱신</button>}
-        <button type="button" className="secondary-button pm-update" onClick={onUpdateValue}>직접 입력</button></div>
+      <div className="pm-actions">{home.detail?.address?.sigungu_code && <Button variant="default" type="button" className="primary-button pm-update" disabled={busy} onClick={async () => { setBusy(true); setError(''); try { const h = await api<Home>(`/property/${home.asset.id}/refresh`, 'POST'); setVersion(h.detail?.version ?? version); onChanged(h) } catch (e) { setError(e instanceof Error ? e.message : '갱신하지 못했어요.') } finally { setBusy(false) } }}>최근 실거래가로 시세 갱신</Button>}
+        <Button variant="outline" type="button" className="secondary-button pm-update" onClick={onUpdateValue}>직접 입력</Button></div>
       <p className="pe-note">지금 시세: {money(home.full_value)} · {sourceLabel(home.detail?.value_source)}</p>
     </section>
     <section className="pm-block">
@@ -169,10 +171,10 @@ export function HomeMarket({ home, onChanged, onUpdateValue }: { home: Home; onC
       <p className="pe-note">전용 {home.detail?.area_m2 ?? '—'}㎡에 해당하는 매매 일반평균가와 기준일을 기록해요.</p>
       <div className="grid gap-4 sm:grid-cols-2">
         <MoneyField label="KB 일반평균가" value={kb.price} onChange={price => setKb(v => ({ ...v, price }))}/>
-        <label className="pe-field"><span className="pe-field-label">KB 시세 기준일</span><input type="date" max={today()} value={kb.date} onChange={e => setKb(v => ({ ...v, date: e.target.value }))}/></label>
+        <label className="pe-field"><span className="pe-field-label">KB 시세 기준일</span><Input type="date" max={today()} value={kb.date} onChange={e => setKb(v => ({ ...v, date: e.target.value }))}/></label>
       </div>
-      <div className="pm-actions"><button type="button" className="primary-button" disabled={busy || !version || !home.detail?.area_m2 || !fromMan(kb.price) || !kb.date || kb.date > today()} onClick={() => saveKB()}>KB 시세 저장</button>
-        {home.detail?.kb_quote && <button type="button" className="secondary-button" disabled={busy} onClick={() => saveKB(true)}>KB 기록 삭제</button>}</div>
+      <div className="pm-actions"><Button variant="default" type="button" className="primary-button" disabled={busy || !version || !home.detail?.area_m2 || !fromMan(kb.price) || !kb.date || kb.date > today()} onClick={() => saveKB()}>KB 시세 저장</Button>
+        {home.detail?.kb_quote && <Button variant="outline" type="button" className="secondary-button" disabled={busy} onClick={() => saveKB(true)}>KB 기록 삭제</Button>}</div>
     </section>
     <section className="pm-block">
       <div className="pm-head"><h3>호가 · 매물</h3><span>참고용 · 순자산에는 넣지 않아요</span></div>
@@ -182,9 +184,9 @@ export function HomeMarket({ home, onChanged, onUpdateValue }: { home: Home; onC
           <button type="button" aria-label="이 매물 지우기" disabled={busy} onClick={() => save(listings.filter((_, j) => j !== i))}><X size={14}/></button></li>)}</ul>
         <div className="pm-add">
           <MoneyField label="호가" value={form.price} onChange={v => setForm(f => ({ ...f, price: v }))}/>
-          <div className="pm-add-row"><label className="pe-field"><span className="pe-field-label">층</span><input value={form.floor} maxLength={20} placeholder="예: 12층, 고층" onChange={e => setForm(f => ({ ...f, floor: e.target.value }))}/></label>
-            <label className="pe-field"><span className="pe-field-label">메모 <small>선택</small></span><input value={form.memo} maxLength={100} placeholder="예: 남향, 올수리" onChange={e => setForm(f => ({ ...f, memo: e.target.value }))}/></label></div>
-          <button type="button" className="secondary-button" disabled={busy || !fromMan(form.price)} onClick={async () => { if (await save([...listings, { price: fromMan(form.price)!, floor: form.floor.trim(), memo: form.memo.trim(), checked_on: today() }])) setForm({ price: '', floor: '', memo: '' }) }}><Plus size={14}/>매물 추가</button>
+          <div className="pm-add-row"><label className="pe-field"><span className="pe-field-label">층</span><Input value={form.floor} maxLength={20} placeholder="예: 12층, 고층" onChange={e => setForm(f => ({ ...f, floor: e.target.value }))}/></label>
+            <label className="pe-field"><span className="pe-field-label">메모 <small>선택</small></span><Input value={form.memo} maxLength={100} placeholder="예: 남향, 올수리" onChange={e => setForm(f => ({ ...f, memo: e.target.value }))}/></label></div>
+          <Button variant="outline" type="button" className="secondary-button" disabled={busy || !fromMan(form.price)} onClick={async () => { if (await save([...listings, { price: fromMan(form.price)!, floor: form.floor.trim(), memo: form.memo.trim(), checked_on: today() }])) setForm({ price: '', floor: '', memo: '' }) }}><Plus size={14}/>매물 추가</Button>
         </div>
         <p className="pe-note"><a href={`https://m.land.naver.com/search/result/${encodeURIComponent(name)}`} target="_blank" rel="noreferrer">네이버 부동산에서 매물 보기</a> · <a href="https://kbland.kr/" target="_blank" rel="noreferrer">KB부동산</a> — 보고 온 호가를 위에 적어 두세요.</p>
       </>}
@@ -303,7 +305,7 @@ export function HomeWizard({ home, list, family, owner, start, onSaved, onDelete
         <button className="text-link" onClick={() => set('address', null)}>다시 검색</button>
       </div> : manualAddress ? null : <AddressSearch onPick={pick}/>}
       {(d.address || manualAddress) && <>
-        <label className="pe-field"><span className="pe-field-label">부를 이름</span><input value={d.name} maxLength={100} placeholder="예: 우리 집, 헬리오시티" autoFocus onChange={e => set('name', e.target.value)}/></label>
+        <label className="pe-field"><span className="pe-field-label">부를 이름</span><Input value={d.name} maxLength={100} placeholder="예: 우리 집, 헬리오시티" autoFocus onChange={e => set('name', e.target.value)}/></label>
         <AreaField value={d.area} onChange={v => set('area', v)}/>
       </>}
       {!d.address && <button className="text-link pe-alt" onClick={() => setManualAddress(!manualAddress)}>{manualAddress ? '주소 검색으로 돌아가기' : '주소 없이 이름만 적기'}</button>}
@@ -315,7 +317,7 @@ export function HomeWizard({ home, list, family, owner, start, onSaved, onDelete
         <button key={k} className={d.owner === k ? 'on' : ''} aria-pressed={d.owner === k} onClick={() => set('owner', k)}>{label}{d.owner === k && <Check size={16}/>}</button>)}</div>
       {d.owner === 'joint' && <div className="pe-field"><span className="pe-field-label">{meName}의 지분</span>
         <div className="pe-chips">{[50, 30, 70].map(s => <button key={s} className={d.share === s ? 'on' : ''} onClick={() => set('share', s)}>{s} : {100 - s}</button>)}
-          <span className="pe-unit-input"><input inputMode="numeric" value={[50, 30, 70].includes(d.share) ? '' : String(d.share || '')} placeholder="직접" onChange={e => set('share', Number(e.target.value.replace(/\D/g, '').slice(0, 2)))}/><em>%</em></span></div>
+          <span className="pe-unit-input"><Input inputMode="numeric" value={[50, 30, 70].includes(d.share) ? '' : String(d.share || '')} placeholder="직접" onChange={e => set('share', Number(e.target.value.replace(/\D/g, '').slice(0, 2)))}/><em>%</em></span></div>
         <small>{meName} {d.share || 0}% · {partnerName} {100 - (d.share || 0)}% — 집은 한 번만 등록하고, ‘나’ 화면에서는 지분만큼 보여요.</small></div>}
     </section>}
 
@@ -352,7 +354,7 @@ export function HomeWizard({ home, list, family, owner, start, onSaved, onDelete
           <span className="pe-box">{on && <Check size={13}/>}</span><span><strong>{l.name}</strong><small>{l.as_of} 기준</small></span><b>{money(l.amount)}</b></button> })}
       </div>}
       {d.newLoans.map((l, i) => <div className="pe-newloan" key={i}>
-        <label className="pe-field"><span className="pe-field-label">새 대출 이름</span><input value={l.name} placeholder="예: 주택담보대출" maxLength={100} onChange={e => set('newLoans', d.newLoans.map((x, j) => j === i ? { ...x, name: e.target.value } : x))}/></label>
+        <label className="pe-field"><span className="pe-field-label">새 대출 이름</span><Input value={l.name} placeholder="예: 주택담보대출" maxLength={100} onChange={e => set('newLoans', d.newLoans.map((x, j) => j === i ? { ...x, name: e.target.value } : x))}/></label>
         <MoneyField label="남은 잔액" value={l.amount} onChange={v => set('newLoans', d.newLoans.map((x, j) => j === i ? { ...x, amount: v } : x))}/>
         <button className="pe-remove" aria-label="이 대출 빼기" onClick={() => set('newLoans', d.newLoans.filter((_, j) => j !== i))}><X size={16}/></button>
       </div>)}
@@ -378,8 +380,8 @@ export function HomeWizard({ home, list, family, owner, start, onSaved, onDelete
     <div className="pe-actions">
       {step === 'review' ? <>
         {editing && onDelete && <button className="pe-delete" onClick={onDelete} disabled={busy}>이 집 삭제</button>}
-        <button className="primary-button" onClick={save} disabled={busy}>{busy ? '저장하는 중…' : editing ? '저장' : '저장하기'}</button>
-      </> : <button className="primary-button" onClick={next} disabled={step === 'address' && !d.address && !manualAddress}>{editing ? '확인' : step === 'loans' ? '확인하러 가기' : (step === 'purchase' && !d.purchase) ? '모르겠어요, 넘어가기' : '다음'}</button>}
+        <Button variant="default" className="primary-button" onClick={save} disabled={busy}>{busy ? '저장하는 중…' : editing ? '저장' : '저장하기'}</Button>
+      </> : <Button variant="default" className="primary-button" onClick={next} disabled={step === 'address' && !d.address && !manualAddress}>{editing ? '확인' : step === 'loans' ? '확인하러 가기' : (step === 'purchase' && !d.purchase) ? '모르겠어요, 넘어가기' : '다음'}</Button>}
     </div>
   </div>
 }
@@ -395,8 +397,8 @@ export function DeleteHome({ home, onDone, onCancel }: { home: Home; onDone: () 
     <h3 className="pe-q">{home.asset.name}을 삭제할까요?</h3>
     <p className="pe-note">집과 {home.deposit ? '임대보증금 행이' : '집 정보가'} 장부에서 빠져요. 연결한 대출({home.loans.length}건)은 남겨 둘게요 — 필요 없으면 ‘우리 자산’에서 따로 지워 주세요.</p>
     {error && <p className="form-error" role="alert">{error}</p>}
-    <div className="pe-actions"><button className="secondary-button" onClick={onCancel} disabled={busy}>돌아가기</button>
-      <button className="danger-button" disabled={busy} onClick={async () => { setBusy(true); try { await api(`/property/${home.asset.id}?version=${home.asset.version}`, 'DELETE'); onDone() } catch (e) { setError(e instanceof Error ? e.message : '삭제하지 못했어요.'); setBusy(false) } }}>{busy ? '삭제 중…' : '삭제하기'}</button></div>
+    <div className="pe-actions"><Button variant="outline" className="secondary-button" onClick={onCancel} disabled={busy}>돌아가기</Button>
+      <Button variant="destructive" className="danger-button" disabled={busy} onClick={async () => { setBusy(true); try { await api(`/property/${home.asset.id}?version=${home.asset.version}`, 'DELETE'); onDone() } catch (e) { setError(e instanceof Error ? e.message : '삭제하지 못했어요.'); setBusy(false) } }}>{busy ? '삭제 중…' : '삭제하기'}</Button></div>
   </div>
 }
 
@@ -421,7 +423,7 @@ export function MyHomes({ owner, family, hidden, onChanged, onDemo }: { owner: '
     <div className="ph-head">
       <div><span className="ph-label">부동산 순자산{owner !== 'together' && ' · 내 지분'}</span><strong className="ph-total">{show(t.equity)}</strong>
         {list.homes.length > 0 && <span className="ph-sub">집 {show(t.value)}{t.loans > 0 && <> · 대출 −{show(t.loans)}</>}{t.deposit > 0 && <> · 보증금 −{show(t.deposit)}</>}</span>}</div>
-      <button className="primary-button" onClick={() => setOpen({ home: null })}><Plus size={14}/>{list.homes.length ? '집 추가' : '우리 집 등록'}</button>
+      <Button variant="default" className="primary-button" onClick={() => setOpen({ home: null })}><Plus size={14}/>{list.homes.length ? '집 추가' : '우리 집 등록'}</Button>
     </div>
     {!list.homes.length && <div className="ph-empty"><House size={26}/><strong>아직 등록한 집이 없어요</strong><p>주소로 찾아서 명의·산 가격·대출까지 한 번에 넣어요. 1분이면 돼요.</p></div>}
     <ul className="ph-list">{list.homes.map(h => { const m = h.metrics, dt = h.detail, stale = ageDays(h.asset.as_of) > STALE_DAYS

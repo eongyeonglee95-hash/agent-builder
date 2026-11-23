@@ -5,37 +5,37 @@
 /* ── 사이드바: 글자 12px 이상, 줄바꿈 대신 말줄임, 메뉴 오른쪽 금액 ── */
 .sidebar { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; color: #c9d1ce; }
 .sidebar .brand small { font-size: 9px; letter-spacing: .16em; }
-.sidebar-slogan { font-size: 12px; letter-spacing: 0; color: #ffffff8c; margin: 14px 0 26px 6px; }
+.sidebar-slogan { font-size:var(--text-xs); letter-spacing: 0; color: #ffffff8c; margin: 14px 0 26px 6px; }
 .side-nav { display: flex; flex-direction: column; gap: 2px; }
-.sidebar .nav-item, .nav-group-link { display: flex; align-items: center; gap: 11px; min-height: 40px; margin: 0; padding: 0 12px; border-radius: 9px; font-size: 14px; font-weight: 500; letter-spacing: -.01em; color: #ffffffc7; white-space: nowrap; }
+.sidebar .nav-item, .nav-group-link { display: flex; align-items: center; gap: 11px; min-height: 40px; margin: 0; padding: 0 12px; border-radius: 9px; font-size:var(--text-sm); font-weight: 500; letter-spacing: -.01em; color: #ffffffc7; white-space: nowrap; }
 .sidebar .nav-item > span, .nav-group-link > span, .nav-sub > span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-.sidebar .nav-item:hover, .nav-group-link:hover, .nav-sub:hover { background: #ffffff0f; color: #fff; }
-.sidebar .nav-item.active, .nav-group-link.active { background: #ffffff17; color: #fff; box-shadow: inset 3px 0 0 var(--accent-hi); }
+.sidebar .nav-item:hover, .nav-group-link:hover, .nav-sub:hover { background: #ffffff0f; color: var(--background); }
+.sidebar .nav-item.active, .nav-group-link.active { background: #ffffff17; color: var(--background); box-shadow: inset 3px 0 0 var(--accent-hi); }
 .sidebar .nav-item.active::before { display: none; }
 .sidebar .nav-item.active svg, .nav-group-link.active svg { color: var(--accent-hi); }
-.sidebar .nav-item small { font-size: 12px; color: #ffffff80; margin-left: auto; font-variant-numeric: tabular-nums; }
+.sidebar .nav-item small { font-size:var(--text-xs); color: #ffffff80; margin-left: auto; font-variant-numeric: tabular-nums; }
 .nav-group-head { display: flex; align-items: center; gap: 6px; margin-top: 14px; }
-.nav-group-link { flex: 1; min-width: 0; font-weight: 600; color: #fff; }
-.nav-sheet { flex: none; height: 26px; padding: 0 10px; border: 1px solid #ffffff29; border-radius: 99px; font-size: 12px; font-weight: 500; color: #ffffffb3; white-space: nowrap; }
-.nav-sheet:hover { border-color: var(--accent-hi); color: #fff; }
+.nav-group-link { flex: 1; min-width: 0; font-weight: 600; color: var(--background); }
+.nav-sheet { flex: none; height: 26px; padding: 0 10px; border: 1px solid #ffffff29; border-radius: 99px; font-size:var(--text-xs); font-weight: 500; color: #ffffffb3; white-space: nowrap; }
+.nav-sheet:hover { border-color: var(--accent-hi); color: var(--background); }
 .nav-tree { display: flex; flex-direction: column; gap: 1px; margin: 2px 0 0 18px; padding-left: 6px; border-left: 1px solid #ffffff1f; }
 .nav-tree .nav-item { padding-left: 10px; padding-right: 8px; }
-.nav-sub { display: flex; align-items: center; gap: 6px; width: 100%; min-height: 34px; padding: 0 8px 0 30px; border-radius: 8px; font-size: 13px; color: #ffffff99; text-align: left; white-space: nowrap; }
-.nav-sub.active { background: #ffffff14; color: #fff; }
-.nav-sub small { margin-left: auto; font-size: 12px; color: #ffffff73; }
+.nav-sub { display: flex; align-items: center; gap: 6px; width: 100%; min-height: 34px; padding: 0 8px 0 30px; border-radius: 8px; font-size:var(--text-xs); color: #ffffff99; text-align: left; white-space: nowrap; }
+.nav-sub.active { background: #ffffff14; color: var(--background); }
+.nav-sub small { margin-left: auto; font-size:var(--text-xs); color: #ffffff73; }
 .sidebar .nav-sub .nav-badge { flex: none; padding: 1px 7px; border-radius: 99px; background: var(--accent-hi); color: var(--accent-hi-ink); font-weight: 700; font-variant-numeric: tabular-nums; }
-.sidebar .settings-link { font-size: 14px; padding-bottom: 14px; }
+.sidebar .settings-link { font-size:var(--text-sm); padding-bottom: 14px; }
 .family-profile { border-top-color: #ffffff17; }
-.family-profile strong { font-size: 13px; color: #fff; }
-.family-profile small { font-size: 12px; color: #ffffff80; }
-.avatar-pair span { width: 28px; height: 28px; font-size: 11px; border-color: var(--brand-dark); }
+.family-profile strong { font-size:var(--text-xs); color: var(--background); }
+.family-profile small { font-size:var(--text-xs); color: #ffffff80; }
+.avatar-pair span { width: 28px; height: 28px; font-size:var(--text-xs); border-color: var(--brand-dark); }
 .avatar-pair span:first-child { background: var(--accent-hi); color: var(--accent-hi-ink); }
 
 /* ── 홈 노후 주머니 카드: 테마의 어두운 면 + 포인트색 (메인 주머니 강조) ── */
-.classic-home .stat-card.pocket-hero { background: var(--brand-dark); border-color: var(--brand-dark); color: #fff; }
+.classic-home .stat-card.pocket-hero { background: var(--brand-dark); border-color: var(--brand-dark); color: var(--background); }
 .classic-home .pocket-hero .stat-top h2 { color: var(--accent-hi); font-weight: 700; }
 .classic-home .pocket-hero .stat-top svg, .classic-home .pocket-hero .stat-note { color: #ffffffa6; }
-.classic-home .pocket-hero .ring > div { background: var(--brand-dark); color: #fff; }
+.classic-home .pocket-hero .ring > div { background: var(--brand-dark); color: var(--background); }
 
 /* ── 다크 (Robinhood 결): 사이드바·상단·홈 ── */
 html[data-theme=dark] body:has(main.ux-home), html[data-theme=dark] .workspace:has(main.ux-home) { background: var(--night-bg); }
@@ -45,10 +45,10 @@ html[data-theme=dark] .desktop-breadcrumb { color: var(--night-faint); }
 html[data-theme=dark] .desktop-breadcrumb b { color: var(--night-ink); }
 html[data-theme=dark] .header-date { color: var(--night-muted); }
 html[data-theme=dark] .topbar .icon-button { color: var(--night-muted); }
-html[data-theme=dark] .topbar .icon-button:hover { background: var(--night-hover); color: #fff; }
+html[data-theme=dark] .topbar .icon-button:hover { background: var(--night-hover); color: var(--background); }
 html[data-theme=dark] .data-mode-switch { background: var(--night-surface); }
 html[data-theme=dark] .data-mode-switch button { color: var(--night-muted); }
-html[data-theme=dark] .data-mode-switch button.active { background: var(--night-selected); color: #fff; box-shadow: none; }
+html[data-theme=dark] .data-mode-switch button.active { background: var(--night-selected); color: var(--background); box-shadow: none; }
 html[data-theme=dark] .header-avatar { background: var(--night-hover); color: var(--night-ink-2); border-color: var(--night-line-strong); }
 html[data-theme=dark] .notification-button i { border-color: var(--night-bg); }
 
@@ -69,11 +69,11 @@ html[data-theme=dark] main.ux-home .stat-top h2, html[data-theme=dark] main.ux-h
 html[data-theme=dark] main.ux-home .pocket-hero .stat-top h2 { color: var(--accent-hi); }
 html[data-theme=dark] main.ux-home .owner-switch { background: var(--night-surface); }
 html[data-theme=dark] main.ux-home .owner-switch button { color: var(--night-muted); }
-html[data-theme=dark] main.ux-home .owner-switch button.active { background: var(--night-selected); color: #fff; box-shadow: none; }
+html[data-theme=dark] main.ux-home .owner-switch button.active { background: var(--night-selected); color: var(--background); box-shadow: none; }
 html[data-theme=dark] main.ux-home .register-shortcut { color: var(--accent-hi); }
-html[data-theme=dark] main.ux-home .icon-button:hover { background: var(--night-hover); color: #fff; }
+html[data-theme=dark] main.ux-home .icon-button:hover { background: var(--night-hover); color: var(--background); }
 html[data-theme=dark] main.ux-home .text-link, html[data-theme=dark] main.ux-home .outline-tag, html[data-theme=dark] main.ux-home .small-tag { color: var(--night-muted); border-color: var(--night-line-strong); background: transparent; }
-html[data-theme=dark] main.ux-home .text-link:hover { color: #fff; }
+html[data-theme=dark] main.ux-home .text-link:hover { color: var(--background); }
 html[data-theme=dark] main.ux-home .donut span, html[data-theme=dark] main.ux-home .donut-legend li > span:first-child, html[data-theme=dark] main.ux-home .legend-amount { color: var(--night-muted); }
 html[data-theme=dark] main.ux-home .donut-legend b, html[data-theme=dark] main.ux-home .asset-summary strong { color: var(--night-ink); }
 html[data-theme=dark] main.ux-home .asset-summary { background: var(--night-surface-2); color: var(--night-muted); }
@@ -97,43 +97,43 @@ html[data-theme=dark] main.ux-home .purple { background: var(--night-purple-bg);
 html[data-theme=dark] main.ux-home .footer, html[data-theme=dark] main.ux-home .footer > button { color: var(--night-faint); }
 
 /* 다크를 아직 입히지 않은 다른 페이지: 밝은 화면 그대로 + 위에 한 줄 안내 */
-html[data-theme=dark] .workspace > main:not(.ux-home)::before { content: '이 화면은 아직 밝게 보여요 · 다크 모드는 홈부터 적용 중'; display: block; margin-bottom: 16px; padding: 10px 14px; border-radius: 8px; background: var(--night-surface); color: var(--night-ink-2); font-size: 12px; }
+html[data-theme=dark] .workspace > main:not(.ux-home)::before { content: '이 화면은 아직 밝게 보여요 · 다크 모드는 홈부터 적용 중'; display: block; margin-bottom: 16px; padding: 10px 14px; border-radius: 8px; background: var(--night-surface); color: var(--night-ink-2); font-size:var(--text-xs); }
 
 /* ── 큰 글씨 (2026-11-09 사용자: "글씨 크기는 키워줘. 많이 키워줘") — 예전 화면 CSS가 px로 박혀 있어 rem 기본값만으로는 안 커진다. 사이드바·상단·홈을 px로 직접 키운다 ── */
-.sidebar .brand small { font-size: 10px; }
-.sidebar-slogan { font-size: 13px; }
-.sidebar .nav-item, .nav-group-link { min-height: 44px; font-size: 15px; }
-.sidebar .nav-item small, .nav-sub small, .nav-sheet { font-size: 13px; }
-.nav-sub { min-height: 38px; font-size: 14px; }
-.sidebar .settings-link { font-size: 15px; }
-.family-profile strong { font-size: 14px; }
-.family-profile small { font-size: 13px; }
-.topbar .desktop-breadcrumb { font-size: 14px; }
-.topbar .header-date, .topbar .data-mode-switch button { font-size: 13px; }
+.sidebar .brand small { font-size:var(--text-xs); }
+.sidebar-slogan { font-size:var(--text-xs); }
+.sidebar .nav-item, .nav-group-link { min-height: 44px; font-size:var(--text-sm); }
+.sidebar .nav-item small, .nav-sub small, .nav-sheet { font-size:var(--text-xs); }
+.nav-sub { min-height: 38px; font-size:var(--text-sm); }
+.sidebar .settings-link { font-size:var(--text-sm); }
+.family-profile strong { font-size:var(--text-sm); }
+.family-profile small { font-size:var(--text-xs); }
+.topbar .desktop-breadcrumb { font-size:var(--text-sm); }
+.topbar .header-date, .topbar .data-mode-switch button { font-size:var(--text-xs); }
 main.ux-home .classic-home-heading h1 { font-size: 26px; }
-main.ux-home .classic-home-heading p { font-size: 14px; }
-main.ux-home .owner-switch button, main.ux-home .register-shortcut { font-size: 14px; }
-main.ux-home .stat-top h2 { font-size: 15px; }
+main.ux-home .classic-home-heading p { font-size:var(--text-sm); }
+main.ux-home .owner-switch button, main.ux-home .register-shortcut { font-size:var(--text-sm); }
+main.ux-home .stat-top h2 { font-size:var(--text-sm); }
 main.ux-home .stat-number { font-size: clamp(26px, 2.3vw, 34px); }
 main.ux-home .stat-card:not(.total-stat) .stat-number { font-size: clamp(22px, 2vw, 28px); }
-main.ux-home .stat-note { font-size: 13px; }
-main.ux-home .ring strong { font-size: 13px; }
+main.ux-home .stat-note { font-size:var(--text-xs); }
+main.ux-home .ring strong { font-size:var(--text-xs); }
 main.ux-home .panel-heading h2 { font-size: 17px; }
-main.ux-home .panel-heading p, main.ux-home .text-link { font-size: 13px; }
-main.ux-home .small-tag, main.ux-home .outline-tag { font-size: 12px; }
-main.ux-home .donut span { font-size: 13px; }
-main.ux-home .donut small { font-size: 12px; }
-main.ux-home .donut-legend li, main.ux-home .donut-legend b, main.ux-home .legend-amount, main.ux-home .asset-summary { font-size: 14px; }
-main.ux-home .retirement-value > span:first-child, main.ux-home .year-tag, main.ux-home .goal-caption, main.ux-home .goal-caption b { font-size: 13px; }
-main.ux-home .alert-row strong, main.ux-home .check-item strong, main.ux-home .strategy-row-head strong { font-size: 15px; }
-main.ux-home .alert-row small, main.ux-home .check-item small, main.ux-home .check-status, main.ux-home .check-count span, main.ux-home .strategy-row-head span, main.ux-home .strategy-legend, main.ux-home .footer > button { font-size: 13px; }
-main.ux-home .strategy-bar > span > span { font-size: 13px; }
-main.ux-home .strategy-bar small { font-size: 11px; }
-main.ux-home .income-svg text { font-size: 12px; }
-main.ux-home .check-count { font-size: 15px; }
+main.ux-home .panel-heading p, main.ux-home .text-link { font-size:var(--text-xs); }
+main.ux-home .small-tag, main.ux-home .outline-tag { font-size:var(--text-xs); }
+main.ux-home .donut span { font-size:var(--text-xs); }
+main.ux-home .donut small { font-size:var(--text-xs); }
+main.ux-home .donut-legend li, main.ux-home .donut-legend b, main.ux-home .legend-amount, main.ux-home .asset-summary { font-size:var(--text-sm); }
+main.ux-home .retirement-value > span:first-child, main.ux-home .year-tag, main.ux-home .goal-caption, main.ux-home .goal-caption b { font-size:var(--text-xs); }
+main.ux-home .alert-row strong, main.ux-home .check-item strong, main.ux-home .strategy-row-head strong { font-size:var(--text-sm); }
+main.ux-home .alert-row small, main.ux-home .check-item small, main.ux-home .check-status, main.ux-home .check-count span, main.ux-home .strategy-row-head span, main.ux-home .strategy-legend, main.ux-home .footer > button { font-size:var(--text-xs); }
+main.ux-home .strategy-bar > span > span { font-size:var(--text-xs); }
+main.ux-home .strategy-bar small { font-size:var(--text-xs); }
+main.ux-home .income-svg text { font-size:var(--text-xs); }
+main.ux-home .check-count { font-size:var(--text-sm); }
 .nav-sheet { padding: 0 11px; }
 .nav-sub { padding-left: 24px; }
-@media (max-width: 1200px) and (min-width: 901px) { .nav-sub small:not(.nav-badge) { display: none; } .sidebar .nav-sub .nav-badge { padding: 1px 5px; font-size: 12px; } }
+@media (max-width: 1200px) and (min-width: 901px) { .nav-sub small:not(.nav-badge) { display: none; } .sidebar .nav-sub .nav-badge { padding: 1px 5px; font-size:var(--text-xs); } }
 main.ux-home .stat-note { word-break: keep-all; }   /* 총자산 설명의 금액이 중간에서 끊기지 않게 */
 
 /* 연결은 사이드바의 큰 진입점, 표 보기는 우리 자산 옆 아이콘. */

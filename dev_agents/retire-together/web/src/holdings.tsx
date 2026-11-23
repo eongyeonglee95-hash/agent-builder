@@ -1,3 +1,5 @@
+import { NativeSelect } from './components/ui/native-select'
+import { Button } from './components/ui/button'
 import { useCallback, useEffect, useState } from 'react'
 import { Info, RefreshCw, Sheet, X } from 'lucide-react'
 import { AssetSheet } from './sheet'
@@ -48,7 +50,7 @@ export function HoldingsPanel({ owner, hidden, stockOnly = false, onRegister, on
   if (!data.accounts.length) return <section className="panel hp hp-empty">
     <h2>{stockOnly ? '보유 주식' : '종목 잔고'}</h2>
     <p>증권사 앱 잔고를 사진이나 파일로 등록하면 계좌별로 넣은 돈, 불어난 돈, 종목별 손익이 여기에 보여요.</p>
-    <button className="primary-button" onClick={onRegister}>잔고 등록하기</button>
+    <Button variant="default" className="primary-button" onClick={onRegister}>잔고 등록하기</Button>
   </section>
 
   const t = data.total
@@ -95,7 +97,7 @@ export function HoldingsPanel({ owner, hidden, stockOnly = false, onRegister, on
     </div>}
 
     <div className="hp-tools">
-      <label>정렬<select value={sort} onChange={e => setSort(e.target.value as Sort)}>{SORTS.filter(([k]) => data.live || !k.startsWith('today')).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></label>
+      <label>정렬<NativeSelect value={sort} onChange={e => setSort(e.target.value as Sort)}>{SORTS.filter(([k]) => data.live || !k.startsWith('today')).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</NativeSelect></label>
       <label className="hp-check"><input type="checkbox" checked={grouped} onChange={e => setGrouped(e.target.checked)}/>자산군별로 묶기</label>
     </div>
     <div className="hp-list">

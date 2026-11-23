@@ -1,3 +1,4 @@
+import { NativeSelect } from '../components/ui/native-select'
 import { useState } from 'react'
 import { ArrowDownRight, ArrowRight, BookOpen, Check, PencilLine, Plus } from 'lucide-react'
 import { money } from '../model'
@@ -40,7 +41,7 @@ function CandidateAnalysis({ candidate: c, entries, budget, hidden, onDetails }:
   const show = (n: number | null | undefined) => hidden ? '••••' : n == null ? '계산 대기' : money(n)
   return <div className="property-hero-analysis">
     <div className="property-hero-analysis-heading"><div><h3>{c.name}</h3><p>우리 집과의 가격 격차 <span>· 후보 가격 − 당시 우리 집 평가액</span></p></div>
-      <label className="property-hero-basis"><span>기록 가격 기준</span><select value={basis} onChange={e => setChosenBasis(e.target.value as TrackEntry['price_basis'])}>{kinds.map(k => <option value={k} key={k}>{trackBasis[k]} · {history.filter(e => e.price_basis === k).length}건</option>)}</select></label>
+      <label className="property-hero-basis"><span>기록 가격 기준</span><NativeSelect value={basis} onChange={e => setChosenBasis(e.target.value as TrackEntry['price_basis'])}>{kinds.map(k => <option value={k} key={k}>{trackBasis[k]} · {history.filter(e => e.price_basis === k).length}건</option>)}</NativeSelect></label>
     </div>
     {!same.length && <div className="property-hero-reading"><span>기록에서 읽는 변화</span><p>아직 비교할 기록이 없어요. 현재 가격을 기록하는 것부터 시작해요.</p></div>}
     <TrackChart key={basis} entries={entries} basis={basis} name={c.name} hidden={hidden} onRecord={onDetails}/>

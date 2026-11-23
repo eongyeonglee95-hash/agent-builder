@@ -1,3 +1,4 @@
+import { Button } from '../components/ui/button'
 import { useState } from 'react'
 import { Settings } from 'lucide-react'
 import { Modal } from '../components'
@@ -13,7 +14,7 @@ export function ConnectionSettings({ onChanged }: { onChanged: () => void }) {
     history.replaceState(null, '', url.pathname + url.search + url.hash)
   }
   return <>
-    <button className="secondary-button" onClick={() => setOpen(true)}><Settings size={16}/>연결 설정</button>
+    <Button variant="outline" className="secondary-button" onClick={() => setOpen(true)}><Settings size={16}/>연결 설정</Button>
     {open && <Modal title="연결 설정" onClose={close}><GoogleSheetPanel onChanged={onChanged}/></Modal>}
   </>
 }

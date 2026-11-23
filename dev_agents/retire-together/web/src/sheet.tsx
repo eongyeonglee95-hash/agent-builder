@@ -1,3 +1,5 @@
+import { NativeSelect } from './components/ui/native-select'
+import { Input } from './components/ui/input'
 import { useCallback, useEffect, useMemo, useRef, useState, type ClipboardEvent, type KeyboardEvent } from 'react'
 import { Download, Info, Trash2 } from 'lucide-react'
 import { api } from './local-data'
@@ -364,7 +366,7 @@ export function AssetSheet({ owner, initialTab = 'holdings', onSaved, embedded =
     <div className="xl-bar" onMouseDown={e => { if ((e.target as HTMLElement).tagName !== 'INPUT') e.preventDefault() }}>
       <span className="xl-addr">{letters(sel.c)}{sel.r + 2}</span>
       <span className="xl-fx">fx</span>
-      <input className="xl-formula" aria-label="선택한 칸 값" value={editing ? draft : cur && curCol ? (curCol.kind === 'select' ? display(curCol, cur) : curCol.kind === 'calc' ? curCol.calc!(cur) : cur[curCol.key] ?? '') : ''}
+      <Input className="xl-formula" aria-label="선택한 칸 값" value={editing ? draft : cur && curCol ? (curCol.kind === 'select' ? display(curCol, cur) : curCol.kind === 'calc' ? curCol.calc!(cur) : cur[curCol.key] ?? '') : ''}
         readOnly={!cur || !curCol || locked(cur, curCol) || curCol.kind === 'select'} onFocus={() => { if (cur && curCol && !locked(cur, curCol) && curCol.kind !== 'select') { setDraft(cur[curCol.key] ?? ''); setEditing(true) } }}
         onChange={e => setDraft(e.target.value)} onKeyDown={e => { e.stopPropagation(); if (e.key === 'Enter') { e.preventDefault(); commit() } if (e.key === 'Escape') { setEditing(false) } }}/>
       {curErr && <span className="xl-err-msg">{curErr}</span>}
@@ -392,8 +394,8 @@ export function AssetSheet({ owner, initialTab = 'holdings', onSaved, embedded =
               onDoubleClick={() => startEdit()}
               onClick={() => { if (c.kind === 'select' && !lk && !(on && editing)) { setSel({ r: ri, c: ci }); setDraft(r[c.key] ?? ''); setEditing(true) } }}>
               {on && editing && c.kind === 'select'
-                ? <select autoFocus aria-label={c.label} value={draft} onChange={e => commit(e.target.value)} onBlur={() => setEditing(false)}><option value="">—</option>{c.options!.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select>
-                : <>{!(on && editing) && display(c, r)}{on && !lk && c.kind !== 'select' && <input ref={typerRef} aria-label={c.label} className={editing ? 'xl-edit' : 'xl-typer'} value={editing ? draft : ''}
+                ? <NativeSelect autoFocus aria-label={c.label} value={draft} onChange={e => commit(e.target.value)} onBlur={() => setEditing(false)}><option value="">—</option>{c.options!.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</NativeSelect>
+                : <>{!(on && editing) && display(c, r)}{on && !lk && c.kind !== 'select' && <Input ref={typerRef} aria-label={c.label} className={editing ? 'xl-edit' : 'xl-typer'} value={editing ? draft : ''}
                     onChange={e => { if (!editing) { setEditing(true); setTyped(true) } setDraft(e.target.value) }}
                     onCompositionStart={() => { if (!editing) { setDraft(''); setEditing(true); setTyped(true) } }}
                     onBlur={() => { if (editing) commit() }} inputMode={c.kind === 'int' ? 'numeric' : undefined} placeholder={editing && c.kind === 'date' ? 'YYYY-MM-DD' : undefined}/>}</>}

@@ -88,7 +88,7 @@
 .hb-auto { color: var(--muted-foreground); }
 .hb-editing { padding: 2px !important; }
 .hb-editing input { width: 100%; min-width: 96px; height: 32px; padding: 0 8px; border: 1px solid var(--brand); border-radius: 4px; background: var(--card); color: var(--foreground); font: inherit; text-align: right; }
-.hb-fix { margin-left: 6px; padding: 0 4px; border: 1px solid currentColor; border-radius: 4px; font-size: 10px; font-weight: 600; color: var(--brand); vertical-align: 1px; }
+.hb-fix { margin-left: 6px; padding: 0 4px; border: 1px solid currentColor; border-radius: 4px; font-size:var(--text-xs); font-weight: 600; color: var(--brand); vertical-align: 1px; }
 
 /* 고정 항목·캡처 패널 */
 .hb-side { display: grid; gap: 4px; }

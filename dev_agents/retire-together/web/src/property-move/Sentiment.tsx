@@ -1,3 +1,5 @@
+import { NativeSelect } from '../components/ui/native-select'
+import { Input } from '../components/ui/input'
 import { useEffect, useState } from 'react'
 import { ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react'
 import { api } from '../local-data'
@@ -70,8 +72,8 @@ export function Sentiment() {
   return <section className="sentiment-dashboard" aria-label="부동산 심리">
     <div className="sentiment-controls">
       <div className="research-modes" role="group" aria-label="조회 주기">{Object.entries(modes).map(([id, label]) => <button key={id} aria-pressed={mode === id} onClick={() => setMode(id as Mode)}>{label}</button>)}</div>
-      <div className="sentiment-date"><Button variant="ghost" size="icon" aria-label="이전 기간" onClick={() => setDate(moveDate(date, mode, -1))}><ChevronLeft aria-hidden="true" size={18}/></Button><label><span className="sr-only">기준 날짜</span><input type="date" value={date} max={today()} onChange={e => { if (e.target.value && e.target.value <= today()) setDate(e.target.value) }}/></label><Button variant="ghost" size="icon" aria-label="다음 기간" disabled={moveDate(date, mode, 1) > today()} onClick={() => setDate(moveDate(date, mode, 1))}><ChevronRight aria-hidden="true" size={18}/></Button><Button variant="ghost" size="sm" onClick={() => setDate(today())}>오늘</Button></div>
-      <select aria-label="지표 지역" value={region} onChange={e => setRegion(e.target.value)}><option>서울</option><option>전국</option></select>
+      <div className="sentiment-date"><Button variant="ghost" size="icon" aria-label="이전 기간" onClick={() => setDate(moveDate(date, mode, -1))}><ChevronLeft aria-hidden="true" size={18}/></Button><label><span className="sr-only">기준 날짜</span><Input type="date" value={date} max={today()} onChange={e => { if (e.target.value && e.target.value <= today()) setDate(e.target.value) }}/></label><Button variant="ghost" size="icon" aria-label="다음 기간" disabled={moveDate(date, mode, 1) > today()} onClick={() => setDate(moveDate(date, mode, 1))}><ChevronRight aria-hidden="true" size={18}/></Button><Button variant="ghost" size="sm" onClick={() => setDate(today())}>오늘</Button></div>
+      <NativeSelect aria-label="지표 지역" value={region} onChange={e => setRegion(e.target.value)}><option>서울</option><option>전국</option></NativeSelect>
     </div>
     {error ? <p role="alert">{error} <Button variant="outline" size="sm" onClick={() => setRevision(v => v + 1)}>다시 조회</Button></p> : !data ? <p role="status">공식 지표의 날짜별 기록을 불러오고 있어요…</p> : <>
       <div className="research-toolbar"><p className="research-caption">{data.start} ~ {data.end} · {region} · 최근 12{mode === 'daily' ? '일' : mode === 'weekly' ? '주' : '개월'}</p><span className="research-caption" role="status">{data.refreshing ? '공식 자료 확인 중…' : data.collection?.succeeded ? `수집 ${data.collection.succeeded.slice(0, 10)}` : '수집된 시계열 없음'}</span></div>

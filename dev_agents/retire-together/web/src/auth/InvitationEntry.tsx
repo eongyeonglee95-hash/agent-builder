@@ -1,3 +1,5 @@
+import { Input } from '../components/ui/input'
+import { Button } from '../components/ui/button'
 import { useEffect, useState, type FormEvent } from 'react'
 import { Brand } from '../components'
 import { chooseSheet, type PickerCredentials } from './picker'
@@ -50,9 +52,9 @@ export default function InvitationEntry() {
     {loading ? <p role="status">초대 상태를 확인하고 있어요…</p> : join ? <>
       <p>{join.invitation.email} · 본인 확인 완료</p><p>아직 가입이 끝나지 않았어요. 공유와 파일 접근을 확인해 주세요.</p>
       <a href={join.spreadsheet.url} target="_blank" rel="noreferrer">초대에 연결된 시트 확인</a>
-      <button className="primary-button" disabled={busy} onClick={() => void run(resume)}>공유 확인 후 합류</button>
-      <button className="secondary-button" disabled={busy} onClick={() => void run(async () => { const credentials = await request<PickerCredentials>('picker'); const id = await chooseSheet(credentials); if (id) await resume(); else setNotice('파일 선택을 취소했어요. 같은 초대를 이어갈 수 있어요.') })}>공통 시트 접근 승인</button>
-    </> : <form onSubmit={accept} className="share-form"><label>초대 링크 또는 코드<input autoComplete="off" value={code} onChange={e => setCode(e.target.value)} required maxLength={500}/></label><button className="primary-button" disabled={busy}>{busy ? '확인 중…' : 'Google로 초대 수락'}</button></form>}
+      <Button variant="default" className="primary-button" disabled={busy} onClick={() => void run(resume)}>공유 확인 후 합류</Button>
+      <Button variant="outline" className="secondary-button" disabled={busy} onClick={() => void run(async () => { const credentials = await request<PickerCredentials>('picker'); const id = await chooseSheet(credentials); if (id) await resume(); else setNotice('파일 선택을 취소했어요. 같은 초대를 이어갈 수 있어요.') })}>공통 시트 접근 승인</Button>
+    </> : <form onSubmit={accept} className="share-form"><label>초대 링크 또는 코드<Input autoComplete="off" value={code} onChange={e => setCode(e.target.value)} required maxLength={500}/></label><Button variant="default" className="primary-button" disabled={busy}>{busy ? '확인 중…' : 'Google로 초대 수락'}</Button></form>}
     {error && <p className="form-error" role="alert">{error}</p>}{notice && <p role="status">{notice}</p>}
     <a href="/#home">로그인 화면으로 돌아가기</a><p className="shared-access-note">오너는 변경되지 않아요. 초대 수락과 시트 접근 확인이 모두 끝나야 가계 노트가 열립니다.</p>
   </section></main>

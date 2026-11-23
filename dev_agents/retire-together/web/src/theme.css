@@ -170,3 +170,8 @@
   .wb, .wb *, [data-slot] { font-family: var(--font-sans); }
   .wb { font-feature-settings: "tnum"; }
 }
+
+/* Legacy action class names retain layout hooks, never override shared Button colors. */
+@layer components {
+  [data-slot="button"]:is(.primary-button,.secondary-button,.danger-button) {font-size:var(--text-sm);border-radius:calc(var(--radius) - 2px);min-height:36px;}
+}

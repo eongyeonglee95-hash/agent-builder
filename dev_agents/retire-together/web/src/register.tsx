@@ -1,3 +1,6 @@
+import { Input } from './components/ui/input'
+import { NativeSelect } from './components/ui/native-select'
+import { Button } from './components/ui/button'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { ArrowLeft, ArrowRight, Camera, Check, Download, FileSpreadsheet, Info, PencilLine, Plus, Sheet, Upload, X } from 'lucide-react'
 import { AssetForm } from './forms'
@@ -196,13 +199,13 @@ export function UploadFlow({ mode, owner, onSaved, initial }: { mode: 'capture' 
       <span className={`rv-pl n ${pl === null ? '' : tone(pl)}`}>{pl === null ? '' : signed(pl)}</span><span className={`rv-rt n ${pl === null ? '' : tone(pl)}`}>{pl === null || !b ? '' : `${(pl / b * 100).toFixed(2)}%`}</span>
       <span className="rv-wt n">{total ? `${(v / total * 100).toFixed(1)}%` : ''}</span>
       {open && <div className="rv-edit" onClick={e => e.stopPropagation()}>
-        <label>자산군<select aria-label="자산군" value={r.asset_class} onChange={e => { editRow(g, r.key, { asset_class: e.target.value }); setEditing(null) }}><option value="">고르기</option>{HOLDING_CLASSES.map(c => <option key={c} value={c}>{classInfo[c]?.label ?? c}</option>)}</select></label>
-        {r.asset_class === 'stock' && <label>주식 구분<select aria-label="주식 구분" value={r.stock_group} onChange={e => editRow(g, r.key, { stock_group: e.target.value })}><option value="">고르기</option>{STOCK_GROUPS.map(([k2, l]) => <option key={k2} value={k2}>{l}</option>)}</select></label>}
-        <label>종목명<input aria-label="종목명" value={r.ticker_name} onChange={e => editRow(g, r.key, { ticker_name: e.target.value })}/></label>
-        <label>종목코드<input aria-label="종목코드" value={r.ticker} maxLength={6} placeholder="6자리" onChange={e => editRow(g, r.key, { ticker: e.target.value })}/></label>
-        <label>보유수량<input aria-label="보유수량" className="n" inputMode="numeric" value={r.qty} onChange={e => editRow(g, r.key, { qty: e.target.value })}/></label>
-        <label>현재가<input aria-label="현재가" className="n" inputMode="numeric" value={r.price} onChange={e => editRow(g, r.key, { price: e.target.value })}/></label>
-        <label>매입금액<input aria-label="매입금액" className="n" inputMode="numeric" value={r.buy} placeholder="모르면 비워 두기" onChange={e => editRow(g, r.key, { buy: e.target.value })}/></label>
+        <label>자산군<NativeSelect aria-label="자산군" value={r.asset_class} onChange={e => { editRow(g, r.key, { asset_class: e.target.value }); setEditing(null) }}><option value="">고르기</option>{HOLDING_CLASSES.map(c => <option key={c} value={c}>{classInfo[c]?.label ?? c}</option>)}</NativeSelect></label>
+        {r.asset_class === 'stock' && <label>주식 구분<NativeSelect aria-label="주식 구분" value={r.stock_group} onChange={e => editRow(g, r.key, { stock_group: e.target.value })}><option value="">고르기</option>{STOCK_GROUPS.map(([k2, l]) => <option key={k2} value={k2}>{l}</option>)}</NativeSelect></label>}
+        <label>종목명<Input aria-label="종목명" value={r.ticker_name} onChange={e => editRow(g, r.key, { ticker_name: e.target.value })}/></label>
+        <label>종목코드<Input aria-label="종목코드" value={r.ticker} maxLength={6} placeholder="6자리" onChange={e => editRow(g, r.key, { ticker: e.target.value })}/></label>
+        <label>보유수량<Input aria-label="보유수량" className="n" inputMode="numeric" value={r.qty} onChange={e => editRow(g, r.key, { qty: e.target.value })}/></label>
+        <label>현재가<Input aria-label="현재가" className="n" inputMode="numeric" value={r.price} onChange={e => editRow(g, r.key, { price: e.target.value })}/></label>
+        <label>매입금액<Input aria-label="매입금액" className="n" inputMode="numeric" value={r.buy} placeholder="모르면 비워 두기" onChange={e => editRow(g, r.key, { buy: e.target.value })}/></label>
         <div className="rv-edit-tools">{r.candidates.length > 0 && !r.ticker && <span className="candidates">종목코드 후보 {r.candidates.map(([code, name]) => <button type="button" key={code} onClick={() => editRow(g, r.key, { ticker: code })}>{code} {name}</button>)}</span>}<button type="button" className="text-link danger" onClick={() => { patchGroup(g.key, gg => ({ rows: gg.rows.filter(x => x.key !== r.key) })); setEditing(null) }}>이 종목 빼기</button></div>
       </div>}
     </div>
@@ -269,15 +272,15 @@ export function UploadFlow({ mode, owner, onSaved, initial }: { mode: 'capture' 
   const contractsPanel = contracts && <div className="rv register-wide">
     {!groups && <div className="rv-top"><h3>이렇게 등록할게요</h3></div>}
     {contracts.map(g => { const total = contractTotal(g), problems = contractProblems(g), allTotal = g.rows.reduce((n, r) => n + (toMoney(r.amount) ?? 0), 0), diff = g.screenTotal ? allTotal - g.screenTotal : 0, skipped = g.rows.length - included(g).length; return <section className={`rv-acct ${g.saved ? 'is-saved' : ''}`} key={g.key} aria-label={`${g.label} 계약 표`}>
-      <div className="rv-acct-line"><h4>{g.label} <small>· 연금 계약 {g.rows.length}건</small></h4><label className="rv-ct-owner">누구의 연금<select aria-label="누구의 연금" value={g.owner} disabled={busy || !!g.saved} onChange={e => patchContracts(g.key, { owner: e.target.value as 'me' | 'partner' })}><option value="me">나</option><option value="partner">배우자</option></select></label></div>
+      <div className="rv-acct-line"><h4>{g.label} <small>· 연금 계약 {g.rows.length}건</small></h4><label className="rv-ct-owner">누구의 연금<NativeSelect aria-label="누구의 연금" value={g.owner} disabled={busy || !!g.saved} onChange={e => patchContracts(g.key, { owner: e.target.value as 'me' | 'partner' })}><option value="me">나</option><option value="partner">배우자</option></NativeSelect></label></div>
       <div className="rv-total n"><div className="rv-big">{included(g).some(r => toMoney(r.amount) === null) ? '등록 금액 확인 필요' : won(total)}</div><div className={`rv-check ${g.screenTotal && Math.abs(diff) > 5000 ? 'warn' : ''}`}>{g.screenTotal ? Math.abs(diff) <= 5000 ? <>캡처 합계 <b>{won(g.screenTotal)}</b>와 같아요{skipped ? ` · ${skipped}건은 겹쳐서 제외` : ''}</> : <>캡처 합계 <b>{won(g.screenTotal)}</b>와 {signed(diff)}원 달라요. 줄이 빠졌거나 숫자를 확인해 주세요.</> : '적립금 우선 · 적립금이 없으면 총납입보험료를 사용해요. 등록 금액과 종류를 확인해 주세요.'}</div></div>
       <div className="rv-contracts" role="table" aria-label="연금 계약" inert={busy || !!g.saved}>
         <div className="rv-ct-head" role="row"><span>상품 · 가입회사</span><span>등록 금액(원)</span><span>기준일</span><span>연금 층</span><span/></div>
         {g.rows.map(r => <div className={`rv-ct-row ${r.include ? '' : 'is-off'}`} role="row" key={r.key}>
           <span className="rv-ct-name"><label className="rv-ct-include"><input type="checkbox" aria-label={`${r.product_name} 포함`} checked={r.include} onChange={e => editContract(g, r.key, { include: e.target.checked })}/><strong title={r.product_name}>{r.product_name || '상품명 없음'}</strong></label><small>{[r.company, r.product_type].filter(Boolean).join(' · ')}{r.payout_start_date ? ` · 개시 ${r.payout_start_date.replaceAll('-', '.')}` : ''}{r.overlap && <b className="rv-ct-overlap"> · 증권사 잔고로 이미 등록한 계좌 같아요 — 두 번 잡히지 않게 뺐어요</b>}</small></span>
-          <input className="n" aria-label={`${r.product_name} 등록 금액`} placeholder="금액 확인 필요" inputMode="numeric" value={r.amount} onChange={e => editContract(g, r.key, { amount: e.target.value, amount_source: null })}/>
-          <input type="date" aria-label={`${r.product_name} 기준일`} value={r.as_of} max={today} onChange={e => editContract(g, r.key, { as_of: e.target.value })}/>
-          <select aria-label={`${r.product_name} 연금 층`} value={r.layer} onChange={e => editContract(g, r.key, { layer: Number(e.target.value) })}><option value={0}>연금 종류 확인</option>{[2, 3, 4].map(l => <option key={l} value={l}>{g.layerLabels[String(l)] ?? `${l}층`}</option>)}</select>
+          <Input className="n" aria-label={`${r.product_name} 등록 금액`} placeholder="금액 확인 필요" inputMode="numeric" value={r.amount} onChange={e => editContract(g, r.key, { amount: e.target.value, amount_source: null })}/>
+          <Input type="date" aria-label={`${r.product_name} 기준일`} value={r.as_of} max={today} onChange={e => editContract(g, r.key, { as_of: e.target.value })}/>
+          <NativeSelect aria-label={`${r.product_name} 연금 층`} value={r.layer} onChange={e => editContract(g, r.key, { layer: Number(e.target.value) })}><option value={0}>연금 종류 확인</option>{[2, 3, 4].map(l => <option key={l} value={l}>{g.layerLabels[String(l)] ?? `${l}층`}</option>)}</NativeSelect>
           <button type="button" className="icon-button" aria-label={`${r.product_name} 빼기`} onClick={() => patchContracts(g.key, gg => ({ rows: gg.rows.filter(x => x.key !== r.key) }))}><X size={14}/></button>
           {r.insurance_detail && <div className="rv-insurance-detail">
             <dl>{[['월 납입보험료', r.monthly_premium], ['총납입보험료', r.total_premiums], ['해지환급금', r.surrender_value]].map(([label, value]) => <div key={String(label)}><dt>{label}</dt><dd>{typeof value === 'number' ? won(value) : '화면에 없음'}</dd></div>)}
@@ -297,15 +300,15 @@ export function UploadFlow({ mode, owner, onSaved, initial }: { mode: 'capture' 
 
   if (!groups && contracts) return contractsPanel
   if (groups) return <>{contractsPanel}<form className="rv register-wide" onSubmit={saveAll}>
-    <div className="rv-top"><h3>이렇게 등록할게요</h3><span className="rv-date">{asOf.replaceAll('-', '.')} 기준{dateOpen ? <input type="date" aria-label="기준일" value={asOf} max={today} onChange={e => setAsOf(e.target.value)} required/> : <button type="button" className="rv-link" onClick={() => setDateOpen(true)}>바꾸기</button>}</span></div>
+    <div className="rv-top"><h3>이렇게 등록할게요</h3><span className="rv-date">{asOf.replaceAll('-', '.')} 기준{dateOpen ? <Input type="date" aria-label="기준일" value={asOf} max={today} onChange={e => setAsOf(e.target.value)} required/> : <button type="button" className="rv-link" onClick={() => setDateOpen(true)}>바꾸기</button>}</span></div>
     {groups.map(g => { const st = stats(g); const target = accounts.find(a => a.id === g.accountId); const pl = st.hasBuy ? st.total - st.buy : null; return <section className={`rv-acct ${g.saved ? 'is-saved' : ''}`} key={g.key}>
       <div className="rv-acct-line"><h4>{g.preview.account_label}</h4>
         {g.picking || (!g.accountId && !g.creating)
-          ? <select aria-label="저장할 계좌" value={g.creating ? '__new__' : g.accountId} onChange={e => e.target.value === '__new__' ? patchGroup(g.key, { creating: true, picking: false }) : patchGroup(g.key, { creating: false, picking: false, accountId: e.target.value })}>
+          ? <NativeSelect aria-label="저장할 계좌" value={g.creating ? '__new__' : g.accountId} onChange={e => e.target.value === '__new__' ? patchGroup(g.key, { creating: true, picking: false }) : patchGroup(g.key, { creating: false, picking: false, accountId: e.target.value })}>
               <option value="" disabled>저장할 계좌 고르기</option>
               {accounts.map(a => <option key={a.id} value={a.id}>{a.label} · {a.owner === 'me' ? '나' : '배우자'} · {a.broker_label} {a.type_label}</option>)}
               <option value="__new__">새 계좌로 추가 — {g.preview.suggested?.label ?? g.preview.account_label}</option>
-            </select>
+            </NativeSelect>
           : target && <span className="rv-to">{target.broker_label} {target.type_label} · {target.owner === 'me' ? '나' : '배우자'}의 <b>{target.label}</b>에 저장<button type="button" className="rv-link" onClick={() => patchGroup(g.key, { picking: true })}>바꾸기</button></span>}
       </div>
       {isKiwoom && target && <label className="rv-accept"><input type="checkbox" checked={!!target.auto_sync} onChange={async e => { try { const next = await api<RegisterAccount>(`/register/accounts/${target.id}/auto-sync`, 'PUT', { auto_sync: e.target.checked }); setAccounts(list => list.map(a => a.id === next.id ? { ...a, auto_sync: next.auto_sync } : a)) } catch (err) { patchGroup(g.key, { error: err instanceof Error ? err.message : '자동 갱신 설정을 바꾸지 못했어요.' }) } }}/>자동 갱신 — 화면을 열 때 이 계좌를 키움 잔고로 저절로 바꿔요</label>}
@@ -343,7 +346,7 @@ export function UploadFlow({ mode, owner, onSaved, initial }: { mode: 'capture' 
     <p className="form-intro">키움 일반(주식) 계좌의 지금 잔고를 키움 API로 불러와요.<br/>조회만 하고 주문은 하지 않아요. 불러온 표를 확인한 뒤 등록해요.</p>
     {kiwoomReady === false && <p className="form-help">아직 키움 앱키가 없어요. 키움 OpenAPI 포털에서 App Key를 발급받고(이 컴퓨터의 공인 IP 등록 필요) 프로젝트 폴더의 .env 파일에 KIWOOM_APPKEY, KIWOOM_SECRETKEY를 넣어 주세요.</p>}
     {error && <div className="form-error" role="alert"><Info size={16}/>{error}</div>}
-    <button type="button" className="primary-button full-width" disabled={busy || kiwoomReady === false} onClick={convert}>{busy ? '키움에서 불러오는 중…' : '키움에서 잔고 불러오기'}<ArrowRight size={16}/></button>
+    <Button variant="default" type="button" className="primary-button full-width" disabled={busy || kiwoomReady === false} onClick={convert}>{busy ? '키움에서 불러오는 중…' : '키움에서 잔고 불러오기'}<ArrowRight size={16}/></Button>
     <p className="form-help">앱키는 이 컴퓨터의 .env에만 있고 화면이나 시트에 쓰지 않아요. 종목 잔고와 예수금(현금)을 함께 불러와요.</p>
   </div>
 
@@ -355,7 +358,7 @@ export function UploadFlow({ mode, owner, onSaved, initial }: { mode: 'capture' 
     </button>
     {files.length > 0 && <ul className="file-list">{files.map((f, i) => <li key={`${f.name}-${i}`}><span>{f.name}</span><small>{(f.size / 1024).toFixed(0)}KB</small><button type="button" className="icon-button" aria-label={`${f.name} 빼기`} onClick={() => setFiles(files.filter((_, k) => k !== i))}><X size={14}/></button></li>)}</ul>}
     {error && <div className="form-error" role="alert"><Info size={16}/>{error}</div>}
-    <button type="button" className="primary-button full-width" disabled={busy} onClick={convert}>{busy ? (isCapture ? '캡처를 읽는 중… (계좌가 많으면 1분쯤)' : '파일을 읽는 중…') : '표로 바꾸기'}<ArrowRight size={16}/></button>
+    <Button variant="default" type="button" className="primary-button full-width" disabled={busy} onClick={convert}>{busy ? (isCapture ? '캡처를 읽는 중… (계좌가 많으면 1분쯤)' : '파일을 읽는 중…') : '표로 바꾸기'}<ArrowRight size={16}/></Button>
     {!isCapture && <p className="xl-links reg-template"><a href="/api/register/template.xlsx" download><Download size={14}/>빈 엑셀 양식 받기</a><a href={`/api/register/template.xlsx?prefill=1&owner=${owner}`} download><Download size={14}/>지금 잔고를 엑셀로 받아 고치기</a></p>}
     <p className="form-help">{isCapture ? '사진은 이 컴퓨터에만 저장되고 Claude 비전이 표로 옮겨요. 숫자는 계산하지 않고 보이는 값만 옮기며, 어느 계좌인지는 다음 화면에서 확인해요.' : '첫 줄 위에 제목이 있어도 돼요. 숫자의 쉼표·원 표기는 알아서 떼요. 어느 계좌인지는 다음 화면에서 골라요.'}</p>
   </div>
@@ -376,5 +379,5 @@ export function NewAccount({ initial, onCancel, onCreated }: { initial: AccountS
       await onCreated(created.id)
     } catch (e) { setError(e instanceof Error ? e.message : '계좌를 추가하지 못했어요.') } finally { setBusy(false) }
   }
-  return <div className="new-account" role="group" aria-label="새 계좌로 추가"><strong>새 계좌로 추가</strong><div className="form-grid"><label className="form-label">계좌 이름<input name="label" value={value.label} onChange={e => set({ label: e.target.value })} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); submit() } }} placeholder="예: 미래에셋 연금저축(신)" maxLength={60} required/></label><label className="form-label">누구의 계좌<select name="owner" value={value.owner} onChange={e => set({ owner: e.target.value as 'me' | 'partner' })}><option value="me">나</option><option value="partner">배우자</option></select></label><label className="form-label">증권사<select name="broker" value={value.broker} onChange={e => set({ broker: e.target.value })}>{BROKERS.map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></label><label className="form-label">계좌 종류<select name="account_type" value={value.account_type} onChange={e => set({ account_type: e.target.value })}>{TYPES.map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></label></div>{error && <div className="form-error" role="alert"><Info size={16}/>{error}</div>}<div className="button-row">{onCancel && <button type="button" className="secondary-button" onClick={onCancel}>취소</button>}<button type="button" className="primary-button" disabled={busy} onClick={submit}>{busy ? '추가 중…' : '계좌 추가'}</button></div><p className="form-help">계좌번호는 넣지 않아요. 연금저축·IRP는 노후 주머니, 나머지는 현금 주머니로 들어가요. 리밸런싱 묶음·전략은 설정에서 정해요.</p></div>
+  return <div className="new-account" role="group" aria-label="새 계좌로 추가"><strong>새 계좌로 추가</strong><div className="form-grid"><label className="form-label">계좌 이름<Input name="label" value={value.label} onChange={e => set({ label: e.target.value })} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); submit() } }} placeholder="예: 미래에셋 연금저축(신)" maxLength={60} required/></label><label className="form-label">누구의 계좌<NativeSelect name="owner" value={value.owner} onChange={e => set({ owner: e.target.value as 'me' | 'partner' })}><option value="me">나</option><option value="partner">배우자</option></NativeSelect></label><label className="form-label">증권사<NativeSelect name="broker" value={value.broker} onChange={e => set({ broker: e.target.value })}>{BROKERS.map(([k, v]) => <option key={k} value={k}>{v}</option>)}</NativeSelect></label><label className="form-label">계좌 종류<NativeSelect name="account_type" value={value.account_type} onChange={e => set({ account_type: e.target.value })}>{TYPES.map(([k, v]) => <option key={k} value={k}>{v}</option>)}</NativeSelect></label></div>{error && <div className="form-error" role="alert"><Info size={16}/>{error}</div>}<div className="button-row">{onCancel && <Button variant="outline" type="button" className="secondary-button" onClick={onCancel}>취소</Button>}<Button variant="default" type="button" className="primary-button" disabled={busy} onClick={submit}>{busy ? '추가 중…' : '계좌 추가'}</Button></div><p className="form-help">계좌번호는 넣지 않아요. 연금저축·IRP는 노후 주머니, 나머지는 현금 주머니로 들어가요. 리밸런싱 묶음·전략은 설정에서 정해요.</p></div>
 }

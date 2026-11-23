@@ -1,3 +1,5 @@
+import { NativeSelect } from '../components/ui/native-select'
+import { Input } from '../components/ui/input'
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { ChevronDown, ChevronRight, House, Plus, SlidersHorizontal, Target, X } from 'lucide-react'
 import { Modal } from '../components'
@@ -119,11 +121,11 @@ function TrackPanel({ candidate: c, track, pick, hidden, busy, onTrack, onAsking
   return <div className="property-move-track">
     <div className="property-move-section-head"><div><h3>추적 기록</h3></div>
       <div className="property-move-track-actions">
-        <form className="property-move-track-asking" onSubmit={submitAsking}><input aria-label={`${c.name} 호가 (만원)`} inputMode="numeric" placeholder="확인한 호가" value={asking} disabled={busy} onChange={e => setAsking(e.target.value)}/><span>만원</span><button type="submit" className="property-move-button" disabled={busy || !asking}>호가로 기록</button></form>
+        <form className="property-move-track-asking" onSubmit={submitAsking}><Input aria-label={`${c.name} 호가 (만원)`} inputMode="numeric" placeholder="확인한 호가" value={asking} disabled={busy} onChange={e => setAsking(e.target.value)}/><span>만원</span><button type="submit" className="property-move-button" disabled={busy || !asking}>호가로 기록</button></form>
         <button type="button" className="property-move-button primary" disabled={busy || !pick} onClick={() => pick && run(() => onTrack(pick, note))}>오늘 기록{pick ? ` · ${basisShort[pick.price_basis]} ${hidden ? '••••' : money(pick.price)}` : ''}</button>
       </div>
     </div>
-    <label className="property-move-track-note"><span>메모</span><input maxLength={100} placeholder="예: 12층 매물 확인, 급매" value={note} disabled={busy} onChange={e => setNote(e.target.value)}/></label>
+    <label className="property-move-track-note"><span>메모</span><Input maxLength={100} placeholder="예: 12층 매물 확인, 급매" value={note} disabled={busy} onChange={e => setNote(e.target.value)}/></label>
     {error && <p className="property-move-error" role="alert">{error}</p>}
     {track.length ? <div className="property-move-track-scroll"><table className="property-move-track-table" aria-label={`${c.name} 추적 기록`}>
       <thead><tr><th>기준일</th><th>기준</th><th>목표 집</th><th>우리 집</th><th>격차</th><th>더 필요한 돈</th><th>메모</th><th><span className="sr-only">삭제</span></th></tr></thead>
@@ -234,7 +236,7 @@ export function PropertyMove({ owner, family, hidden, onChanged, view = 'move' }
       </div>} saved={p.candidates} result={discovery} setResult={setDiscovery} onAdd={async candidates=>{const all=[...p.candidates];for(const c of candidates){if(!all.some(old=>old.id===c.id||(old.name===c.name&&old.address?.jibun===c.address?.jibun&&Math.floor(old.area_m2??0)===Math.floor(c.area_m2??0))))all.push(c)}if(all.length>50)throw new Error(`관심 평형은 최대 50개까지 등록할 수 있어요. 현재 ${p.candidates.length}개입니다.`);await save({...p,candidates:all})}}/>
     </section>}
     {view === 'plan' && <><section className="property-move-section" id="property-move-compare"><div className="property-move-section-head"><div><h2>후보 비교</h2></div><button className="property-move-button" disabled={p.candidates.length >= 50} onClick={() => setDialog({ type: 'candidate' })}><Plus size={15}/>비교할 아파트 추가</button></div>
-      {p.candidates.length > 1 && <div className="property-move-compare-toolbar"><select aria-label="후보 정렬" value={sort} onChange={e => setSort(e.target.value)}><option value="gap">더 필요한 돈 적은 순</option><option value="price">낮은 가격순</option></select></div>}
+      {p.candidates.length > 1 && <div className="property-move-compare-toolbar"><NativeSelect aria-label="후보 정렬" value={sort} onChange={e => setSort(e.target.value)}><option value="gap">더 필요한 돈 적은 순</option><option value="price">낮은 가격순</option></NativeSelect></div>}
       <div className="property-move-candidates">{candidates.map(c => <CandidateLine key={c.id} candidate={c} budget={budgetOf(c.id)} track={data.track[c.id] ?? []} hidden={hidden} busy={busy} revealKey={detailsRequest?.id === c.id ? detailsRequest.sequence : 0} onEdit={() => setDialog({ type: 'candidate', candidate: c })} onTrack={(pick, note) => trackNow(c.id, pick, note)} onUntrack={day => untrack(c.id, day)} onLiving={living => save({ ...p, candidates: p.candidates.map(old => old.id === c.id ? { ...old, living } : old), target_id: null })} onAsking={async won => { await save({ ...p, candidates: p.candidates.map(old => old.id === c.id ? { ...old, asking_low: won, asking_high: won, asking_date: dateToday() } : old), target_id: null }); await trackNow(c.id, { price: won, price_basis: 'asking', price_date: dateToday() }, '') }}/>)}</div>
       {!candidates.length && <div className="property-move-empty"><Target size={28}/><div><strong>등록한 후보가 없습니다.</strong></div></div>}
       <p className="property-move-note">계획 매수가 기준 · 호가는 직접 기록</p>

@@ -1,3 +1,4 @@
+import { NativeSelect } from './components/ui/native-select'
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { ArrowUpRight, Check, ChevronRight, Eye, EyeOff, Info, X } from 'lucide-react'
 import { classInfo, compactMoney, money, type Strategy } from './model'
@@ -73,7 +74,7 @@ export function IncomeChart({ large = false, hidden = false }: { large?: boolean
       {[2026, 2035, 2045, 2055, 2060].map(year => <text key={year} x={x(year)} y="179" textAnchor="middle">{year}</text>)}
       {income.map((p, i) => <rect key={p.year} x={x(p.year) - 14} y="15" width="28" height="143" fill="transparent" onMouseEnter={() => setPoint(i)}><title>{p.year}년 기준 예시 {p.base.toLocaleString()}만원, 감소 예시 {p.risk.toLocaleString()}만원</title></rect>)}
     </svg>}
-    <div className="chart-bottom"><label>연도 <select aria-label="소득 예시 연도" value={point} onChange={e => setPoint(Number(e.target.value))}>{income.map((p, i) => <option key={p.year} value={i}>{p.year}년</option>)}</select></label><span>연 <strong>{hidden ? '••••' : income[point].base.toLocaleString()}만원</strong><small> · 고정 예시</small></span></div>
+    <div className="chart-bottom"><label>연도 <NativeSelect aria-label="소득 예시 연도" value={point} onChange={e => setPoint(Number(e.target.value))}>{income.map((p, i) => <option key={p.year} value={i}>{p.year}년</option>)}</NativeSelect></label><span>연 <strong>{hidden ? '••••' : income[point].base.toLocaleString()}만원</strong><small> · 고정 예시</small></span></div>
   </div>
 }
 export function Modal({ title, children, onClose, className = '' }: { title: string; children: ReactNode; onClose: () => void; className?: string }) {

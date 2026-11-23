@@ -1,3 +1,5 @@
+import { Input } from '../components/ui/input'
+import { NativeSelect } from '../components/ui/native-select'
 import type { Outlook } from './RetirementOutlook'
 import { SecuritiesReport, type ReportAccount, type ResearchNote, type PortfolioExhibit } from './SecuritiesReport'
 import type { AllocationAnalysis } from './AllocationReport'
@@ -61,9 +63,9 @@ export function ReviewSettings({ review, summary }: { review: Review; summary?: 
     </div>
     {editing && <form className="mt-4 flex flex-col gap-3 border-t border-grey-200 pt-4" onSubmit={async e => { e.preventDefault(); if (await action('/workbook/review/schedule', 'PUT', draft)) { setEditing(false); setSaved(true) } }}>
       <div className="flex flex-wrap items-end gap-3">
-        <label className="flex flex-col gap-1 text-sm text-grey-700">점검 주기<select className={inputClass} value={draft.period} onChange={e => setDraft({ ...draft, period: e.target.value as Schedule['period'] })}>{Object.entries(periods).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label>
-        {draft.period === 'custom' && <label className="flex flex-col gap-1 text-sm text-grey-700">간격(일)<input type="number" min={1} max={365} required className={`${inputClass} w-24`} value={draft.days} onChange={e => setDraft({ ...draft, days: Number(e.target.value) })}/></label>}
-        <label className="flex flex-col gap-1 text-sm text-grey-700">첫 / 다음 점검일<input type="date" required min={today()} className={inputClass} value={draft.first_date} onChange={e => setDraft({ ...draft, first_date: e.target.value })}/></label>
+        <label className="flex flex-col gap-1 text-sm text-grey-700">점검 주기<NativeSelect className={inputClass} value={draft.period} onChange={e => setDraft({ ...draft, period: e.target.value as Schedule['period'] })}>{Object.entries(periods).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</NativeSelect></label>
+        {draft.period === 'custom' && <label className="flex flex-col gap-1 text-sm text-grey-700">간격(일)<Input type="number" min={1} max={365} required className={`${inputClass} w-24`} value={draft.days} onChange={e => setDraft({ ...draft, days: Number(e.target.value) })}/></label>}
+        <label className="flex flex-col gap-1 text-sm text-grey-700">첫 / 다음 점검일<Input type="date" required min={today()} className={inputClass} value={draft.first_date} onChange={e => setDraft({ ...draft, first_date: e.target.value })}/></label>
         <label className="flex min-h-10 items-center gap-2 text-sm"><input type="checkbox" checked={draft.enabled} onChange={e => setDraft({ ...draft, enabled: e.target.checked })}/>자동 점검 켜기</label>
         <label className="flex min-h-10 items-center gap-2 text-sm"><input type="checkbox" checked={draft.notify} onChange={e => setDraft({ ...draft, notify: e.target.checked })}/>정기 점검 요약을 텔레그램으로 받기</label>
         <Button type="submit" disabled={busy || running}>{busy ? '저장 중…' : '설정 저장'}</Button>

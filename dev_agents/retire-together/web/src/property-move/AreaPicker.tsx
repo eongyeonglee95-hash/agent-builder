@@ -1,3 +1,4 @@
+import { Input } from '../components/ui/input'
 import { useEffect, useState } from 'react'
 import { Check } from 'lucide-react'
 import { api } from '../local-data'
@@ -36,6 +37,6 @@ export function AreaPicker({ address, name, value, onChange, selected, onSelecti
     {!!data?.warnings.length && <p className="property-move-note">{data.warnings.join(' · ')} · 확인된 자료만 표시해요.</p>}
     {data && !data.areas.length && <p className="property-move-note">이 단지에서 확인된 면적이 없어요. 알고 있는 전용면적을 입력해 주세요.</p>}
     {!bcode && <p className="property-move-note">단지를 검색하면 실제 확인된 평형을 고를 수 있어요.</p>}
-    {(manual || !data?.areas.length || (value !== null && !matched)) ? <label className="property-move-field"><span>전용면적 (㎡)</span><input type="number" min="1" max="2000" step="0.01" value={value ?? ''} onChange={e => onChange(e.target.value ? Number(e.target.value) : null)} placeholder="예: 84.99"/></label> : <button type="button" className="property-move-link" onClick={() => setManual(true)}>다른 전용면적 직접 입력</button>}
+    {(manual || !data?.areas.length || (value !== null && !matched)) ? <label className="property-move-field"><span>전용면적 (㎡)</span><Input type="number" min="1" max="2000" step="0.01" value={value ?? ''} onChange={e => onChange(e.target.value ? Number(e.target.value) : null)} placeholder="예: 84.99"/></label> : <button type="button" className="property-move-link" onClick={() => setManual(true)}>다른 전용면적 직접 입력</button>}
   </fieldset>
 }

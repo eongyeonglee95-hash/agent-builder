@@ -1,3 +1,6 @@
+import { Input } from './components/ui/input'
+import { NativeSelect } from './components/ui/native-select'
+import { Button } from './components/ui/button'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { ArrowDownToLine, ChevronDown, FileText, Info, RefreshCw, ShieldCheck } from 'lucide-react'
 import { api } from './local-data'
@@ -66,11 +69,11 @@ export function RebalancePreview({ owner }: { owner: Owner }) {
     </button>
     {open && <>
     <p className="form-intro">수량과 가격이 있는 종목 잔고 CSV를 올려 주세요. 위의 수동 자산 총액과 별도로 계산하며, 등록한 자산 금액은 바뀌지 않습니다.</p>
-    {loading ? <p role="status">계좌 설정을 불러오고 있어요…</p> : !pools.length ? <div className="empty-state"><FileText size={28}/><h3>계산할 연금저축 계좌가 없어요</h3><p>기존 계좌 설정에서 활성화된 연금저축 계좌를 먼저 확인해 주세요.</p><button className="secondary-button" onClick={() => setRevision(v => v + 1)}>다시 불러오기</button></div> : <form onSubmit={submit} onChange={() => setResult(null)}>
+    {loading ? <p role="status">계좌 설정을 불러오고 있어요…</p> : !pools.length ? <div className="empty-state"><FileText size={28}/><h3>계산할 연금저축 계좌가 없어요</h3><p>기존 계좌 설정에서 활성화된 연금저축 계좌를 먼저 확인해 주세요.</p><Button variant="outline" className="secondary-button" onClick={() => setRevision(v => v + 1)}>다시 불러오기</Button></div> : <form onSubmit={submit} onChange={() => setResult(null)}>
       <fieldset disabled={busy} className="engine-fields">
-        <div className="form-grid"><label className="form-label">계산할 계좌 묶음<select aria-label="계산할 계좌 묶음" value={poolId} onChange={e => { setPoolId(e.target.value); setCsv(''); setFilename(''); setError(''); fileRevision.current++ }}>
+        <div className="form-grid"><label className="form-label">계산할 계좌 묶음<NativeSelect aria-label="계산할 계좌 묶음" value={poolId} onChange={e => { setPoolId(e.target.value); setCsv(''); setFilename(''); setError(''); fileRevision.current++ }}>
           {pools.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
-        </select></label><label className="form-label">잔고·가격 기준일<input name="as_of" type="date" max={new Date().toLocaleDateString('en-CA')} required/></label></div>
+        </NativeSelect></label><label className="form-label">잔고·가격 기준일<Input name="as_of" type="date" max={new Date().toLocaleDateString('en-CA')} required/></label></div>
         <div className="engine-upload" key={poolId}><label className="form-label">종목 잔고 CSV<input type="file" accept=".csv,text/csv" aria-label="종목 잔고 CSV" onChange={async e => {
           const file = e.target.files?.[0]; const token = ++fileRevision.current
           setCsv(''); setFilename(''); setError('')
@@ -81,10 +84,10 @@ export function RebalancePreview({ owner }: { owner: Owner }) {
             if (token !== fileRevision.current) return
             setCsv(text); setFilename(file.name)
           } catch { if (token === fileRevision.current) setError('파일을 읽지 못했습니다. 다시 선택해 주세요.') }
-        }}/><small>{filename ? `${filename} · 계산 전 확인된 종목 분류와 대조합니다.` : '양식의 계좌별로 종목명·종목코드·정수 수량·가격(원)을 입력해 주세요.'}</small></label><button type="button" className="secondary-button" onClick={template}><ArrowDownToLine size={15}/>CSV 양식</button></div>
-        <div className="form-grid"><label className="form-label">추가 납입금 (원)<input name="new_cash" type="number" min="0" max="1000000000000000" step="1" defaultValue="0" required/></label><label className="form-label">납입할 계좌<select name="new_cash_account" key={poolId} required>{selected?.accounts.map(a => <option key={a.id} value={a.id}>{a.label}</option>)}</select></label></div>
+        }}/><small>{filename ? `${filename} · 계산 전 확인된 종목 분류와 대조합니다.` : '양식의 계좌별로 종목명·종목코드·정수 수량·가격(원)을 입력해 주세요.'}</small></label><Button variant="outline" type="button" className="secondary-button" onClick={template}><ArrowDownToLine size={15}/>CSV 양식</Button></div>
+        <div className="form-grid"><label className="form-label">추가 납입금 (원)<Input name="new_cash" type="number" min="0" max="1000000000000000" step="1" defaultValue="0" required/></label><label className="form-label">납입할 계좌<NativeSelect name="new_cash_account" key={poolId} required>{selected?.accounts.map(a => <option key={a.id} value={a.id}>{a.label}</option>)}</NativeSelect></label></div>
         <p className="form-help">{selected?.mode === 'buy_only' ? '매수만' : '매도·매수'} 모드 · 등록된 계좌 전략 사용 · 업로드한 가격으로 계산 · 예수금은 현재 별도 입력 전입니다.</p>
-        <button className="primary-button" type="submit" disabled={!csv || busy}><RefreshCw size={16}/>{busy ? '계산 중…' : '잔고 확인·계산'}</button>
+        <Button variant="default" className="primary-button" type="submit" disabled={!csv || busy}><RefreshCw size={16}/>{busy ? '계산 중…' : '잔고 확인·계산'}</Button>
       </fieldset>
     </form>}
     {error && <div className="form-error" role="alert"><Info size={16}/>{error}{!pools.length && <button onClick={() => setRevision(v => v + 1)}>다시 시도</button>}</div>}

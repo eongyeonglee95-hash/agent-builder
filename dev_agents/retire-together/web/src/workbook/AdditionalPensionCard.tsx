@@ -1,3 +1,5 @@
+import { NativeSelect } from '../components/ui/native-select'
+import { Input } from '../components/ui/input'
 import { useEffect, useRef, useState, type CSSProperties, type FormEvent } from 'react'
 import { api } from '../local-data'
 import { manwon, won } from '@/lib/format'
@@ -55,17 +57,17 @@ export function AdditionalPensionCard({ asset, index }: { asset: AdditionalPensi
       {mode && data && <form onSubmit={save} onChange={() => { requestId.current = null }} className="mt-3 border-t border-black/10 pt-3" aria-label={mode === 'plan' ? '납입 정보 수정' : '납입 기록 입력'}>
         <fieldset disabled={busy} className="grid min-w-0 gap-3 sm:grid-cols-3">
           {mode === 'plan' ? <>
-            <label className="text-xs">월 납입액 (원)<input className={field} type="number" name="monthly" min="0" max="10000000000" step="1" defaultValue={plan?.monthly ?? ''}/></label>
-            <label className="text-xs">매월 납입일<input className={field} type="number" name="day" min="1" max="31" step="1" defaultValue={plan?.day ?? ''}/></label>
-            <label className="text-xs">납입 종료일<input className={field} type="date" name="end_date" defaultValue={plan?.end_date ?? ''}/></label>
-            <label className="text-xs">수령 시작일<input className={field} type="date" name="payout_date" defaultValue={plan?.payout_date ?? ''}/></label>
-            <label className="text-xs">계약상 예상 월 연금 (원)<input className={field} type="number" name="expected_monthly" min="0" max="10000000000" step="1" defaultValue={plan?.expected_monthly ?? ''}/></label>
-            <label className="text-xs">납입 상태<select className={field} name="status" defaultValue={plan?.status}><option value="active">납입 중</option><option value="paused">납입 중지</option><option value="complete">납입 완료</option></select></label>
+            <label className="text-xs">월 납입액 (원)<Input className={field} type="number" name="monthly" min="0" max="10000000000" step="1" defaultValue={plan?.monthly ?? ''}/></label>
+            <label className="text-xs">매월 납입일<Input className={field} type="number" name="day" min="1" max="31" step="1" defaultValue={plan?.day ?? ''}/></label>
+            <label className="text-xs">납입 종료일<Input className={field} type="date" name="end_date" defaultValue={plan?.end_date ?? ''}/></label>
+            <label className="text-xs">수령 시작일<Input className={field} type="date" name="payout_date" defaultValue={plan?.payout_date ?? ''}/></label>
+            <label className="text-xs">계약상 예상 월 연금 (원)<Input className={field} type="number" name="expected_monthly" min="0" max="10000000000" step="1" defaultValue={plan?.expected_monthly ?? ''}/></label>
+            <label className="text-xs">납입 상태<NativeSelect className={field} name="status" defaultValue={plan?.status}><option value="active">납입 중</option><option value="paused">납입 중지</option><option value="complete">납입 완료</option></NativeSelect></label>
           </> : <>
-            <label className="text-xs">납입한 날짜<input className={field} name="event_date" type="date" max={today()} defaultValue={today()} required/></label>
-            <label className="text-xs">실제 납입액 (원)<input className={field} name="amount" type="number" min="1" max="10000000000" step="1" defaultValue={plan?.monthly ?? ''} required/></label>
+            <label className="text-xs">납입한 날짜<Input className={field} name="event_date" type="date" max={today()} defaultValue={today()} required/></label>
+            <label className="text-xs">실제 납입액 (원)<Input className={field} name="amount" type="number" min="1" max="10000000000" step="1" defaultValue={plan?.monthly ?? ''} required/></label>
           </>}
-          <label className="text-xs sm:col-span-3">{mode === 'plan' ? '계약 조건 메모' : '메모'}<input className={field} name="note" maxLength={mode === 'plan' ? 1000 : 500} defaultValue={mode === 'plan' ? plan?.note : ''}/></label>
+          <label className="text-xs sm:col-span-3">{mode === 'plan' ? '계약 조건 메모' : '메모'}<Input className={field} name="note" maxLength={mode === 'plan' ? 1000 : 500} defaultValue={mode === 'plan' ? plan?.note : ''}/></label>
           <div className="flex gap-2 sm:col-span-3"><Button size="sm" type="submit">{busy ? '저장 중…' : '저장'}</Button><Button size="sm" variant="ghost" type="button" onClick={() => setMode(null)}>취소</Button></div>
         </fieldset>
       </form>}

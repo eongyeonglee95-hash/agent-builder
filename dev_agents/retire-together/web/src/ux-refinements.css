@@ -34,3 +34,20 @@
   .ux-home .hero-content p,
   .ux-home .hero-caption { display: none; }
 }
+
+/* Shared Button wins over unlayered legacy action styling in every workspace. */
+[data-slot="button"].primary-button{background:var(--primary);color:var(--primary-foreground);border-color:var(--primary);font-size:var(--text-sm)}
+[data-slot="button"].primary-button:hover:not(:disabled){background:color-mix(in srgb,var(--primary) 90%,transparent);color:var(--primary-foreground)}
+[data-slot="button"].secondary-button{background:var(--background);color:var(--foreground);border-color:var(--input);font-size:var(--text-sm)}
+[data-slot="button"].secondary-button:hover:not(:disabled){background:var(--accent);color:var(--accent-foreground)}
+[data-slot="button"].danger-button{background:var(--destructive);color:var(--primary-foreground);border-color:var(--destructive);font-size:var(--text-sm)}
+[data-slot="button"]:is(.primary-button,.secondary-button,.danger-button):disabled{opacity:.55;cursor:not-allowed}
+
+/* Native forms and Radix controls share the same field tokens and height. */
+:root input[data-slot="input"],:root select[data-slot="native-select"]{min-height:36px;border:1px solid var(--input);border-radius:calc(var(--radius) - 2px);background:var(--background);color:var(--foreground);font-family:var(--font-sans);font-size:var(--text-sm);font-weight:400}
+:root input[data-slot="input"]:focus-visible,:root select[data-slot="native-select"]:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+:root input[data-slot="input"][aria-invalid="true"],:root select[data-slot="native-select"][aria-invalid="true"]{border-color:var(--destructive)}
+/* The shared select supplies its own border and native arrow. */
+.owner-select{border:0;padding:0;background:transparent}
+.owner-select>svg{display:none}
+.owner-select select[data-slot="native-select"]{appearance:auto;padding:0 12px}

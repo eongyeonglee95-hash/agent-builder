@@ -1,3 +1,5 @@
+import { NativeSelect } from '../components/ui/native-select'
+import { Input } from '../components/ui/input'
 // 가계부 (HB-01 → HB-02, 2026-11-20 사용자 시안 확정) — 위에는 고른 달의 돈의 흐름, 아래는 1년 표.
 // 표 칸을 눌러 바로 고치고, '매달 고정' 칸은 새 달에 미리 채워지고, 카드·은행 캡처는 분류해서 더한다.
 // 계산·분류는 서버(tools/household_book.py). 화면은 받은 숫자를 그리기만 한다.
@@ -160,7 +162,7 @@ function YearTable({ book, year, month, lastMonth, hidden, onPick, onSaved, onEr
           const canEdit = (r.kind === 'item' || r.kind === 'group-item') && c <= lastMonth && !r.locked?.includes(c)
           if (!canEdit) return <td key={c} className={`${now}${v !== undefined && v < 0 ? ' hb-short' : ''}`} title={r.locked?.includes(c) ? '여러 줄이 합쳐진 칸이에요' : undefined}>{cell(v, hidden)}</td>
           if (edit?.key === r.key && edit.m === c) return <td key={c} className={`hb-editing${now}`}>
-            <input autoFocus inputMode="numeric" aria-label={`${c}월 ${r.label}`} defaultValue={v ? v.toLocaleString('ko-KR') : ''}
+            <Input autoFocus inputMode="numeric" aria-label={`${c}월 ${r.label}`} defaultValue={v ? v.toLocaleString('ko-KR') : ''}
               onBlur={e => save(r.key, c, e.target.value)} onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); if (e.key === 'Escape') setEdit(null) }}/></td>
           return <td key={c} className={`hb-cell${now}${r.auto?.includes(c) ? ' hb-auto' : ''}`}>
             <button aria-label={`${c}월 ${r.label} 고치기`} onClick={() => setEdit({ key: r.key, m: c })}>{cell(v, hidden)}</button></td>
@@ -250,8 +252,8 @@ function CapturePanel({ book, month, label, categories, bigLabel, onClose, onSav
       <thead><tr><th>가맹점</th><th>날짜</th><th>금액</th><th className="hb-left">분류</th></tr></thead>
       <tbody>{use.map(r => { const i = rows.indexOf(r); return <tr key={i} className={r.category ? '' : 'hb-ask'}>
         <td>{r.merchant}</td><td>{r.date.slice(5).replace('-', '.')}</td><td>{r.amount.toLocaleString('ko-KR')}</td>
-        <td className="hb-left"><select aria-label={`${r.merchant} 분류`} value={r.category ?? ''} onChange={e => setRows(rows.map((x, j) => j === i ? { ...x, category: e.target.value || null, how: null } : x))}>
-          <option value="">골라 주세요</option>{options.map(([id, l]) => <option key={id} value={id}>{l}</option>)}</select>
+        <td className="hb-left"><NativeSelect aria-label={`${r.merchant} 분류`} value={r.category ?? ''} onChange={e => setRows(rows.map((x, j) => j === i ? { ...x, category: e.target.value || null, how: null } : x))}>
+          <option value="">골라 주세요</option>{options.map(([id, l]) => <option key={id} value={id}>{l}</option>)}</NativeSelect>
           {r.how === 'learned' && <small> 전에 고른 분류</small>}</td>
       </tr> })}</tbody></table></div>}
     {err && <p className="hb-error hb-pad" role="alert">{err}</p>}

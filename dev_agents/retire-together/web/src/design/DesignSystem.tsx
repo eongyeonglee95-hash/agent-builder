@@ -9,6 +9,7 @@ import { SectionMenu } from '@/components/ui/section-menu'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { NativeSelect } from '@/components/ui/native-select'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -54,12 +55,12 @@ function Swatch({ token, label, note }: { token: string; label?: string; note?: 
 const grid = 'grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5'
 const TYPE: [string, string, string][] = [
   ['text-3xl', '30px', '화면 맨 위 큰 합계 하나'],
-  ['text-2xl', '22px', '요약 숫자(카드 안)'],
+  ['text-2xl', '24px', '요약 숫자(카드 안)'],
   ['text-xl', '20px', '구역 제목'],
-  ['text-lg', '17px', '대화상자 제목'],
-  ['text-base', '15px', '본문·로고'],
-  ['text-sm', '13px', '표·버튼·입력 — 가장 많이 씀'],
-  ['text-xs', '12px', '표 머리·보조 설명·시트 탭 힌트'],
+  ['text-lg', '18px', '대화상자 제목'],
+  ['text-base', '16px', '본문·로고'],
+  ['text-sm', '14px', '표·버튼·입력 — 가장 많이 씀'],
+  ['text-xs', '13px', '표 머리·보조 설명·시트 탭 힌트'],
 ]
 
 const EXAMPLES: [string, string, string][] = [
@@ -193,7 +194,7 @@ export function DesignSystem() {
       </Section>
 
       <Section id="form" title="입력" note="이름표는 칸 위에. 금액은 오른쪽 정렬·숫자 키패드. 오류는 칸 아래 한 줄, 고칠 방법까지.">
-        <div className="grid max-w-2xl gap-5 sm:grid-cols-2">
+        <div className="grid max-w-2xl gap-5 sm:grid-cols-2"><div className="grid gap-1.5"><Label htmlFor="ds-native-owner">기본 선택창</Label><NativeSelect id="ds-native-owner" defaultValue="together"><option value="together">부부 전체</option><option value="me">나</option><option value="partner">배우자</option></NativeSelect></div>
           <div className="grid gap-1.5"><Label htmlFor="ds-name">계좌 이름</Label><Input id="ds-name" placeholder="예: 키움 주식계좌"/></div>
           <div className="grid gap-1.5"><Label htmlFor="ds-amt">이번 달 납입(원)</Label><Input id="ds-amt" inputMode="numeric" className="text-right tabular-nums" defaultValue="300,000"/></div>
           <div className="grid gap-1.5"><Label>누구의 자산</Label>
