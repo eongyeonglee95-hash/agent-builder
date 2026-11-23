@@ -303,3 +303,29 @@ def test_capital_shortfall():
     assert capital_shortfall(2000000000, -100000000)["needed"] == 2100000000
     assert capital_shortfall(None, 2000000000)["needed"] is None
     assert capital_shortfall(2000000000, None)["needed"] is None
+
+
+def test_initial_view_reuses_homes_and_dashboard(client, monkeypatch):
+    from backend import property_move as move
+    home(client)
+    expected = client.get('/api/property?owner=together').json()
+    reads = {'homes': 0, 'dashboard': 0}
+    original_homes, original_dashboard = move.list_homes, storage.dashboard
+
+    def homes_once(owner):
+        reads['homes'] += 1
+        return original_homes(owner)
+
+    def dashboard_once(owner):
+        reads['dashboard'] += 1
+        return original_dashboard(owner)
+
+    monkeypatch.setattr(move, 'list_homes', homes_once)
+    monkeypatch.setattr(storage, 'dashboard', dashboard_once)
+    response = client.get('/api/property-move?owner=together&include_homes=true')
+    assert response.status_code == 200
+    data = response.json()
+    assert data['homes'] == expected
+    assert data['capital']['equity'] == expected['total']['equity']
+    assert reads == {'homes': 1, 'dashboard': 1}
+    assert 'homes' not in client.get('/api/property-move?owner=me').json()

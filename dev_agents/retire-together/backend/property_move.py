@@ -125,8 +125,9 @@ def _tracks(conn, owner: Owner) -> dict[str, list[dict]]:
     return out
 
 
-def _base(plan: dict, owner: Owner) -> tuple[dict, list[str], list[dict]]:
-    homes = list_homes(owner)["homes"]
+def _base(plan: dict, owner: Owner, homes: list[dict] | None = None) -> tuple[dict, list[str], list[dict]]:
+    if homes is None:
+        homes = list_homes(owner)["homes"]
     chosen = [h for h in homes if h["asset"]["id"] in plan["source_home_ids"]]
     missing = sorted(set(plan["source_home_ids"]) - {h["asset"]["id"] for h in chosen})
     # 지워진 집은 0원으로 조용히 바꾸지 않고 계획 재확인을 요구한다.
@@ -174,9 +175,11 @@ def read_plan(owner: Owner) -> dict:
     return {**json.loads(row["payload"]), "version": row["version"]} if row else MoveInput().model_dump(mode="json")
 
 
-def _capital(owner: Owner) -> dict:
-    homes = list_homes(owner)
-    dashboard = storage.dashboard(owner)
+def _capital(owner: Owner, homes: dict | None = None, dashboard: dict | None = None) -> dict:
+    if homes is None:
+        homes = list_homes(owner)
+    if dashboard is None:
+        dashboard = storage.dashboard(owner)
     cash = sum(a["amount"] for a in dashboard["assets"] if a["pocket"] == "cash" and a["assetClass"] == "cash")
     capital = {**homes["total"], "cash": cash,
                "net": homes["total"]["equity"] + cash,
@@ -184,8 +187,9 @@ def _capital(owner: Owner) -> dict:
     return capital
 
 
-def result(plan: dict, owner: Owner) -> dict:
-    base, missing, chosen = _base(plan, owner)
+def result(plan: dict, owner: Owner, *, include_homes: bool = False) -> dict:
+    homes = list_homes(owner)
+    base, missing, chosen = _base(plan, owner, homes["homes"])
     comparisons = [{"id": c["id"], **move_budget(**base, price=c["price"], purchase_costs=c["purchase_costs"]),
                     "price_gap": price_gap(home_value=base["sale_value"], target_price=c["price"]) if c["price"] else None}
                    for c in plan["candidates"]]
@@ -193,8 +197,8 @@ def result(plan: dict, owner: Owner) -> dict:
         _table(conn)
         tracks = _tracks(conn, owner)
     dashboard = storage.dashboard(owner)
-    capital = _capital(owner)
-    return {"plan": plan, "comparisons": comparisons, "missing_home_ids": missing, "track": {c["id"]: tracks.get(c["id"], []) for c in plan["candidates"]},
+    capital = _capital(owner, homes, dashboard)
+    return {**({"homes": homes} if include_homes else {}), "plan": plan, "comparisons": comparisons, "missing_home_ids": missing, "track": {c["id"]: tracks.get(c["id"], []) for c in plan["candidates"]},
             "funds": move_budget(**base, price=None, purchase_costs=None),
             "cash_reference": dashboard["cash"], "capital": capital,
             "pir": income_price_ratio(None, **PirSettings(**plan.get("pir", {})).model_dump()),
@@ -202,8 +206,8 @@ def result(plan: dict, owner: Owner) -> dict:
 
 
 @router.get("")
-def get_plan(owner: Owner = "together"):
-    return result(read_plan(owner), owner)
+def get_plan(owner: Owner = "together", include_homes: bool = False):
+    return result(read_plan(owner), owner, include_homes=include_homes)
 
 
 @router.put("")

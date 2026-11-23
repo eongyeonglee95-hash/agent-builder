@@ -11,6 +11,7 @@
 """
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 import datetime as dt
 import json
 from typing import Annotated, Literal
@@ -382,7 +383,10 @@ def recent_trades(sigungu: str, name: str, area: float | None, months: int, dong
         return []
     today = dt.date.today()
     yms = [f"{(today.year * 12 + today.month - 1 - i) // 12}{(today.month - 1 - i) % 12 + 1:02d}" for i in range(months)]
-    return match_trades([r for ym in yms for r in _month_trades(sigungu, ym, key)], name, area, dong=dong, jibun=jibun)
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        batches = pool.map(lambda ym: _month_trades(sigungu, ym, key), yms)
+        rows = [row for batch in batches for row in batch]
+    return match_trades(rows, name, area, dong=dong, jibun=jibun)
 
 
 @router.get("/trades")

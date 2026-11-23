@@ -188,7 +188,12 @@ export function PropertyMove({ owner, family, hidden, onChanged, view = 'move' }
     const controller = new AbortController()
     const request = ++requestVersion.current
     setError('')
-    Promise.all([api<HomeList>(`/property?owner=${owner}`, 'GET', undefined, controller.signal), api<MoveState>(`/property-move?owner=${owner}`, 'GET', undefined, controller.signal)])
+    api<MoveState & { homes?: HomeList }>(`/property-move?owner=${owner}&include_homes=true`, 'GET', undefined, controller.signal)
+      .then(async d => {
+        // Older API servers may not yet include the home list.
+        const h = d.homes ?? await api<HomeList>(`/property?owner=${owner}`, 'GET', undefined, controller.signal)
+        return [h, d] as const
+      })
       .then(([h, d]) => { if (!controller.signal.aborted && request === requestVersion.current) { setHomes(h); setData(normalizeState(d)) } })
       .catch(e => { if (!controller.signal.aborted && request === requestVersion.current) setError(e.message) })
     return () => controller.abort()
