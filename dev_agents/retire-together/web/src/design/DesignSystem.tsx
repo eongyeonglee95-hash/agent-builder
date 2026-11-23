@@ -1,4 +1,4 @@
-import { StockDiagnosis } from '../stock-board'
+import { StockDiagnosis, StockOverview } from '../stock-board'
 import { useEffect, useState, type ReactNode } from 'react'
 import { ChevronDown, Download, Plus, RefreshCw, Trash2 } from 'lucide-react'
 import { Amount } from '@/components/ui/amount'
@@ -129,7 +129,7 @@ export function DesignSystem() {
             { asset_class: 'gold', label: '금', current_pct: 15, target_pct: 15, sell: 0, buy: 0 },
           ]} leftover={0}/>
         </Section>
-        <Section id="stock-diagnosis" title="주식 계좌 진단" note="B 계좌 진단 + A 시장 히트맵 구성 · 자료 미연결 상태"><StockDiagnosis data={null}/></Section>
+        <Section id="stock-diagnosis" title="주식 계좌 진단" note="내 주식 요약 · 가상 금액 / 보유 비중 미연결 상태"><div className="sq-board"><StockOverview data={{ total: { value: 10500000, buy_value: 10000000, total_return: 500000, total_rate: 5, cost_known: 2, count: 2, today_return: null, today_rate: null }, accounts: [], holdings: [], movers: { drivers: [], top: [] }, live: false, stale_days: 31, quote_failed: [], missing_ticker: [] }}/><StockDiagnosis data={null}/></div></Section>
       <Section id="color" title="색" note="회색은 토스 디자인 시스템 10단계. 빨강은 상승, 파랑은 하락에만 써요. 강조색은 엑셀 초록 하나, 시트 선택과 현재 탭에만.">
         <h3 className="mb-2 text-sm font-semibold">회색</h3>
         <div className={grid}>{[50, 100, 200, 300, 400, 500, 600, 700, 800, 900].map(n => <Swatch key={n} token={`--grey-${n}`} note={({ 100: '화면 바탕', 200: '선', 300: '입력 테두리', 500: '비활성 글자', 600: '보조 글자', 900: '본문·주 버튼' } as Record<number, string>)[n]}/>)}</div>

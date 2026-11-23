@@ -1,3 +1,4 @@
+import { Input } from './components/ui/input'
 import { NativeSelect } from './components/ui/native-select'
 import { Button } from './components/ui/button'
 import { useCallback, useEffect, useState } from 'react'
@@ -24,7 +25,7 @@ const signed = (n: number) => `${n > 0 ? '+' : ''}${n.toLocaleString('ko-KR')}`
 const pct = (n: number | null) => n === null ? '' : `${n > 0 ? '+' : ''}${n.toFixed(2)}%`
 const tone = (n: number | null) => n === null || n === 0 ? '' : n < 0 ? 'down' : 'up'
 
-export function HoldingsPanel({ owner, hidden, stockOnly = false, onRegister, onChanged, onData }: { owner: Owner; hidden: boolean; stockOnly?: boolean; onRegister: () => void; onChanged?: () => void; onData?: (data: HoldingsData | null) => void }) {
+export function HoldingsPanel({ owner, hidden, stockOnly = false, compactSummary = false, onRegister, onChanged, onData }: { owner: Owner; hidden: boolean; stockOnly?: boolean; compactSummary?: boolean; onRegister: () => void; onChanged?: () => void; onData?: (data: HoldingsData | null) => void }) {
   const [sheetOpen, setSheetOpen] = useState(false)
   const [sheetMsg, setSheetMsg] = useState('')
   const [data, setData] = useState<HoldingsData | null>(null)
@@ -32,7 +33,8 @@ export function HoldingsPanel({ owner, hidden, stockOnly = false, onRegister, on
   const [live, setLive] = useState(false)
   const [loading, setLoading] = useState(false)
   const [sort, setSort] = useState<Sort>('value')
-  const [grouped, setGrouped] = useState(true)
+  const [grouped, setGrouped] = useState(!stockOnly)
+  const [search, setSearch] = useState('')
   const load = useCallback(async () => {
     setLoading(true); setError('')
     try { const next = await api<HoldingsData>(`/holdings?owner=${owner}${live ? '&live=1' : ''}${stockOnly ? '&asset_class=stock&pocket=cash' : ''}`); setData(next); onData?.(next) }
@@ -57,28 +59,23 @@ export function HoldingsPanel({ owner, hidden, stockOnly = false, onRegister, on
   const accountLabel = Object.fromEntries(data.accounts.map(a => [a.id, a.label]))
   const staleIds = new Set(data.accounts.filter(a => a.stale).map(a => a.id))
   const key = (r: Row): number | string => sort === 'name' ? r.ticker_name : (r[sort] ?? -Infinity)
-  const sorted = [...data.holdings].sort((a, b) => sort === 'name' ? String(key(a)).localeCompare(String(key(b)), 'ko') : (key(b) as number) - (key(a) as number))
+  const query = search.trim().toLocaleLowerCase()
+  const visibleRows = data.holdings.filter(r => !query || `${r.ticker_name} ${r.ticker ?? ''} ${accountLabel[r.account_id]}`.toLocaleLowerCase().includes(query))
+  const sorted = [...visibleRows].sort((a, b) => sort === 'name' ? String(key(a)).localeCompare(String(key(b)), 'ko') : (key(b) as number) - (key(a) as number))
   const groups = grouped
     ? [...new Set(sorted.map(r => r.asset_class ?? ''))].map(c => ({ c, rows: sorted.filter(r => (r.asset_class ?? '') === c) })).sort((a, b) => b.rows.reduce((n, r) => n + r.value, 0) - a.rows.reduce((n, r) => n + r.value, 0))
     : [{ c: '__all', rows: sorted }]
 
-  return <section className="panel hp">
-    <div className="hp-top">
-      <div><h2>{stockOnly ? '보유 주식' : '종목 잔고'}</h2><p>{data.accounts.length}개 계좌 · 등록한 잔고 기준{data.live ? ' · 현재가 반영' : ''}</p></div>
-      <div className="hp-actions"><button className="hp-sheet-btn" aria-expanded={sheetOpen} onClick={() => setSheetOpen(o => !o)}>{sheetOpen ? <><X size={14}/>표 닫기</> : <><Sheet size={14}/>엑셀처럼 고치기</>}</button><label className="hp-live"><input type="checkbox" checked={live} onChange={e => setLive(e.target.checked)}/>현재가로 보기{loading && <RefreshCw size={13} className="spin"/>}</label></div>
-    </div>
-    {sheetMsg && <p className="hp-note">{sheetMsg}</p>}
-    {sheetOpen && <div className="hp-sheet-inline" aria-label="엑셀처럼 고치기">{/* 팝업이 아니라 화면 안에 펼친다 (2026-11-02 사용자: "팝업으로 들어가지 않고 embedded 형식으로"). 저장해도 닫지 않아 이어서 고칠 수 있다 */}
-      <AssetSheet owner={owner} initialTab="holdings" onSaved={msg => { setSheetMsg(msg); load(); onChanged?.() }}/></div>}
-
+  const SourceBox = compactSummary ? 'details' : 'div'
+  const sourceDetails = (<SourceBox className="hp-source-details">{compactSummary && <summary>자료 기준 · 계좌 내역{data.quote_failed.length > 0 ? ` · 시세 확인 필요 ${data.quote_failed.length}개` : ''}</summary>}
     <div className="hp-sum n">
-      <div className="hp-big">{m(t.value)}</div>
-      {t.total_return !== null && t.buy_value !== null && <div className="hp-split">
+      {!compactSummary && <div className="hp-big">{m(t.value)}</div>}
+      {!compactSummary && t.total_return !== null && t.buy_value !== null && <div className="hp-split">
         <span>넣은 돈 <b>{m(t.buy_value)}</b></span>
         <span>불어난 돈 <b className={tone(t.total_return)}>{ms(t.total_return)}원</b> <span className={tone(t.total_return)}>{hidden ? '' : pct(t.total_rate)}</span></span>
       </div>}
-      {data.live && t.today_return !== null && <div className="hp-today">어제 종가 대비 <b className={tone(t.today_return)}>{ms(t.today_return)}원 {hidden ? '' : pct(t.today_rate)}</b></div>}
-      <p className="hp-note">{t.cost_known < t.count ? `매입금액을 아는 ${t.cost_known}/${t.count}종목으로 넣은 돈과 불어난 돈을 계산했어요. 나머지는 매입금액을 넣으면 함께 계산돼요. ` : ''}{stockOnly ? '연금 계좌 종목은 연금에서 봐요.' : '연금 납입으로 늘어난 금액은 넣은 돈이라 불어난 돈에 들어가지 않아요.'}{data.holdings.some(r => r.buy_source) ? ` 매입금액 옆 *는 보유수량이 같은 이전 등록(${[...new Set(data.holdings.map(r => r.buy_source).filter(Boolean))].join(', ')})에서 가져온 값이에요.` : ''}</p>
+      {!compactSummary && data.live && t.today_return !== null && <div className="hp-today">어제 종가 대비 <b className={tone(t.today_return)}>{ms(t.today_return)}원 {hidden ? '' : pct(t.today_rate)}</b></div>}
+      <p className="hp-note">{t.cost_known < t.count ? `매입금액을 아는 ${t.cost_known}/${t.count}종목으로 넣은 돈과 불어난 돈을 계산했어요. 나머지는 매입금액을 넣으면 함께 계산돼요. ` : ''}{stockOnly ? '' : '연금 납입으로 늘어난 금액은 넣은 돈이라 불어난 돈에 들어가지 않아요.'}{data.holdings.some(r => r.buy_source) ? ` 매입금액 옆 *는 보유수량이 같은 이전 등록(${[...new Set(data.holdings.map(r => r.buy_source).filter(Boolean))].join(', ')})에서 가져온 값이에요.` : ''}</p>
       {data.quote_failed.length > 0 && <p className="hp-note warn">현재가를 받지 못한 종목 {data.quote_failed.length}개는 등록한 가격으로 보여요.</p>}
       {live && data.missing_ticker.length > 0 && <p className="hp-note warn">종목코드가 없는 {data.missing_ticker.join(', ')}은 현재가를 받을 수 없어요.</p>}
     </div>
@@ -86,33 +83,55 @@ export function HoldingsPanel({ owner, hidden, stockOnly = false, onRegister, on
     <div className="hp-accounts">
       {data.accounts.map(a => <div className={`hp-acct ${a.stale ? 'stale' : ''}`} key={a.id}>
         <div><strong>{a.label}</strong><small>{a.owner === 'me' ? '나' : '배우자'} · {a.as_of ? `${a.as_of.replaceAll('-', '.')} 잔고` : '기준일 모름'}{a.stale && a.age_days !== null && <> · {a.age_days}일 전 잔고예요 <button className="rv-link" onClick={onRegister}>다시 등록</button></>}</small></div>
-        <div className="n hp-acct-num"><b>{m(a.value)}</b>{a.total_return !== null && <small className={tone(a.total_return)}>{ms(a.total_return)} {hidden ? '' : pct(a.total_rate)}</small>}</div>
+        {(!compactSummary || data.accounts.length > 1) && <div className="n hp-acct-num"><b>{m(a.value)}</b>{a.total_return !== null && <small className={tone(a.total_return)}>{ms(a.total_return)} {hidden ? '' : pct(a.total_rate)}</small>}</div>}
       </div>)}
     </div>
 
-    {data.live && data.movers.drivers.length > 0 && <div className="hp-movers">
+    </SourceBox>)
+  const tools = (<div className="hp-tools">
+      {stockOnly && <Input className="hp-search" aria-label="보유 종목 검색" placeholder="종목명·코드·계좌 검색" value={search} onChange={e => setSearch(e.target.value)}/>}
+      <label>정렬<NativeSelect value={sort} onChange={e => setSort(e.target.value as Sort)}>{SORTS.filter(([k]) => data.live || !k.startsWith('today')).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</NativeSelect></label>
+      {!stockOnly && <label className="hp-check"><input type="checkbox" checked={grouped} onChange={e => setGrouped(e.target.checked)}/>자산군별로 묶기</label>}
+    </div>)
+  const movers = (data.live && data.movers.drivers.length > 0 && <div className="hp-movers">
       <div><h3>어제 종가 이후, 내 손익을 가장 많이 움직인 종목</h3>{data.movers.drivers.map(r => <p key={`d-${r.account_id}-${r.ticker_name}`}><span>{r.ticker_name}</span><b className={`n ${tone(r.today_return)}`}>{ms(r.today_return ?? 0)}원</b></p>)}</div>
       <div><h3>가장 크게 움직인 종목</h3>{data.movers.top.map(r => <p key={`t-${r.account_id}-${r.ticker_name}`}><span>{r.ticker_name}</span><b className={`n ${tone(r.today_rate)}`}>{pct(r.today_rate)}</b></p>)}</div>
       <small>시세로 계산한 사실이에요. 왜 움직였는지(시장 배경)와 다가올 일정은 뉴스를 연결한 뒤에 따로 보여 드려요.</small>
-    </div>}
+    </div>)
 
-    <div className="hp-tools">
-      <label>정렬<NativeSelect value={sort} onChange={e => setSort(e.target.value as Sort)}>{SORTS.filter(([k]) => data.live || !k.startsWith('today')).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</NativeSelect></label>
-      <label className="hp-check"><input type="checkbox" checked={grouped} onChange={e => setGrouped(e.target.checked)}/>자산군별로 묶기</label>
+  return <section className={`panel hp ${compactSummary ? 'hp-stock-board' : ''}`}>
+    <div className="hp-top">
+      <div><h2>{stockOnly ? '보유 주식' : '종목 잔고'}</h2>{!compactSummary && <p>{data.accounts.length}개 계좌 · 등록한 잔고 기준{data.live ? ' · 현재가 반영' : ''}</p>}</div>
+      {compactSummary && tools}
+      <div className="hp-actions"><button className="hp-sheet-btn" aria-expanded={sheetOpen} onClick={() => setSheetOpen(o => !o)}>{sheetOpen ? <><X size={14}/>표 닫기</> : <><Sheet size={14}/>엑셀처럼 고치기</>}</button><label className="hp-live"><input type="checkbox" checked={live} onChange={e => setLive(e.target.checked)}/>현재가로 보기{loading && <RefreshCw size={13} className="spin"/>}</label></div>
     </div>
+    {sheetMsg && <p className="hp-note">{sheetMsg}</p>}
+    {sheetOpen && <div className="hp-sheet-inline" aria-label="엑셀처럼 고치기">{/* 팝업이 아니라 화면 안에 펼친다 (2026-11-02 사용자: "팝업으로 들어가지 않고 embedded 형식으로"). 저장해도 닫지 않아 이어서 고칠 수 있다 */}
+      <AssetSheet owner={owner} initialTab="holdings" onSaved={msg => { setSheetMsg(msg); load(); onChanged?.() }}/></div>}
+
+    {compactSummary && (data.quote_failed.length > 0 || (live && data.missing_ticker.length > 0) || data.accounts.some(a => a.stale)) && <p className="hp-note" role="status">{data.accounts.some(a => a.stale) ? '오래된 잔고가 있습니다. ' : ''}{data.quote_failed.length > 0 || (live && data.missing_ticker.length > 0) ? '일부 종목의 현재가를 확인하지 못했습니다. ' : ''}자료 기준에서 확인해 주세요.</p>}
+    {!compactSummary && sourceDetails}
+
+    {!compactSummary && movers}
+
+    {!compactSummary && tools}
+
+    {query && <p className="hp-search-note" role="status">{visibleRows.length}개 보유 내역 · 요약과 비중은 전체 잔고 기준입니다.{!visibleRows.length && <Button variant="link" size="sm" onClick={() => setSearch('')}>검색 지우기</Button>}</p>}
     <div className="hp-list">
       <div className="hp-head"><span>종목 · 보유수량</span><span>평가금액 · 매입</span><span>총 손익 · 수익률</span><span>{data.live ? '오늘' : '비중'}</span></div>
       {groups.map(g => <div key={g.c}>
         {g.c !== '__all' && <div className="hp-group"><span><i style={{ background: classInfo[g.c]?.color ?? '#d1d6db' }}/>{classInfo[g.c]?.label ?? '자산군 미정'}<small>{g.rows.length}종목</small></span><b className="n">{m(g.rows.reduce((n, r) => n + r.value, 0))}</b></div>}
         {g.rows.map(r => <div className={`hp-row ${staleIds.has(r.account_id) ? 'stale' : ''}`} key={`${r.account_id}-${r.ticker_name}`}>
-          <span className="hp-nm">{r.ticker_name}</span>
+          <span className="hp-nm">{r.ticker_name}{stockOnly && r.ticker && <small className="hp-ticker">{r.ticker}</small>}</span>
           <span className="hp-sub n">{r.qty.toLocaleString('ko-KR')}주{r.avg_cost ? ` · 평균 ${hidden ? '•••' : won(r.avg_cost)}` : ''} · {accountLabel[r.account_id]}{r.stock_group ? ` · ${GROUP_LABEL[r.stock_group]}` : ''}</span>
           <span className="hp-val n">{m(r.value)}</span><span className="hp-buy n" title={r.buy_source ? `매입금액은 ${r.buy_source} 등록에서 가져왔어요 (보유수량이 같을 때만)` : undefined}>{r.buy_value ? `${m(r.buy_value)}${r.buy_source ? '*' : ''}` : '매입 모름'}</span>
           <span className={`hp-pl n ${tone(r.total_return)}`}>{r.total_return === null ? '—' : ms(r.total_return)}</span><span className={`hp-rt n ${tone(r.total_rate)}`}>{hidden ? '' : pct(r.total_rate)}</span>
-          {data.live ? <><span className={`hp-wt n ${tone(r.today_return)}`}>{r.today_return === null ? '—' : ms(r.today_return)}</span><span className={`hp-wt2 n ${tone(r.today_rate)}`}>{pct(r.today_rate)}</span></>
-            : <span className="hp-wt n">{r.weight.toFixed(1)}%</span>}
+          {data.live ? <><span data-label="전일 " className={`hp-wt n ${tone(r.today_return)}`}>{r.today_return === null ? '—' : ms(r.today_return)}</span><span className={`hp-wt2 n ${tone(r.today_rate)}`}>{pct(r.today_rate)}</span></>
+            : <span data-label="비중 " className="hp-wt n">{hidden ? '•••' : `${r.weight.toFixed(1)}%`}</span>}
         </div>)}
       </div>)}
     </div>
+    {compactSummary && movers}
+    {compactSummary && sourceDetails}
   </section>
 }

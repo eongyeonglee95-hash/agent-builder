@@ -113,3 +113,4 @@
   .hb-totals dd { font-size: var(--text-lg); }
   .hb-actions { margin-left: 0; }
 }
+.hb .page-hero{margin-bottom:0}.hb .page-hero .hb-totals{border:0;border-radius:0;margin-top:18px}.hb .page-hero .hb-totals>div{padding:0 20px}.hb .page-hero .hb-totals>div:first-child{padding-left:0}.hb .page-hero .hb-totals>div:last-child{padding-right:0}.hb .page-hero .hb-actions{margin:0;flex-wrap:wrap}.hb .page-hero .hb-step span{min-width:70px}.hb .page-hero .hb-totals dd{font-size:var(--text-2xl)}@media(max-width:650px){.hb .page-hero .hb-totals{display:grid;grid-template-columns:1fr 1fr;gap:16px}.hb .page-hero .hb-totals>div{border:0;padding:0}.hb .page-hero .hb-totals>div:first-child{grid-column:1/-1}.hb .page-hero .page-hero-actions{width:100%}}

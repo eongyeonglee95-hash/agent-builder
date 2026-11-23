@@ -1,3 +1,4 @@
+import { PageHero } from '../components/ui/page-hero'
 import { NativeSelect } from '../components/ui/native-select'
 import { Input } from '../components/ui/input'
 // 가계부 (HB-01 → HB-02, 2026-11-20 사용자 시안 확정) — 위에는 고른 달의 돈의 흐름, 아래는 1년 표.
@@ -51,8 +52,7 @@ export function HouseholdBook({ hidden }: { hidden: boolean }) {
   const lastMonth = year < today.getFullYear() ? 12 : year === today.getFullYear() ? today.getMonth() + 1 : 0
 
   return <div className="hb">
-    <div className="hb-toolbar">
-      <h1>가계부</h1>
+    <PageHero title="가계부" context={`${m}월 · ${book?.selected.preview ? '고정 항목 미리 채움' : '가계 전체'}`} actions={<>
       <div className="hb-step">
         <Button variant="outline" size="icon-sm" aria-label="이전 해" onClick={() => { setYear(year - 1); setMonth(12); setPanel(null) }}><ChevronLeft/></Button>
         <span>{year}년</span>
@@ -62,14 +62,15 @@ export function HouseholdBook({ hidden }: { hidden: boolean }) {
         <Button variant="outline" size="sm" aria-pressed={panel === 'fixed'} onClick={() => setPanel(panel === 'fixed' ? null : 'fixed')}><Pin className="size-3.5"/>매달 고정 항목</Button>
         {lastMonth > 0 && <Button size="sm" aria-pressed={panel === 'capture'} onClick={() => setPanel(panel === 'capture' ? null : 'capture')}><ImageUp className="size-3.5"/>{m}월 내역 올리기</Button>}
       </div>
-    </div>
+    </>}>
+      {book && <Totals book={book} h={h}/>}
+    </PageHero>
 
     {error && <p className="hb-error" role="alert">{error}</p>}
     {!book && !error && <p className="hb-muted">불러오는 중…</p>}
     {book && <>
       {panel === 'fixed' && <FixedPanel book={book} h={h} onClose={() => setPanel(null)} onSaved={load}/>}
       {panel === 'capture' && <CapturePanel book={book} month={ym(year, m)} label={`${m}월`} categories={book.categories} bigLabel={book.big_label} onClose={() => setPanel(null)} onSaved={() => { setPanel(null); load() }}/>}
-      <Totals book={book} h={h}/>
       <section className="hb-panel">
         <div className="hb-panel-head"><h2>{m}월 돈의 흐름</h2>{book.selected.preview && <span>매달 고정 항목으로 미리 채운 달이에요</span>}</div>
         {book.selected.summary.income > 0

@@ -194,3 +194,4 @@ main.ux-home .stat-note { word-break: keep-all; }   /* 총자산 설명의 금�
 .workspace > main.ux-property > .footer{margin-top:auto;min-height:88px;width:100%;flex-shrink:0}
 .workspace > main.ux-property > section{margin-bottom:24px}
 .workspace > main.ux-property{width:100%;box-sizing:border-box}
+.sidebar .sidebar-data-refresh{display:flex;align-items:center;gap:7px;padding:6px 10px;background:transparent;border:0;color:inherit;font:inherit;font-size:var(--text-xs);cursor:pointer}.sidebar .sidebar-data-refresh:hover{text-decoration:underline}

@@ -1,5 +1,7 @@
+import { Tabs, TabsList, TabsTrigger, TabsContent } from './components/ui/tabs'
+import { PageHero, type HeroMetric } from './components/ui/page-hero'
 import { Input } from './components/ui/input'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Button } from './components/ui/button'
 import { HoldingsPanel, type HoldingsData } from './holdings'
 import type { Owner } from './model'
@@ -71,41 +73,60 @@ function MarketWidget({ index = 'SPX500' }: { index?: string }) {
 }
 
 const percent = (n: number | null | undefined) => n == null ? '—' : `${n > 0 ? '+' : ''}${n.toFixed(2)}%`
+export function StockOverview({ data, hidden = false, actions, footer, market = false }: { market?: boolean; data: HoldingsData | null; hidden?: boolean; actions?: ReactNode; footer?: ReactNode }) {
+  const t = data?.total
+  const show = (n: number | null) => hidden ? '••••••' : n == null ? '—' : `${n.toLocaleString('ko-KR')}원`
+  const tone = (n: number | null | undefined): 'up' | 'down' | undefined => n == null || n === 0 ? undefined : n < 0 ? 'down' : 'up'
+  const dates = [...new Set(data?.accounts.map(a => a.as_of).filter(Boolean))]
+  const source = data?.accounts.length === 1 ? data.accounts[0].label : data?.accounts.length ? `${data.accounts.length}개 계좌` : '일반계좌'
+  const basis = dates.length === 1 ? `${dates[0]?.replaceAll('-', '.')} 잔고` : dates.length > 1 ? '계좌별 기준일 다름' : '기준일 미확인'
+  const metrics: HeroMetric[] = t && t.count > 0 ? [
+    { label: '주식 평가액', value: show(t.value), primary: true, detail: `${t.count}개 보유 내역 · 예수금 제외` },
+    { label: '평가손익 · 매입 대비', value: `${!hidden && t.total_return != null && t.total_return > 0 ? '+' : ''}${show(t.total_return)}`, tone: tone(t.total_return), detail: hidden ? '•••' : percent(t.total_rate) },
+    { label: '전일 종가 대비', value: hidden ? '•••' : percent(data?.diagnostics?.daily_rate), tone: tone(data?.diagnostics?.daily_rate), detail: data?.diagnostics?.daily_rate == null ? '전체 종목 시세 확인 후 표시' : '현재 보유수량 기준' },
+  ] : []
+  return <PageHero title="주식" label="내 주식 요약" context={market ? '시장·매크로' : `${source} · ${basis}${data?.live ? ' · 시세 반영' : ''}`} actions={actions} metrics={market ? undefined : metrics} footer={footer}
+    note={!market && t && t.cost_known < t.count ? `평가손익은 매입금액이 확인된 ${t.cost_known}/${t.count}개 보유 내역 기준입니다.` : undefined}>{market && <MacroStrip/>}</PageHero>
+}
+
 export function StockDiagnosis({ data, hidden = false }: { data: HoldingsData | null; hidden?: boolean }) {
   const d = data?.diagnostics
   const weight = (n: number | null | undefined) => hidden ? '•••' : n == null ? '—' : `${n.toFixed(1)}%`
-  return <div className="sq-diagnosis">
-    <section className="sq-section"><h2>수익과 낙폭</h2><p>등록된 일반계좌 주식 기준</p>
-      <dl className="sq-metrics"><div><dt>매입 대비 수익률</dt><dd className={(data?.total.total_rate ?? 0) < 0 ? 'sq-down' : ''}>{hidden ? '•••' : percent(data?.total.total_rate)}</dd></div><div><dt>전일 종가 대비</dt><dd className={(d?.daily_rate ?? 0) < 0 ? 'sq-down' : ''}>{hidden ? '•••' : percent(d?.daily_rate)}</dd></div></dl>
-      {data && data.total.cost_known < data.total.count && <p>매입금액이 확인된 {data.total.cost_known}/{data.total.count}종목만의 수익률입니다.</p>}
-      <div className="sq-history-state"><strong>지수 비교 · 고점 대비 낙폭</strong><p>동일 기간의 가격·입출금 이력이 연결되면 표시합니다.</p><span>현재 낙폭 —　최대 낙폭 —　S&P 500 대비 —</span></div>
-      <small>매입 대비 손익은 기간 수익률이 아닙니다. 전일 비교는 모든 종목의 시세가 확인될 때만 표시합니다.</small>
-    </section>
-    <section className="sq-section"><h2>종목 집중도</h2><p>예수금을 제외한 등록 주식 평가액 기준 · 같은 종목은 합산</p>
-      {[['상위 1종목', d?.top_one_weight], ['상위 3종목', d?.top_three_weight]].map(([label, value]) => <div className="sq-weight" key={label as string}><span>{label}</span><div className="sq-track"><i style={{ width: !hidden && typeof value === 'number' ? `${value}%` : '0%' }}/></div><b>{weight(value as number | null | undefined)}</b></div>)}
-      {d?.positions.length ? <div className="sq-exposures">{d.positions.slice(0, 3).map(p => <div key={p.name}><span>{p.name}</span><b>{weight(p.weight)}</b></div>)}</div> : <p className="sq-empty">종목 잔고를 불러오면 집중도를 확인할 수 있어요.</p>}
-      <small>업종·상관·ETF 내부 종목을 포함한 위험 분석은 별도 자료가 필요합니다.</small>
-    </section>
-  </div>
+  return <section className="sq-section sq-allocation"><div><h2>보유 비중</h2><p>같은 종목은 계좌 간 합산 · 등록 주식 평가액 기준</p>
+    <dl className="sq-concentration"><div><dt>상위 1종목</dt><dd>{weight(d?.top_one_weight)}</dd></div><div><dt>상위 3종목</dt><dd>{weight(d?.top_three_weight)}</dd></div></dl>
+    </div><div className="sq-position-bars">{d?.positions.length ? d.positions.slice(0, 5).map((p, i) => <div className="sq-position" key={`${p.name}:${i}`}><div><span>{p.name}</span><b>{weight(p.weight)}</b></div><div className="sq-track"><i style={{ width: hidden ? '0%' : `${p.weight}%` }}/></div></div>) : <p>종목 잔고가 등록되면 보유 비중을 표시합니다.</p>}</div>
+  </section>
 }
 
-export function StockBoard({ owner, hidden, onRegister, onChanged }: { owner: Owner; hidden: boolean; onRegister: () => void; onChanged: () => void }) {
+export function StockBoard({ owner, hidden, onRegister, onChanged, scopeControl }: { scopeControl?: ReactNode; owner: Owner; hidden: boolean; onRegister: () => void; onChanged: () => void }) {
   const [data, setData] = useState<HoldingsData | null>(null)
+  const [tab, setTab] = useState('holdings')
   const [index, setIndex] = useState('SPX500')
   const [threshold, setThreshold] = useState('')
   const [showAnalysis, setShowAnalysis] = useState(false)
   const d = data?.diagnostics
   const valid = threshold.trim() !== '' && Number.isFinite(Number(threshold)) && Number(threshold) > 0 && Number(threshold) <= 100
   const triggered = valid && d?.daily_rate != null && d.daily_rate <= -Number(threshold)
+  const navigation = <TabsList variant="line" aria-label="주식 화면"><TabsTrigger value="holdings">내 주식</TabsTrigger><TabsTrigger value="market">시장·매크로</TabsTrigger></TabsList>
+  const actions = <>{scopeControl}{!!data?.holdings.length && <Button variant="outline" size="sm" onClick={onRegister}>잔고 등록</Button>}</>
   return <div className="sq-board">
-    <MacroStrip/>
-    <StockDiagnosis data={data} hidden={hidden}/>
-    <section className="sq-section"><div className="sq-heading"><div><h2>시장 히트맵</h2><p>면적은 시가총액 · 색은 당일 등락 · 빨강 하락 / 초록 상승 (외부 위젯)</p></div><div className="sq-index" role="group" aria-label="시장 선택"><Button variant={index === 'SPX500' ? 'default' : 'outline'} aria-pressed={index === 'SPX500'} onClick={() => setIndex('SPX500')}>S&P 500</Button><Button variant={index === 'NASDAQ100' ? 'default' : 'outline'} aria-pressed={index === 'NASDAQ100'} onClick={() => setIndex('NASDAQ100')}>나스닥 100</Button></div></div><MarketWidget index={index}/><small>보유 종목 강조는 아직 지원하지 않습니다. 내 종목 비중은 아래 보유 주식에서 확인하세요.</small></section>
-    <HoldingsPanel owner={owner} hidden={hidden} stockOnly onRegister={onRegister} onChanged={onChanged} onData={setData}/>
+    <Tabs value={tab} onValueChange={setTab} className="sq-tabs">
+      <StockOverview data={data} hidden={hidden} actions={tab === 'holdings' ? actions : scopeControl} footer={navigation} market={tab === 'market'}/>
+      <TabsContent value="holdings" forceMount className="sq-tab-content">
+        <HoldingsPanel owner={owner} hidden={hidden} stockOnly compactSummary onRegister={onRegister} onChanged={onChanged} onData={setData}/>
+        {!!data?.holdings.length && <StockDiagnosis data={data} hidden={hidden}/>}
+        <details className="sq-extra"><summary>추가 점검 · 하락 기준과 분석 준비 상태</summary>
     <section className="sq-section"><div className="sq-heading"><div><h2>하락 원인 점검</h2><p>수치로 영향을 확인하고, 뉴스·공시로 원인을 구분해요.</p></div><Button variant="outline" aria-expanded={showAnalysis} onClick={() => setShowAnalysis(v => !v)}>{showAnalysis ? '근거 접기' : '근거 확인'}</Button></div>
       <label className="sq-threshold">전일 종가 대비 <Input aria-label="하락 점검 기준" type="number" min="0.1" max="100" step="0.1" placeholder="직접 설정" value={threshold} onChange={e => setThreshold(e.target.value)}/> % 이상 하락 시 점검 <small>이 화면에서만 적용</small></label>
       <p className="sq-condition" role="status">{!data?.holdings.length ? '잔고를 등록하면 하락 조건을 점검할 수 있어요.' : !valid ? '0보다 크고 100 이하인 하락 기준을 입력하세요.' : d?.daily_rate == null ? `전체 종목의 전일 비교 시세가 필요합니다${d ? ` · ${d.quote_covered}/${d.quote_total}종목 확인` : ''}. 보유 주식의 ‘현재가로 보기’에서 확인하세요.` : triggered ? '설정한 하락 기준에 도달했습니다. 아래 종목별 영향을 확인하세요.' : '설정한 하락 기준에 도달하지 않았습니다.'}</p>
       {(showAnalysis || triggered) && <div className="sq-evidence"><div><h3>계좌에 미친 영향</h3>{d?.daily_drivers.length ? d.daily_drivers.map(r => <div className="sq-driver" key={`${r.account_id}:${r.name}`}><span>{r.name}</span><b className={r.contribution_pp < 0 ? 'sq-down' : ''}>{hidden ? '•••' : `${r.contribution_pp > 0 ? '+' : ''}${r.contribution_pp.toFixed(2)}%p`}</b></div>) : <p>일부 종목의 시세만으로 전체 계좌의 하락 기여도를 추정하지 않습니다.</p>}<small>현재 보유수량 기준 가격 변화 · 입출금/일중 거래 영향 제외</small></div><div><h3>시장·업종·기업 원인</h3><p>뉴스·공시 원문과 발표 시각을 연결하기 전이라 원인을 확정할 수 없습니다.</p><small>AI 원인 분석 미연결 · 실제 기사를 확인하지 않은 해석은 표시하지 않습니다.</small></div></div>}
     </section>
+        <p className="sq-history-note">지수 대비 성과·고점 대비 낙폭은 가격·입출금 이력이 연결된 뒤 표시합니다. 퀀트 전략 설정은 아직 제공하지 않습니다.</p>
+        </details>
+      </TabsContent>
+      <TabsContent value="market" className="sq-tab-content">
+    <section className="sq-section"><div className="sq-heading"><div><h2>시장 히트맵</h2><p>면적은 시가총액 · 색은 당일 등락 · 빨강 하락 / 초록 상승 (외부 위젯)</p></div><div className="sq-index" role="group" aria-label="시장 선택"><Button variant={index === 'SPX500' ? 'default' : 'outline'} aria-pressed={index === 'SPX500'} onClick={() => setIndex('SPX500')}>S&P 500</Button><Button variant={index === 'NASDAQ100' ? 'default' : 'outline'} aria-pressed={index === 'NASDAQ100'} onClick={() => setIndex('NASDAQ100')}>나스닥 100</Button></div></div><MarketWidget index={index}/><small>보유 종목 강조는 아직 지원하지 않습니다. 내 종목 비중은 ‘내 주식’ 탭에서 확인하세요.</small></section>
+      </TabsContent>
+    </Tabs>
   </div>
 }
