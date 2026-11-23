@@ -4,6 +4,7 @@ import { AssetSheet } from './sheet'
 import { api } from './local-data'
 import { classInfo, type Owner } from './model'
 import './holdings.css'
+import type { StockDiagnostics } from './stock-board'
 
 // 종목 잔고 — 등록한 계좌의 종목별 손익 (Claude 담당). 숫자는 전부 서버(tools/holdings.py, CALCULATION_RULES §7)가 계산한다.
 // 참고: Robinhood 'Position' 여섯 칸, Portfolio Overview의 "잔고 변화는 수익이 아니다", Digest의 "어제 종가 이후" (docs/research/ROBINHOOD_DEEP_DIVE.md)
@@ -11,7 +12,7 @@ import './holdings.css'
 type Row = { account_id: string; ticker_name: string; ticker: string | null; qty: number; price: number; live: boolean; value: number; buy_value: number | null; avg_cost: number | null; total_return: number | null; total_rate: number | null; today_return: number | null; today_rate: number | null; weight: number; asset_class: string | null; stock_group: string | null; buy_source: string | null }
 type Totals = { value: number; buy_value: number | null; total_return: number | null; total_rate: number | null; cost_known: number; count: number; today_return: number | null; today_rate: number | null }
 type Account = Totals & { id: string; label: string; owner: 'me' | 'partner'; as_of: string | null; age_days: number | null; stale: boolean }
-type Data = { accounts: Account[]; holdings: Row[]; total: Totals; movers: { drivers: Row[]; top: Row[] }; live: boolean; stale_days: number; quote_failed: string[]; missing_ticker: string[] }
+export type HoldingsData = { accounts: Account[]; holdings: Row[]; total: Totals; movers: { drivers: Row[]; top: Row[] }; live: boolean; stale_days: number; quote_failed: string[]; missing_ticker: string[]; diagnostics?: StockDiagnostics }
 type Sort = 'value' | 'today_return' | 'today_rate' | 'total_return' | 'total_rate' | 'name'
 const SORTS: [Sort, string][] = [['value', '평가금액'], ['today_return', '오늘 손익'], ['today_rate', '오늘 등락률'], ['total_return', '총 손익'], ['total_rate', '수익률'], ['name', '이름']]
 const GROUP_LABEL: Record<string, string> = { kr: '국내', us: '미국', em: '신흥국·테마', income: '배당·리츠' }
@@ -21,10 +22,10 @@ const signed = (n: number) => `${n > 0 ? '+' : ''}${n.toLocaleString('ko-KR')}`
 const pct = (n: number | null) => n === null ? '' : `${n > 0 ? '+' : ''}${n.toFixed(2)}%`
 const tone = (n: number | null) => n === null || n === 0 ? '' : n < 0 ? 'down' : 'up'
 
-export function HoldingsPanel({ owner, hidden, stockOnly = false, onRegister, onChanged }: { owner: Owner; hidden: boolean; stockOnly?: boolean; onRegister: () => void; onChanged?: () => void }) {
+export function HoldingsPanel({ owner, hidden, stockOnly = false, onRegister, onChanged, onData }: { owner: Owner; hidden: boolean; stockOnly?: boolean; onRegister: () => void; onChanged?: () => void; onData?: (data: HoldingsData | null) => void }) {
   const [sheetOpen, setSheetOpen] = useState(false)
   const [sheetMsg, setSheetMsg] = useState('')
-  const [data, setData] = useState<Data | null>(null)
+  const [data, setData] = useState<HoldingsData | null>(null)
   const [error, setError] = useState('')
   const [live, setLive] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -32,10 +33,10 @@ export function HoldingsPanel({ owner, hidden, stockOnly = false, onRegister, on
   const [grouped, setGrouped] = useState(true)
   const load = useCallback(async () => {
     setLoading(true); setError('')
-    try { setData(await api<Data>(`/holdings?owner=${owner}${live ? '&live=1' : ''}${stockOnly ? '&asset_class=stock&pocket=cash' : ''}`)) }
-    catch (e) { setError(e instanceof Error ? e.message : '종목 잔고를 불러오지 못했어요.') }
+    try { const next = await api<HoldingsData>(`/holdings?owner=${owner}${live ? '&live=1' : ''}${stockOnly ? '&asset_class=stock&pocket=cash' : ''}`); setData(next); onData?.(next) }
+    catch (e) { onData?.(null); setError(e instanceof Error ? e.message : '종목 잔고를 불러오지 못했어요.') }
     finally { setLoading(false) }
-  }, [owner, live, stockOnly])
+  }, [owner, live, stockOnly, onData])
   useEffect(() => { load() }, [load])
   useEffect(() => { const h = () => { load() }; window.addEventListener('retire:holdings-changed', h); return () => window.removeEventListener('retire:holdings-changed', h) }, [load])
 

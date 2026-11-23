@@ -1,0 +1,9 @@
+# Public market context; not investment allocation targets.
+cache_seconds: 300
+request_timeout_seconds: 8
+indicators:
+  - {symbol: '^GSPC', label: 'S&P 500', kind: index}
+  - {symbol: '^NDX', label: '나스닥 100', kind: index}
+  - {symbol: '^KS11', label: '코스피', kind: index}
+  - {symbol: 'KRW=X', label: '원/달러', kind: fx}
+  - {symbol: '^TNX', label: '미국 10년물', kind: yield}

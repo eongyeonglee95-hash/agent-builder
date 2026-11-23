@@ -8,6 +8,7 @@ import { RebalancePage } from './rebalance-page'   // 리밸런싱 영역 — do
 import { useLocalData } from './local-data'
 import { PropertyPlan } from './property'
 import { StockWorkspace } from './stocks'
+import { StockBoard } from './stock-board'
 import { HomeDashboard } from './home/HomeDashboard'
 import { ClassicHome } from './home/ClassicHome'
 import { AccountManager } from './accounts'
@@ -130,7 +131,8 @@ export default function App() {
         {page === 'home' ? <>{photoPreview && <div className="home-preview-notice"><span>사진형 비교 시안</span><a href="/#home">기본 홈으로 돌아가기</a></div>}<HomeView snapshot={snapshot} owner={owner} scope={scopeLabel} hidden={hidden} isDemo={isDemo} loading={local.loading} error={local.error} strategies={strategies} largestDeviation={largestDeviation} retirementCard={retirementCard()} checklist={checklist()} onOwner={setOwner} onHide={() => setHidden(!hidden)} onAdd={beginRegistration} onAssets={openAssets} onEdit={editAmount} onProfile={() => setModal('profile')} onDemo={() => setIsDemo(true)} onPension={() => go('pension')} onRebalance={() => go('rebalance')} onStrategy={() => setModal('strategy')}/></> : <>
           {page !== 'household' && !((page === 'rebalance' || page === 'pension' || page === 'property') && !isDemo) && <><div className="page-heading"><div><span className="eyebrow">OUR NEXT CHAPTER</span><h1>{pageNames[page]}</h1>{page !== 'property' && <p>{page === 'assets' ? '두 사람의 자산, 같은 기준으로 투명하게.' : page === 'pension' ? '앞으로의 시간을, 우리의 속도로 준비해요.' : page === 'stocks' ? '일반 증권 계좌의 주식을 살펴봐요. 연금 계좌 종목은 연금에서 봐요.' : '시장의 방향보다, 우리가 정한 원칙을 따라가요.'}</p>}</div><label className="owner-select"><Users size={16}/><select aria-label="자산 소유자 선택" value={owner} onChange={e => setOwner(e.target.value as Owner)}>{Object.entries(ownerLabels).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select><ChevronDown size={14}/></label></div>
           {(page !== 'property' || isDemo) && <div className="demo-notice"><Info size={16}/><span>{isDemo ? '화면을 살펴보기 위한 예시 데이터입니다. 실제 계좌와 연결되어 있지 않습니다.' : '직접 등록한 금액입니다. 증권사 자동 연동 전이며, 자산별 기준일을 확인해 주세요.'}</span></div>}</>}
-          {(page === 'assets' || page === 'stocks') && !isDemo && fullFeatures && <HoldingsPanel key={`${owner}:${page}`} owner={owner} hidden={hidden} stockOnly={page === 'stocks'} onRegister={beginRegistration} onChanged={local.refresh}/>}
+          {page === 'assets' && !isDemo && fullFeatures && <HoldingsPanel key={`${owner}:${page}`} owner={owner} hidden={hidden} onRegister={beginRegistration} onChanged={local.refresh}/>}
+          {page === 'stocks' && !isDemo && fullFeatures && <StockBoard key={owner} owner={owner} hidden={hidden} onRegister={beginRegistration} onChanged={local.refresh}/>}
           {page === 'stocks' && isDemo && <StockWorkspace key={`${owner}:${isDemo}`} assets={snapshot.assets.filter(isStock)} isDemo={isDemo} hidden={hidden} onDemo={() => setIsDemo(true)} onRegister={beginRegistration} onSelect={setSelectedAsset}/>}
           {page === 'property' && (fullFeatures || isDemo) && <PropertyPlan onOwner={setOwner} owner={owner} family={family} hidden={hidden} onChanged={local.refresh} onRegister={beginRegistration} value={display(snapshot.property)} registered={snapshot.assets.some(a => a.pocket === 'property')} isDemo={isDemo} onPreview={() => setModal('house')} onDemo={() => setIsDemo(true)}/>}
           {(page === 'assets' || (!fullFeatures && page === 'property')) && ledger}

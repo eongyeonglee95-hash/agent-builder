@@ -170,4 +170,6 @@ def holdings(owner: Literal["together", "me", "partner"] = "together", live: boo
     out["quote_failed"] = failed
     out["quote_requested"] = live
     out["missing_ticker"] = sorted({h.ticker_name for h in rows if not h.ticker})
+    from tools.stock_diagnostics import diagnose
+    out["diagnostics"] = diagnose(out)
     return out
