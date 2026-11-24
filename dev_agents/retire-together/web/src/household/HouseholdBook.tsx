@@ -5,7 +5,7 @@ import { Input } from '../components/ui/input'
 // 표 칸을 눌러 바로 고치고, '매달 고정' 칸은 새 달에 미리 채워지고, 카드·은행 캡처는 분류해서 더한다.
 // 계산·분류는 서버(tools/household_book.py). 화면은 받은 숫자를 그리기만 한다.
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ChevronLeft, ChevronRight, ImageUp, Pin } from 'lucide-react'
+import { ChevronLeft, ChevronRight, FileText, ImageUp, Pin } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { api } from '../local-data'
 import { apiFetch } from '../auth/session'
@@ -24,6 +24,7 @@ type Book = {
   fixed: { month: string | null; version: number; keys: string[]; amounts: Record<string, number>; suggest: string[] }
   selected: { month: number; recorded: boolean; preview: boolean; version: number; summary: Summary; flow: Flow; change: Record<'income' | 'spend' | 'kept', number> | null; spend_vs_average: number | null }
 }
+type Slip = { who: 'me' | 'partner' | null; employee_name: string; employer: string; kind: '월급' | '상여'; label: string; pay_date: string; gross: number | null; deduction_total: number | null; net: number | null; deductions: Record<string, number>; adds_up: boolean; month: string; in_month: boolean; use?: boolean }
 type Tx = { date: string; merchant: string; amount: number; category: string | null; how: 'learned' | 'rule' | null; in_month: boolean; duplicate: boolean }
 
 const USE_COLOR: Record<string, string> = { fixed: 'var(--hb-fixed)', life: 'var(--hb-life)', big: 'var(--hb-big)', principal: 'var(--hb-debt)', pension: 'var(--hb-pension)', cash: 'var(--hb-cash)' }
@@ -38,7 +39,7 @@ export function HouseholdBook({ hidden }: { hidden: boolean }) {
   const [month, setMonth] = useState<number | null>(null)
   const [book, setBook] = useState<Book | null>(null)
   const [error, setError] = useState('')
-  const [panel, setPanel] = useState<'fixed' | 'capture' | null>(null)
+  const [panel, setPanel] = useState<'fixed' | 'capture' | 'payslip' | null>(null)
   const load = useCallback(() => {
     const c = new AbortController()
     api<Book>(`/household-book?year=${year}${month ? `&month=${month}` : ''}`, 'GET', undefined, c.signal)
@@ -60,6 +61,7 @@ export function HouseholdBook({ hidden }: { hidden: boolean }) {
       </div>
       <div className="hb-actions">
         <Button variant="outline" size="sm" aria-pressed={panel === 'fixed'} onClick={() => setPanel(panel === 'fixed' ? null : 'fixed')}><Pin className="size-3.5"/>매달 고정 항목</Button>
+        {lastMonth > 0 && <Button variant="outline" size="sm" aria-pressed={panel === 'payslip'} onClick={() => setPanel(panel === 'payslip' ? null : 'payslip')}><FileText className="size-3.5"/>급여명세서</Button>}
         {lastMonth > 0 && <Button size="sm" aria-pressed={panel === 'capture'} onClick={() => setPanel(panel === 'capture' ? null : 'capture')}><ImageUp className="size-3.5"/>{m}월 내역 올리기</Button>}
       </div>
     </>}>
@@ -70,6 +72,7 @@ export function HouseholdBook({ hidden }: { hidden: boolean }) {
     {!book && !error && <p className="hb-muted">불러오는 중…</p>}
     {book && <>
       {panel === 'fixed' && <FixedPanel book={book} h={h} onClose={() => setPanel(null)} onSaved={load}/>}
+      {panel === 'payslip' && <PayslipPanel book={book} month={ym(year, m)} label={`${m}월`} h={h} onClose={() => setPanel(null)} onSaved={() => { setPanel(null); load() }}/>}
       {panel === 'capture' && <CapturePanel book={book} month={ym(year, m)} label={`${m}월`} categories={book.categories} bigLabel={book.big_label} onClose={() => setPanel(null)} onSaved={() => { setPanel(null); load() }}/>}
       <section className="hb-panel">
         <div className="hb-panel-head"><h2>{m}월 돈의 흐름</h2>{book.selected.preview && <span>매달 고정 항목으로 미리 채운 달이에요</span>}</div>
@@ -260,5 +263,55 @@ function CapturePanel({ book, month, label, categories, bigLabel, onClose, onSav
     {err && <p className="hb-error hb-pad" role="alert">{err}</p>}
     <div className="hb-side-actions"><Button variant="outline" onClick={onClose}>닫기</Button>
       {rows && use.length > 0 && <Button onClick={apply} disabled={busy || ask > 0} aria-busy={busy}>{ask ? `${ask}건을 골라야 더할 수 있어요` : `${label} 칸에 더하기`}</Button>}</div>
+  </section>
+}
+
+/* 급여명세서 사진 → 지급액·공제·실수령 확인 표 → 그달 수입 줄로. 같은 사람·종류(월급/상여)는 바꿔 넣는다 */
+function PayslipPanel({ book, month, label, h, onClose, onSaved }: { book: Book; month: string; label: string; h: { hidden: boolean }; onClose: () => void; onSaved: () => void }) {
+  const [slips, setSlips] = useState<Slip[] | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+  const won = (v: number | null) => v === null ? '–' : h.hidden ? MASK : v.toLocaleString('ko-KR')
+  async function read(files: FileList | null) {
+    if (!files?.length) return
+    const form = new FormData(); form.append('month', month); form.append('kind', 'payslip'); [...files].forEach(f => form.append('images', f))
+    setBusy(true); setErr(''); setSlips(null)
+    try {
+      const r = await apiFetch('/api/household-book/capture', { method: 'POST', body: form })
+      const body = await r.json().catch(() => ({}))
+      if (!r.ok) throw new Error(typeof body.detail === 'string' ? body.detail : '급여명세서를 읽지 못했어요. 다시 시도해 주세요.')
+      setSlips((body.slips as Slip[]).map(x => ({ ...x, use: x.in_month && !!x.net })))
+    } catch (e) { setErr((e as Error).message) } finally { setBusy(false) }
+  }
+  const set = (i: number, patch: Partial<Slip>) => setSlips(slips!.map((x, j) => j === i ? { ...x, ...patch } : x))
+  const chosen = (slips ?? []).filter(x => x.use)
+  const ask = chosen.filter(x => !x.who).length
+  async function apply() {
+    setBusy(true); setErr('')
+    try {
+      await api(`/household-book/${month}/payslip`, 'POST', { slips: chosen.map(({ who, kind, label, gross, net, deductions, pay_date }) => ({ who, kind, label, gross, net, deductions, pay_date })), version: book.table.versions[Number(month.slice(5))] ?? 0 })
+      onSaved()
+    } catch (e) { setErr((e as Error).message) } finally { setBusy(false) }
+  }
+  return <section className="hb-panel hb-side" aria-label={`${label} 급여명세서`}>
+    <div className="hb-panel-head"><h2>{label} 급여명세서 올리기</h2><span>지급액·공제·실지급액이 보이게 찍은 사진. 이름으로 누구 명세서인지 맞추고, 같은 사람의 월급(상여)은 바꿔 넣어요</span></div>
+    <div className="hb-pad hb-upload">
+      <label className="hb-file" htmlFor="hb-payslip-files"><FileText className="size-4"/>{busy && !slips ? '읽는 중…' : '명세서 사진 고르기 (여러 장)'}</label>
+      <input id="hb-payslip-files" type="file" accept="image/png,image/jpeg,image/webp" multiple hidden disabled={busy} onChange={e => read(e.target.files)}/>
+      {slips && <span><b>{slips.length}장</b> 읽었어요{ask > 0 && <> · <b className="hb-ask-count">누구 명세서인지 {ask}장 골라 주세요</b></>}</span>}
+    </div>
+    {slips && slips.length > 0 && <div className="hb-scroll"><table className="hb-table">
+      <thead><tr><th className="hb-left">넣기</th><th className="hb-left">누구</th><th className="hb-left">종류</th><th>지급액</th><th>공제</th><th>실수령</th><th>국민연금</th><th className="hb-left">확인</th></tr></thead>
+      <tbody>{slips.map((x, i) => <tr key={i} className={x.use && !x.who ? 'hb-ask' : ''}>
+        <td className="hb-left"><input type="checkbox" aria-label={`${x.employee_name || `${i + 1}번째`} 명세서 넣기`} checked={!!x.use} disabled={!x.net} onChange={e => set(i, { use: e.target.checked })}/></td>
+        <td className="hb-left"><NativeSelect aria-label={`${x.employee_name || `${i + 1}번째`} 명세서 누구`} value={x.who ?? ''} onChange={e => set(i, { who: (e.target.value || null) as Slip['who'] })}>
+          <option value="">골라 주세요</option><option value="me">나</option><option value="partner">배우자</option></NativeSelect>{x.employee_name && <small> {x.employee_name}</small>}</td>
+        <td className="hb-left"><NativeSelect aria-label={`${x.employee_name || `${i + 1}번째`} 명세서 종류`} value={x.kind} onChange={e => set(i, { kind: e.target.value as Slip['kind'] })}><option>월급</option><option>상여</option></NativeSelect></td>
+        <td>{won(x.gross)}</td><td>{won(x.deduction_total)}</td><td className="hb-strong">{won(x.net)}</td><td>{won(x.deductions.national_pension ?? null)}</td>
+        <td className="hb-left">{!x.net ? '실수령액을 못 읽었어요' : !x.adds_up ? '지급액 − 공제 ≠ 실수령, 사진과 맞춰 보세요' : !x.in_month ? `${Number(x.month.slice(5))}월분 명세서예요` : '합이 맞아요'}</td>
+      </tr>)}</tbody></table></div>}
+    {err && <p className="hb-error hb-pad" role="alert">{err}</p>}
+    <div className="hb-side-actions"><Button variant="outline" onClick={onClose}>닫기</Button>
+      {slips && chosen.length > 0 && <Button onClick={apply} disabled={busy || ask > 0} aria-busy={busy}>{ask ? `누구 명세서인지 골라 주세요` : `${label} 수입에 넣기`}</Button>}</div>
   </section>
 }

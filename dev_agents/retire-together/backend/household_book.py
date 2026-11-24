@@ -32,6 +32,9 @@ class IncomeLine(InputModel):
     label: Annotated[str, Field(max_length=40)] = ""
     gross: Won | None = None
     net: Won
+    # 급여명세서에서 읽은 공제 항목(국민연금·건강보험…). 키는 tools/household_payslip.DEDUCTIONS
+    deductions: dict[Literal["national_pension", "health", "care", "employment", "income_tax", "local_tax"], Won] = {}
+    pay_date: Annotated[str, Field(max_length=10)] = ""
 
 
 class BigLine(InputModel):
@@ -258,8 +261,10 @@ IMAGE_TYPES = {"image/png": ".png", "image/jpeg": ".jpg", "image/webp": ".webp"}
 
 
 @router.post("/capture")
-async def capture(month: Annotated[str, Form(pattern=r"^\d{4}-(0[1-9]|1[0-2])$")], images: Annotated[list[UploadFile], File()]):
-    """카드·은행 내역 캡처 → 분류를 채운 확인 표. 저장하지 않는다(이미지도 남기지 않는다)."""
+async def capture(month: Annotated[str, Form(pattern=r"^\d{4}-(0[1-9]|1[0-2])$")], images: Annotated[list[UploadFile], File()],
+                  kind: Annotated[Literal["spend", "payslip"], Form()] = "spend"):
+    """카드·은행 내역 캡처 → 분류를 채운 확인 표. kind=payslip이면 급여명세서 → 수입 확인 표.
+    저장하지 않는다(이미지도 남기지 않는다)."""
     if not images or len(images) > 12:
         raise HTTPException(422, "캡처는 1~12장까지 올릴 수 있어요.")
     import anyio
@@ -273,6 +278,12 @@ async def capture(month: Annotated[str, Form(pattern=r"^\d{4}-(0[1-9]|1[0-2])$")
                 raise HTTPException(422, "이미지 하나는 12MB 이하여야 해요.")
             paths.append(Path(tmp) / f"{i + 1:03d}{IMAGE_TYPES[f.content_type]}")
             paths[-1].write_bytes(data)
+        if kind == "payslip":
+            try:
+                slips = await anyio.to_thread.run_sync(transcribe_payslips, paths)
+            except Exception as e:
+                raise HTTPException(502, f"급여명세서를 읽지 못했어요: {str(e)[:200]}") from None
+            return {"month": month, "kind": "payslip", "slips": _review_payslips(month, slips)}
         try:
             txs = await anyio.to_thread.run_sync(transcribe, paths, int(month[:4]))
         except Exception as e:
@@ -280,6 +291,50 @@ async def capture(month: Annotated[str, Form(pattern=r"^\d{4}-(0[1-9]|1[0-2])$")
     if not txs:
         raise HTTPException(422, "캡처에서 결제 내역을 찾지 못했어요. 날짜·가맹점·금액이 보이는 화면인지 확인해 주세요.")
     return {"month": month, "rows": _review(month, txs, load_rules())}
+
+
+def transcribe_payslips(paths: list[Path]) -> list[dict]:
+    """급여명세서 사진 → 전사. 테스트에서 바꿔 끼운다."""
+    from tools.household_payslip import transcribe as run
+    return run(paths)
+
+
+def _review_payslips(month: str, slips: list[dict]) -> list[dict]:
+    from tools.household_payslip import check
+    with storage.connection() as conn:
+        family = storage.family_from(conn) or {}
+    names = {w: (family.get(w) or {}).get("name", "") for w in ("me", "partner")}
+    rows = [check(s, names, month) for s in slips]
+    if not any(r["net"] for r in rows):
+        raise HTTPException(422, "사진에서 실수령액을 찾지 못했어요. 지급액·공제·실지급액이 보이게 찍어 주세요.")
+    return rows
+
+
+class PayslipRow(InputModel):
+    who: Literal["me", "partner"]
+    kind: Literal["월급", "상여"]
+    label: Annotated[str, Field(max_length=40)] = ""
+    gross: Won | None = None
+    net: Annotated[int, Field(strict=True, gt=0, le=100_000_000_000)]
+    deductions: dict[Literal["national_pension", "health", "care", "employment", "income_tax", "local_tax"], Won] = {}
+    pay_date: Annotated[str, Field(max_length=10)] = ""
+
+
+class PayslipInput(InputModel):
+    slips: Annotated[list[PayslipRow], Field(min_length=1, max_length=10)]
+    version: Annotated[int, Field(strict=True, ge=0)]
+
+
+@router.post("/{month}/payslip")
+def apply_payslip(month: Month, data: PayslipInput):
+    """확인한 급여명세서를 그달 수입 줄로 넣는다(같은 사람·종류는 바꿔 넣음)."""
+    from tools.household_book import apply_payslips
+    with storage.connection() as conn:
+        _table(conn)
+        conn.execute("BEGIN IMMEDIATE")
+        entry, _ = _base(conn, month)
+        version = _write(conn, month, apply_payslips(entry, [r.model_dump() for r in data.slips]), data.version)
+    return {"month": month, "version": version, "added": len(data.slips)}
 
 
 def _review(month: str, txs: list[dict], rules: dict) -> list[dict]:

@@ -247,3 +247,14 @@ def apply_capture(entry: dict, rows: list[dict], rules: dict) -> tuple[dict, int
         seen.add(fp)
     e["auto"] = [k for k in entry.get("auto", []) if not (k.startswith("spend:") and k[6:] in {r["category"] for r in rows})]
     return e, added
+
+
+def apply_payslips(entry: dict, slips: list[dict]) -> dict:
+    """확인한 급여명세서를 그달 수입 줄로 넣는다. 같은 사람·같은 종류(월급/상여) 줄은 바꿔 넣는다. 미리 채운 표시는 지운다."""
+    e = {**entry, "income": list(entry.get("income", [])), "auto": list(entry.get("auto", []))}
+    for s in slips:
+        line = {"who": s["who"], "kind": s["kind"], "label": s.get("label", ""), "gross": s.get("gross"), "net": s["net"],
+                "deductions": dict(s.get("deductions") or {}), "pay_date": s.get("pay_date", "")}
+        e["income"] = [l for l in e["income"] if not (l["who"] == s["who"] and l["kind"] == s["kind"])] + [line]
+        e["auto"] = [k for k in e["auto"] if k != f"income:{s['who']}"]
+    return e

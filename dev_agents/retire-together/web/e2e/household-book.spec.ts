@@ -77,3 +77,24 @@ test('가계부: 카드사 명세서 CSV를 코드로 읽어 분류하고 더한
   await panel.getByRole('button', { name: `${m}월 칸에 더하기` }).click()
   await expect(panel).toBeHidden()
 })
+
+test('가계부: 급여명세서 사진 → 확인 표 → 그달 수입에 넣기', async ({ page }, testInfo) => {
+  const m = now.getMonth() + 1
+  await page.route('**/api/household-book/capture', route => route.fulfill({ json: { month: ym(now), kind: 'payslip', slips: [
+    { who: 'me', employee_name: '김한화', employer: '한화', kind: '월급', label: `${m}월 급여`, pay_date: `${ym(now)}-25`, gross: 7_000_000, deduction_total: 1_500_000, net: 5_500_000, deductions: { national_pension: 279_000 }, adds_up: true, month: ym(now), in_month: true },
+    { who: null, employee_name: '박모름', employer: '', kind: '월급', label: '', pay_date: '', gross: 5_000_000, deduction_total: 700_000, net: 4_400_000, deductions: {}, adds_up: true, month: ym(now), in_month: true },
+  ] } }))
+  await page.goto('/#household')
+  await page.getByRole('button', { name: '급여명세서' }).click()
+  const panel = page.getByRole('region', { name: `${m}월 급여명세서` })
+  await page.locator('#hb-payslip-files').setInputFiles({ name: 'p.jpg', mimeType: 'image/jpeg', buffer: Buffer.from('x') })
+  await expect(panel).toContainText('누구 명세서인지 1장 골라 주세요')
+  await expect(panel.getByRole('button', { name: '누구 명세서인지 골라 주세요' })).toBeDisabled()
+  await panel.getByLabel('박모름 명세서 누구').selectOption({ label: '배우자' })
+  await expect(panel).toContainText('합이 맞아요')
+  await page.screenshot({ path: testInfo.outputPath('household-payslip-1440.png'), fullPage: true })
+  await panel.getByRole('button', { name: `${m}월 수입에 넣기` }).click()
+  await expect(panel).toBeHidden()
+  await expect(page.getByRole('button', { name: `${m}월 나 고치기` })).toHaveText('550')
+  await expect(page.getByRole('button', { name: `${m}월 배우자 고치기` })).toHaveText('440')
+})
