@@ -71,7 +71,8 @@ def test_watch_failure_is_local_to_district_and_shared_requests_are_reused(monke
         return []
     monkeypatch.setattr(move.prop, "_month_trades", fetch)
     result = move.watch("together")
-    assert len(calls) == 3  # one failed district request, two months for the other
+    district_calls = [c for c in calls if c[0] in ("11680", "11710")]   # 보유 집 기준 시세 조회는 따로 셈
+    assert len(district_calls) == 3  # one failed district request, two months for the other
     assert [r["summary"] for r in result["watch"][:2]] == [None, None]
     assert all(r["missing"] == "실거래 조회 실패" for r in result["watch"][:2])
     assert all(r["summary"]["count"] == 0 for r in result["watch"][2:])

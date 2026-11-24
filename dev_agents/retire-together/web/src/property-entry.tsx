@@ -14,7 +14,8 @@ export type Tenure = 'live' | 'jeonse' | 'monthly' | 'other'
 export type LoanRef = { id: string; name: string; amount: number; owner: string; as_of: string; mine?: number }
 export type Home = {
   asset: { id: string; name: string; owner: 'me' | 'partner' | 'joint'; share_percent: number | null; amount: number; as_of: string; version: number }
-  value: number; full_value: number
+  value: number; full_value: number   // 기준 시세(§6-V)로 본 평가액. 장부 금액은 registered_value
+  registered_value?: number; basis?: Basis
   detail: null | { address: Address | null; area_m2: number | null; pyeong: number | null; purchase_price: number | null; purchase_month: string | null; tenure: Tenure; deposit: number | null; monthly_rent: number | null; loan_ids: string[]; listings?: Listing[]; kb_quote?: { average: number; as_of: string; area_m2: number } | null; value_source?: ValueSource | null; version: number }
   loans: LoanRef[]; deposit: { id: string; amount: number; mine: number } | null
   asking: { low: number; high: number; count: number } | null
@@ -24,6 +25,13 @@ export type ValueSource = { kind: 'trade' | 'purchase' | 'manual' | 'none'; date
 export function sourceLabel(v?: ValueSource | null) {
   if (!v) return '직접 입력'
   return v.kind === 'trade' ? `실거래 ${v.date?.slice(0, 7).replace('-', '.')}${v.floor ? ` · ${v.floor}층` : ''}` : v.kind === 'purchase' ? '산 가격 기준 · 시세 확인 필요' : v.kind === 'none' ? '시세 확인 필요' : '직접 입력'
+}
+export type Basis = { kind: 'trade' | 'kb' | 'registered'; value: number; date: string; floor: number | null; needs_review: boolean; trade_error?: boolean; missing?: boolean }
+/** 순자산 기준 시세 표시: '실거래 · 2026.10.20 · 28층' / 'KB · …' / '등록 시세 · … · 확인 필요' */
+export function basisLabel(b?: Basis | null) {
+  if (!b) return ''
+  const d = b.date.replaceAll('-', '.')
+  return b.kind === 'trade' ? `실거래 · ${d}${b.floor ? ` · ${b.floor}층` : ''}` : b.kind === 'kb' ? `KB · ${d}` : `등록 시세 · ${d} · 확인 필요${b.trade_error ? '(실거래 조회 실패)' : ''}`
 }
 export type Listing = { price: number; floor: string; memo: string; checked_on: string }
 export type HomeList = { homes: Home[]; free_loans: LoanRef[]; total: { value: number; loans: number; deposit: number; equity: number } }
@@ -164,7 +172,7 @@ export function HomeMarket({ home, onChanged, onUpdateValue }: { home: Home; onC
       {home.detail?.address?.sigungu_code ? <Trades sigungu={home.detail.address.sigungu_code} name={name} area={home.detail.area_m2} jibun={home.detail.address.jibun}/> : <p className="pe-note">주소를 검색해 저장하면 실거래가를 불러올 수 있어요.</p>}
       <div className="pm-actions">{home.detail?.address?.sigungu_code && <Button variant="default" type="button" className="primary-button pm-update" disabled={busy} onClick={async () => { setBusy(true); setError(''); try { const h = await api<Home>(`/property/${home.asset.id}/refresh`, 'POST'); setVersion(h.detail?.version ?? version); onChanged(h) } catch (e) { setError(e instanceof Error ? e.message : '갱신하지 못했어요.') } finally { setBusy(false) } }}>최근 실거래가로 시세 갱신</Button>}
         <Button variant="outline" type="button" className="secondary-button pm-update" onClick={onUpdateValue}>직접 입력</Button></div>
-      <p className="pe-note">지금 시세: {money(home.full_value)} · {sourceLabel(home.detail?.value_source)}</p>
+      <p className="pe-note">등록 시세: {money(home.registered_value ?? home.full_value)} · {sourceLabel(home.detail?.value_source)}{home.basis && home.basis.kind !== 'registered' && <> · 순자산은 {basisLabel(home.basis)} {money(home.full_value)}</>}</p>
     </section>
     <section className="pm-block">
       <div className="pm-head"><h3>KB 일반평균가</h3><a href="https://kbland.kr/" target="_blank" rel="noreferrer">KB부동산 ↗</a></div>
@@ -232,7 +240,7 @@ function draftFrom(home: Home | null, owner: 'together' | 'me' | 'partner'): Dra
   return {
     name: home?.asset.name ?? '', address: d?.address ?? null, area: d?.area_m2 ? String(d.area_m2) : '',
     owner: home?.asset.owner ?? (owner === 'partner' ? 'partner' : owner === 'me' ? 'me' : 'joint'), share: home?.asset.share_percent ?? 50,
-    purchase: toMan(d?.purchase_price), purchaseMonth: d?.purchase_month ?? '', value: toMan(home?.full_value), asOf: home?.asset.as_of ?? today(),
+    purchase: toMan(d?.purchase_price), purchaseMonth: d?.purchase_month ?? '', value: toMan(home?.registered_value ?? home?.full_value), asOf: home?.asset.as_of ?? today(),
     tenure: d?.tenure ?? 'live', deposit: toMan(d?.deposit), rent: toMan(d?.monthly_rent),
     loanIds: home?.loans.map(l => l.id) ?? [], newLoans: [],
   }
@@ -426,7 +434,7 @@ export function MyHomes({ owner, family, hidden, onChanged, onDemo }: { owner: '
       <Button variant="default" className="primary-button" onClick={() => setOpen({ home: null })}><Plus size={14}/>{list.homes.length ? '집 추가' : '우리 집 등록'}</Button>
     </div>
     {!list.homes.length && <div className="ph-empty"><House size={26}/><strong>아직 등록한 집이 없어요</strong><p>주소로 찾아서 명의·산 가격·대출까지 한 번에 넣어요. 1분이면 돼요.</p></div>}
-    <ul className="ph-list">{list.homes.map(h => { const m = h.metrics, dt = h.detail, stale = ageDays(h.asset.as_of) > STALE_DAYS
+    <ul className="ph-list">{list.homes.map(h => { const m = h.metrics, dt = h.detail, stale = h.basis ? h.basis.needs_review : ageDays(h.asset.as_of) > STALE_DAYS
       return <li key={h.asset.id}>
         <button className="ph-row" onClick={() => setOpen({ home: h })}>
           <span className="ph-icon"><House size={18}/></span>
@@ -442,7 +450,7 @@ export function MyHomes({ owner, family, hidden, onChanged, onDemo }: { owner: '
           {h.deposit && <span>보증금 <b>−{show(h.deposit.mine)}</b></span>}
           {(m.loans_mine > 0 || h.deposit) && <span>남는 돈 <b>{show(m.equity_mine)}</b></span>}
           {m.held_months !== null && <span>보유 {Math.floor(m.held_months / 12) ? `${Math.floor(m.held_months / 12)}년 ` : ''}{m.held_months % 12 ? `${m.held_months % 12}개월` : ''}</span>}
-          <span className={stale ? 'ph-stale' : ''}>{h.asset.as_of} 시세{stale && ' · 오래됨'}</span>
+          <span className={stale ? 'ph-stale' : ''}>{h.basis ? basisLabel(h.basis) : `${h.asset.as_of} 시세${stale ? ' · 오래됨' : ''}`}</span>
           {h.asking && <span>호가 <b>{show(h.asking.low)}{h.asking.high !== h.asking.low && ` ~ ${show(h.asking.high)}`}</b><em>매물 {h.asking.count}건</em></span>}
           <button className="text-link" onClick={() => setOpen({ home: h, market: true })}>시세·호가</button>
           {!dt && <button className="text-link" onClick={() => setOpen({ home: h, start: 'address' })}>주소·산 가격 더하기</button>}

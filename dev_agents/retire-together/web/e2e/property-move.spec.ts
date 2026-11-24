@@ -171,14 +171,17 @@ test('KB 일반평균가 저장과 비교 항목의 반응형 배치', async ({ 
   await page.getByRole('button', { name: '시세·호가 관리', exact: true }).click()
   const modal = page.getByRole('dialog')
   await modal.locator('label').filter({ has: page.locator('.pe-field-label', { hasText: 'KB 일반평균가' }) }).locator('input').fill('240000')
-  await modal.getByLabel('KB 시세 기준일').fill('2026-11-19')
+  const kbDay = new Date().toLocaleDateString('sv-SE')   // 오늘(로컬) — 3개월 기준 안에 늘 들어오게
+  await modal.getByLabel('KB 시세 기준일').fill(kbDay)
   await modal.getByRole('button', { name: 'KB 시세 저장', exact: true }).click()
   await expect(modal.getByRole('button', { name: 'KB 기록 삭제', exact: true })).toBeVisible()
   await page.reload()
   const saved = page.locator('article').filter({ has: page.getByRole('button', { name: 'KB 검증 아파트 상세 보기', exact: true }) })
   await expect(saved.locator('dt', { hasText: 'KB 일반평균가' }).locator('..')).toContainText('24억원')
-  await expect(saved).toContainText('2026.11.19')
-  expect((await (await request.get('/api/property')).json()).homes.find((x: any) => x.asset.id === h.asset.id).full_value).toBe(2250000000)
+  await expect(saved).toContainText(kbDay.replaceAll('-', '.'))
+  // §6-V: 3개월 안의 같은 평형 KB가 순자산 기준이 된다. 장부 등록 시세는 그대로.
+  const after = (await (await request.get('/api/property')).json()).homes.find((x: any) => x.asset.id === h.asset.id)
+  expect([after.full_value, after.registered_value, after.basis.kind]).toEqual([2400000000, 2250000000, 'kb'])
   for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 1000 })
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)

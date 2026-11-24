@@ -60,7 +60,7 @@ def discover(owner: Owner = 'together', home_id: str | None = None, analyze: boo
                                  area_min=rules['area_min'], area_max=rules['area_max'], limit=rules['limit'],
                                  home_value=home['full_value'], peer_years=rules.get('peer_years',5), peer_min=rules.get('peer_min',3), per_district=rules.get('per_district'), ranking=rules.get('ranking','price_high'))
         mark_spotlights(items, min_trades=rules.get('spotlight_min_trades',3), min_peers=rules.get('peer_min',3))
-        result = {'baseline':{'id':home['asset']['id'],'name':home['asset']['name'],'value':home['full_value'],'date':home['asset'].get('as_of')}, 'items': items, 'total': total, 'as_of': today.isoformat(), 'missing': sorted(missing),
+        result = {'baseline':{'id':home['asset']['id'],'name':home['asset']['name'],'value':home['full_value'],'date':home['basis']['date'],'basis':home['basis']['kind']}, 'items': items, 'total': total, 'as_of': today.isoformat(), 'missing': sorted(missing),
                   'months': rules['months'], 'area_min': rules['area_min'], 'area_max': rules['area_max'],
                   'ranking':rules.get('ranking','price_high'), 'available_capital':capital['net'], 'ai_status': 'empty', 'ai_error': None, 'source_url': 'https://rt.molit.go.kr/'}
         if not items:

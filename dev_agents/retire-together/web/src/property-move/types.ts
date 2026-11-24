@@ -26,7 +26,7 @@ export type TrackEntry = {
   day: string; price: number; price_basis: 'manual' | 'trade' | 'asking'; price_date: string | null; note: string
   home_value: number; home_net: number; own_funds: number | null; gap: number; needed: number | null; costs_complete: boolean; saved_at: string
 }
-export type Capital = { value: number; loans: number; deposit: number; equity: number; cash: number; net: number; valuation_missing: boolean }
+export type Capital = { value: number; loans: number; deposit: number; equity: number; cash: number; invest: number; net: number; valuation_missing: boolean }
 export type Monthly = { month: string; count: number; median: number }
 export type MoveState = { pir?: PirResult; capital?: Capital; plan: MovePlan; comparisons: Budget[]; funds: Budget; cash_reference: number; missing_home_ids: string[]; valuation_needs_review: string[]; track: Record<string, TrackEntry[]> }
 export type PriceCheck = {

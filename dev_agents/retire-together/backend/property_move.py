@@ -180,10 +180,14 @@ def _capital(owner: Owner, homes: dict | None = None, dashboard: dict | None = N
         homes = list_homes(owner)
     if dashboard is None:
         dashboard = storage.dashboard(owner)
-    cash = sum(a["amount"] for a in dashboard["assets"] if a["pocket"] == "cash" and a["assetClass"] == "cash")
-    capital = {**homes["total"], "cash": cash,
-               "net": homes["total"]["equity"] + cash,
-               "valuation_missing": any(h["full_value"] <= 0 or ((h["detail"] or {}).get("value_source") or {}).get("kind") == "none" for h in homes["homes"])}
+    # 재원 = 모든 집 순자산 + 현금 주머니 전체(현금 + 주식 등), 연금 제외 (CALCULATION_RULES §6-F)
+    pocket = [a for a in dashboard["assets"] if a["pocket"] == "cash"]
+    cash = sum(a["amount"] for a in pocket if a["assetClass"] == "cash")
+    invest = sum(a["amount"] for a in pocket if a["assetClass"] != "cash")
+    capital = {**homes["total"], "cash": cash, "invest": invest,
+               "net": homes["total"]["equity"] + cash + invest,
+               "valuation_missing": any(h["basis"]["missing"] or h["full_value"] <= 0 for h in homes["homes"]),
+               "basis": [{"id": h["asset"]["id"], **{k: h["basis"][k] for k in ("kind", "date", "needs_review", "trade_error")}} for h in homes["homes"]]}
     return capital
 
 
@@ -202,7 +206,7 @@ def result(plan: dict, owner: Owner, *, include_homes: bool = False) -> dict:
             "funds": move_budget(**base, price=None, purchase_costs=None),
             "cash_reference": dashboard["cash"], "capital": capital,
             "pir": income_price_ratio(None, **PirSettings(**plan.get("pir", {})).model_dump()),
-            "valuation_needs_review": [h["asset"]["id"] for h in chosen if ((h["detail"] or {}).get("value_source") or {}).get("kind") in ("none", "purchase")]}
+            "valuation_needs_review": [h["asset"]["id"] for h in chosen if h["basis"]["needs_review"]]}
 
 
 @router.get("")

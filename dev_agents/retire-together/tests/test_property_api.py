@@ -184,16 +184,22 @@ def test_address_based_trade_lookup_reaches_home_and_analysis_without_ledger_wri
     assert client.get("/api/assets").json() == before
 
 
-def test_kb_quote_is_reference_only_and_survives_edit(client):
+def test_fresh_kb_quote_becomes_valuation_basis_without_touching_ledger(client):
+    """§6-V: 최근 실거래가 없으면 3개월 안의 같은 평형 KB가 순자산 기준. 장부 등록 시세는 그대로."""
     h = client.post('/api/property', json=home(request_id=str(uuid.uuid4()))).json()
+    assert h['basis']['kind'] == 'registered' and h['basis']['needs_review'] is True
     url = f"/api/property/{h['asset']['id']}/kb-quote"
     body = {'detail_version': h['detail']['version'], 'quote': {'average': 1_200_000_000, 'as_of': TODAY, 'area_m2': 84.9}}
     r = client.put(url, json=body)
     assert r.status_code == 200, r.text
     h2 = r.json()
     assert h2['detail']['kb_quote'] == body['quote']
-    assert h2['full_value'] == h['full_value']
-    assert h2['metrics'] == h['metrics']
+    assert (h2['basis']['kind'], h2['basis']['date'], h2['full_value']) == ('kb', TODAY, 1_200_000_000)
+    assert h2['registered_value'] == h2['asset']['amount'] == 1_000_000_000
+    assert h2['metrics']['equity'] == 1_200_000_000
+    assert h2['value'] == 1_200_000_000
+    mine = client.get('/api/property?owner=me').json()['homes'][0]
+    assert (mine['value'], mine['full_value'], mine['metrics']['equity_mine']) == (600_000_000, 1_200_000_000, 600_000_000)   # 공동 50%
     assert client.put(url, json=body).status_code == 409
     h3 = client.put(f"/api/property/{h['asset']['id']}", json=home(version=h2['asset']['version'], detail_version=h2['detail']['version'])).json()
     assert h3['detail']['kb_quote'] == body['quote']

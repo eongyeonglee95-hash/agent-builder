@@ -132,3 +132,34 @@ def asking_summary(listings: list[dict]) -> dict | None:
     if not prices:
         return None
     return {"low": min(prices), "high": max(prices), "count": len(prices)}
+
+
+# ── 순자산 기준 시세 (CALCULATION_RULES §6-V) ─────────────────────────
+
+def months_before(day: dt.date, months: int) -> dt.date:
+    """기준일에서 꽉 찬 N개월 전 날짜. 없는 날(31일 등)은 그 달 말일."""
+    import calendar
+    n = day.year * 12 + day.month - 1 - months
+    y, m = divmod(n, 12)
+    return dt.date(y, m + 1, min(day.day, calendar.monthrange(y, m + 1)[1]))
+
+
+def valuation_basis(registered: int, registered_on: dt.date, trades: list[dict], kb_quote: dict | None,
+                    area_m2: float | None, as_of: dt.date, *, trade_months: int, kb_months: int) -> dict:
+    """집 전체 기준 시세 하나를 고른다: 최근 실거래 → KB(직접 기록) → 등록 시세.
+
+    trades는 match_trades 결과(같은 단지·면적, 최신순). 호가는 받지 않는다.
+    등록 시세로 떨어지면 needs_review=True. 금액은 원, 날짜는 ISO 문자열.
+    """
+    if registered < 0 or trade_months < 1 or kb_months < 1:
+        raise ValueError("등록 시세와 기간을 확인해 주세요")
+    trade_cut = months_before(as_of, trade_months).isoformat()
+    fresh = [t for t in trades if t.get("price") and trade_cut <= t["date"] <= as_of.isoformat()]
+    if fresh:
+        t = max(fresh, key=lambda r: (r["date"], r.get("floor") or 0))
+        return {"value": int(t["price"]), "kind": "trade", "date": t["date"], "floor": t.get("floor"), "needs_review": False}
+    if kb_quote and kb_quote.get("average") and area_m2 and kb_quote.get("area_m2") == area_m2:
+        kb_day = str(kb_quote["as_of"])
+        if months_before(as_of, kb_months).isoformat() <= kb_day <= as_of.isoformat():
+            return {"value": int(kb_quote["average"]), "kind": "kb", "date": kb_day, "floor": None, "needs_review": False}
+    return {"value": registered, "kind": "registered", "date": registered_on.isoformat(), "floor": None, "needs_review": True}

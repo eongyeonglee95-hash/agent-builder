@@ -19,8 +19,8 @@ import { CandidateUpdates } from './CandidateUpdates'
 export function CapitalStrip({ capital, hidden, onManage }: { capital?: Capital; hidden: boolean; onManage: () => void }) {
   const show = (n?: number) => hidden ? '••••' : n == null ? '—' : money(n)
   return <section className="research-capital" aria-label="부동산과 현금 합계">
-    <div><span>부동산 순자산 + 보유 현금</span><strong>{capital?.valuation_missing ? '시세 확인 필요' : show(capital?.net)}</strong><small>등록 시세 기준 · 매도세금·비용 차감 전</small></div>
-    <dl>{[['부동산', capital?.value], ['대출·보증금', capital ? capital.loans + capital.deposit : undefined], ['보유 현금', capital?.cash]].map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{show(value as number | undefined)}</dd></div>)}</dl>
+    <div><span>부동산 순자산 + 현금·주식</span><strong>{capital?.valuation_missing ? '시세 확인 필요' : show(capital?.net)}</strong><small>실거래·KB·등록 시세 순 · 매도세금·비용 차감 전</small></div>
+    <dl>{[['부동산', capital?.value], ['대출·보증금', capital ? capital.loans + capital.deposit : undefined], ['현금', capital?.cash], ['주식·투자', capital?.invest]].map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{show(value as number | undefined)}</dd></div>)}</dl>
     <Button variant="outline" onClick={onManage}><Settings2 size={15}/>자금 계획</Button>
   </section>
 }

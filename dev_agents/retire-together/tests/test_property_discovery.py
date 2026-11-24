@@ -25,7 +25,7 @@ def setup(monkeypatch, tmp_path):
     monkeypatch.setattr(d.property_research_cache, "CACHE_PATH", tmp_path / "research.sqlite3")
     from backend import property_place
     monkeypatch.setattr(property_place,'vworld_key',lambda:None)
-    monkeypatch.setattr(d.prop,'list_homes',lambda owner:{'homes':[{'asset':{'id':'home','name':'기준 집'},'detail':{'tenure':'live'},'full_value':2000000000}]})
+    monkeypatch.setattr(d.prop,'list_homes',lambda owner:{'homes':[{'asset':{'id':'home','name':'기준 집'},'detail':{'tenure':'live'},'full_value':2000000000,'basis':{'kind':'trade','date':'2026-10-01'}}]})
     monkeypatch.setattr(d,'web_research',lambda q:{'text':'테스트 공개 근거','sources':[{'title':'공식 자료','url':'https://www.k-apt.go.kr/complex/1'}]})
     monkeypatch.setattr(d,'read_plan',lambda owner: {'pir':PIR,'candidates':[]})
     monkeypatch.setattr(d,'_capital',lambda owner: {'net':2000000000,'valuation_missing':False})

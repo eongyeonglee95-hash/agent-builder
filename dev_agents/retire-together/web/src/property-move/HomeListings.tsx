@@ -69,11 +69,11 @@ export function HomeListingSummary({ sale, address, name, area, hidden, onManual
 export function HomeSaleSummary({ homes, hidden, owner }: { homes: HomeList; hidden: boolean; owner: Owner }) {
   if (!homes.homes.length) return null
   const show = (n: number) => hidden ? '••••' : money(n)
-  const missing = homes.homes.some(h => h.detail?.value_source?.kind === 'none' || h.full_value <= 0)
-  const review = homes.homes.filter(h => h.detail?.value_source?.kind === 'purchase' || (Date.now() - Date.parse(h.asset.as_of)) / 86_400_000 > 90).length
+  const missing = homes.homes.some(h => h.basis?.missing || h.full_value <= 0)
+  const review = homes.homes.filter(h => h.basis?.needs_review).length
   return <div className="property-sale-summary" aria-label="전체 매도 합계">
-    <div className="property-sale-net"><span>{owner === 'together' ? '순자산' : '선택 지분 순자산'}</span><strong>{missing ? '시세 확인 필요' : show(homes.total.equity)}</strong><small>등록 시세 기준 · 세금·중개비 제외</small></div>
-    <dl><div><dt>등록 시세 · {homes.homes.length}채</dt><dd>{missing ? '미확인 시세 포함' : show(homes.total.value)}</dd></div><div><dt>대출</dt><dd>{show(homes.total.loans)}</dd></div><div><dt>반환 보증금</dt><dd>{show(homes.total.deposit)}</dd></div></dl>
-    {(missing || review > 0) && <p>{missing ? '시세 미등록' : `시세 확인 필요 ${review}채 · 매입가 또는 90일 경과`}</p>}
+    <div className="property-sale-net"><span>{owner === 'together' ? '순자산' : '선택 지분 순자산'}</span><strong>{missing ? '시세 확인 필요' : show(homes.total.equity)}</strong><small>실거래·KB·등록 시세 순 · 세금·중개비 제외</small></div>
+    <dl><div><dt>평가액 · {homes.homes.length}채</dt><dd>{missing ? '미확인 시세 포함' : show(homes.total.value)}</dd></div><div><dt>대출</dt><dd>{show(homes.total.loans)}</dd></div><div><dt>반환 보증금</dt><dd>{show(homes.total.deposit)}</dd></div></dl>
+    {(missing || review > 0) && <p>{missing ? '시세 미등록' : `시세 확인 필요 ${review}채 · 최근 실거래·KB 없음`}</p>}
   </div>
 }

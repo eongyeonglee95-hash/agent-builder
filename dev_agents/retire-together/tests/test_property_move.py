@@ -234,15 +234,16 @@ def test_trade_chart_monthly_counts_are_not_truncated(client, monkeypatch):
     assert data['monthly'] == [{'month': '2026-01', 'count': 70, 'median': 35}]
 
 
-def test_capital_cash_excludes_investments_and_pensions(client, monkeypatch):
+def test_capital_includes_cash_pocket_stocks_but_not_pensions(client, monkeypatch):
+    """§6-F (2026-11-24): 재원 = 집 순자산 + 현금 주머니 전체(현금·주식 나눠 표시), 연금 제외."""
     home(client)
     monkeypatch.setattr(storage, 'dashboard', lambda owner: {'cash': 900,
         'assets': [{'pocket': 'cash', 'assetClass': 'cash', 'amount': 100},
                    {'pocket': 'cash', 'assetClass': 'stock', 'amount': 800},
                    {'pocket': 'retirement', 'assetClass': 'cash', 'amount': 500}]})
     data = client.get('/api/property-move').json()
-    assert data['capital']['cash'] == 100
-    assert data['capital']['net'] == data['capital']['equity'] + 100
+    assert (data['capital']['cash'], data['capital']['invest']) == (100, 800)
+    assert data['capital']['net'] == data['capital']['equity'] + 900
     assert data['cash_reference'] == 900  # Existing funds form reference unchanged.
 
 
@@ -329,3 +330,27 @@ def test_initial_view_reuses_homes_and_dashboard(client, monkeypatch):
     assert data['capital']['equity'] == expected['total']['equity']
     assert reads == {'homes': 1, 'dashboard': 1}
     assert 'homes' not in client.get('/api/property-move?owner=me').json()
+
+
+def test_recent_trade_sets_valuation_basis_and_failure_is_not_retried(client, monkeypatch):
+    """§6-V: 6개월 안 실거래가 있으면 순자산 기준. 조회 실패는 등록 시세로 두고 10분간 다시 부르지 않는다."""
+    from fastapi import HTTPException
+    from datetime import date
+    prop._trade_failures.clear()
+    hid = home(client, address={'building': 'A', 'sigungu_code': '11440'}, area_m2=84.0)['asset']['id']
+    monkeypatch.setattr(prop, 'market_key', lambda: 'test')
+    today = date.today().isoformat()
+    monkeypatch.setattr(prop, 'recent_trades', lambda *a, **k: [{'price': 777_000_000, 'date': today, 'floor': 5, 'area': 84.0}])
+    h = next(x for x in client.get('/api/property').json()['homes'] if x['asset']['id'] == hid)
+    assert (h['basis']['kind'], h['full_value'], h['basis']['needs_review']) == ('trade', 777_000_000, False)
+    assert h['registered_value'] == h['asset']['amount']
+    calls = []
+    def fail(*a, **k):
+        calls.append(1)
+        raise HTTPException(503, 'down')
+    monkeypatch.setattr(prop, 'recent_trades', fail)
+    for _ in range(2):
+        h = next(x for x in client.get('/api/property').json()['homes'] if x['asset']['id'] == hid)
+        assert (h['basis']['kind'], h['basis']['trade_error']) == ('registered', True)
+    assert len(calls) == 1
+    prop._trade_failures.clear()

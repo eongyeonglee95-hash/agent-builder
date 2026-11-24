@@ -24,7 +24,7 @@ from pydantic import Field, model_validator
 
 from backend import storage
 from backend.storage import InputModel, Money
-from tools.property import asking_summary, dong_of, home_metrics, match_trades, parse_trades, pyeong
+from tools.property import asking_summary, dong_of, home_metrics, match_trades, parse_trades, pyeong, valuation_basis
 
 router = APIRouter(prefix="/api/property", tags=["property"])
 from backend.property_market import router as market_router
@@ -235,15 +235,44 @@ def delete_home(asset_id: UUID, version: int) -> None:
 
 # ── 조회 ──────────────────────────────────────────────────────
 
-def _summary(home: dict, detail: dict | None, by_id: dict, owner: str) -> dict | None:
-    mine = storage.scoped_asset(home, owner)
-    if mine is None:
+_trade_failures: dict[str, float] = {}   # 시군구 → 실패 시각. 실패한 조회를 화면마다 다시 기다리지 않게
+FAILURE_RETRY_SECONDS = 600
+
+
+def _basis(home: dict, detail: dict, today: dt.date) -> dict:
+    """순자산 기준 시세 (CALCULATION_RULES §6-V). 장부 금액은 바꾸지 않는다."""
+    import time
+    from tools.property_watch import load_watch_rules
+    rules = load_watch_rules()["valuation"]
+    address = detail.get("address") or {}
+    trades, error = [], False
+    code = address.get("sigungu_code")
+    if code and detail.get("area_m2") and market_key():
+        if time.time() - _trade_failures.get(code, 0) < FAILURE_RETRY_SECONDS:
+            error = True
+        else:
+            try:
+                trades = recent_trades(code, address.get("building") or home["name"], detail["area_m2"], rules["trade_fresh_months"],
+                                       dong_of(address.get("jibun")), address.get("jibun"))
+            except HTTPException:
+                _trade_failures[code] = time.time()
+                error = True
+    basis = valuation_basis(home["amount"], dt.date.fromisoformat(str(home["as_of"])), trades, detail.get("kb_quote"),
+                            detail.get("area_m2"), today, trade_months=rules["trade_fresh_months"], kb_months=rules["kb_fresh_months"])
+    missing = basis["kind"] == "registered" and (home["amount"] <= 0 or (detail.get("value_source") or {}).get("kind") == "none")
+    return {**basis, "trade_error": error, "missing": missing}
+
+
+def _summary(home: dict, detail: dict | None, by_id: dict, owner: str, today: dt.date | None = None) -> dict | None:
+    if storage.scoped_asset(home, owner) is None:
         return None
     detail = detail or {}
+    basis = _basis(home, detail, today or dt.date.today())
+    mine = storage.scoped_asset({**home, "amount": basis["value"]}, owner)
     loans = [by_id[i] for i in detail.get("loan_ids", []) if i in by_id]
     deposit = by_id.get(detail.get("deposit_asset_id") or "")
-    as_of = dt.date.fromisoformat(str(home["as_of"]))
-    full = home_metrics(home["amount"], detail.get("purchase_price"), detail.get("purchase_month"), as_of,
+    as_of = dt.date.fromisoformat(basis["date"])
+    full = home_metrics(basis["value"], detail.get("purchase_price"), detail.get("purchase_month"), as_of,
                         loans=sum(a["amount"] for a in loans), deposit=deposit["amount"] if deposit else 0)
 
     def scoped(a):
@@ -251,9 +280,10 @@ def _summary(home: dict, detail: dict | None, by_id: dict, owner: str) -> dict |
         return s["amount"] if s else 0
     my_loans = sum(scoped(a) for a in loans)
     my_deposit = scoped(deposit) if deposit else 0
-    ratio = mine["amount"] / home["amount"] if home["amount"] else 0
+    ratio = mine["amount"] / basis["value"] if basis["value"] else 0
     return {
-        "asset": home, "value": mine["amount"], "full_value": home["amount"],
+        # value·full_value = 기준 시세(§6-V)로 본 평가액. 장부에 적힌 등록 시세는 registered_value
+        "asset": home, "value": mine["amount"], "full_value": basis["value"], "registered_value": home["amount"], "basis": basis,
         "detail": {**detail, "pyeong": pyeong(detail.get("area_m2"))} if detail else None,
         "asking": asking_summary(detail.get("listings", [])),
         "loans": [{"id": a["id"], "name": a["name"], "amount": a["amount"], "mine": scoped(a), "as_of": a["as_of"], "owner": a["owner"]} for a in loans],

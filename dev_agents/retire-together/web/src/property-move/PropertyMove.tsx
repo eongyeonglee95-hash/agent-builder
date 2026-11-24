@@ -8,7 +8,7 @@ import { ObservationRow } from '../components/ui/observation-row'
 import { day } from '../lib/format'
 import { api } from '../local-data'
 import { money, type Family, type Owner } from '../model'
-import { DeleteHome, HomeMarket, HomeWizard, KeySetup, sourceLabel, TENURE, type Home, type HomeList } from '../property-entry'
+import { DeleteHome, HomeMarket, HomeWizard, KeySetup, basisLabel, sourceLabel, TENURE, type Home, type HomeList } from '../property-entry'
 import { CandidateForm, FundsForm, LIVING_FIELDS } from './Forms'
 import { TradePrice, TradeReport, usePriceCheck, useTrades } from './Market'
 import { AnalysisHero } from './AnalysisHero'
@@ -40,17 +40,17 @@ function HomeLine({ home: h, hidden, family, owner, onEdit, onMarket, baseline, 
   const listings = usePublicListings(dt?.address, h.asset.name, dt?.area_m2)
   const asking = listings.data?.summary ?? h.asking
   const show = (n: number | null) => display(n, hidden)
-  const stale = (Date.now() - Date.parse(h.asset.as_of)) / 86_400_000 > 90
+  const stale = h.basis ? h.basis.needs_review : (Date.now() - Date.parse(h.asset.as_of)) / 86_400_000 > 90
   const latest = market.trades[0]
   return <ObservationRow
     title={<div><label className="home-baseline-choice"><input type="radio" name="discovery-baseline" aria-label={`${h.asset.name} 비교 기준`} checked={baseline} disabled={discoveryBusy} onChange={onBaseline}/>비교 기준</label><button className="flex w-full items-center justify-between gap-2 text-left" aria-label={`${h.asset.name} 상세 ${expanded ? '접기' : '보기'}`} aria-expanded={expanded} aria-controls={`home-detail-${h.asset.id}`} onClick={() => setExpanded(v => !v)}>{h.asset.name}<ChevronDown className={`size-4 shrink-0 ${expanded ? 'rotate-180' : ''}`}/></button></div>}
     subtitle={<>{dt?.area_m2 ? `전용 ${dt.area_m2}㎡` : '면적 미입력'} · {h.asset.owner === 'joint' ? `공동 · 나 ${h.asset.share_percent}%` : h.asset.owner === 'me' ? family?.me.name || '나' : family?.partner?.name || '배우자'}</>}
     metrics={[
-      { label: '등록 시세', value: dt?.value_source?.kind === 'none' ? '확인 필요' : show(h.full_value), detail: `${day(h.asset.as_of)}${stale ? ' · 갱신 필요' : ''}` },
+      { label: '평가액', value: h.basis?.missing || dt?.value_source?.kind === 'none' ? '확인 필요' : show(h.full_value), detail: h.basis ? basisLabel(h.basis) : `${day(h.asset.as_of)}${stale ? ' · 갱신 필요' : ''}` },
       { label: '최근 실거래', value: latest ? show(latest.price) : market.loading ? '조회 중' : '—', detail: latest ? `${day(latest.date)} · ${latest.floor ?? '—'}층` : market.error ? '조회 실패' : undefined },
       { label: 'KB 일반평균가', value: dt?.kb_quote ? show(dt.kb_quote.average) : '—', detail: dt?.kb_quote ? `${day(dt.kb_quote.as_of)} · 직접 기록` : undefined },
       { label: '매매 호가', value: asking ? show(asking.low) : listings.loading ? '조회 중' : '—', detail: listings.data?.summary ? `최저 · 광고 ${asking!.count}건${listings.data.stale ? ' · 이전 자료' : ''}` : h.asking ? '직접 기록' : listings.error ? '조회 실패' : undefined },
-      { label: owner === 'together' ? '순자산' : '선택 지분 순자산', value: show(m.equity_mine), detail: '등록 시세 기준' },
+      { label: owner === 'together' ? '순자산' : '선택 지분 순자산', value: show(m.equity_mine), detail: '평가액 기준' },
     ]}>
     {expanded && <div id={`home-detail-${h.asset.id}`} className="mt-4 space-y-4 border-t border-grey-200 pt-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
