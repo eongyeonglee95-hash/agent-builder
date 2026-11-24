@@ -144,12 +144,25 @@ DECISIONS 2026-11-02.
 - [ ] 1. `property-entry.tsx`에서 매도 예상가·남은 대출·산 날짜만 먼저 보이고 나머지는 접기
 - [ ] 2. 기존 저장 필드는 그대로 보존(편집 저장 시 사라지지 않게) + 테스트
 
-### PROP-TOTAL · P1 [결정] · "토탈"이 무슨 뜻인지
-- [결정] 1. 갈아타기 화면의 전체 자금 합계에 무엇을 넣을지(집 매도금·현금 주머니·연금 제외 등) 사용자 확인
-- [ ] 2. 정한 규칙을 `CALCULATION_RULES.md` §6-M에 쓰고 계산·테스트 반영
+### PROP-TOTAL · P1 · 재원에 주식 포함 (2026-11-24 결정, CALCULATION_RULES §6-F)
+- [x] 1. 합계에 무엇을 넣을지 결정: 모든 집 순자산 + 현금 주머니 전체(현금 + 주식), 연금 제외
+- [ ] 2. `backend/property_move.py` `_capital`에 주식 평가액을 더하고 `cash`·`stocks`를 나눠 반환 → 테스트(주식 있는 장부)
+- [ ] 3. 내 부동산 위쪽 띠 '보유 현금'을 '현금 · 주식' 두 칸으로(`ResearchBoard.tsx`), 상급지 후보·관심 단지 추가 필요액도 같은 재원 사용
 
-### PROP-AUTO · P2 [보류] · 세금 자동 계산·호가 자동 수집
-호가 자동 수집 보류 결정 유지. 요청형 후보 탐색은 2026-11-19 OpenAI 연결 완료: 실거래 선별 → AI 설명 → 직접 관심 추가.
+### PROP-BASIS · P1 · 순자산 기준 시세 실거래 → KB → 등록 (2026-11-24 결정, §6-V)
+- [ ] 1. `rules/property_watch.yaml`에 `trade_fresh_months: 6`, `kb_fresh_months: 3`
+- [ ] 2. `tools/property.py`에 `valuation_basis(trades, kb_quote, registered, as_of, rules)` 순수 함수 → {value, kind, date} + pytest(세 경우, 면적 다른 KB 제외)
+- [ ] 3. `list_homes`가 기준 시세로 순자산을 계산하고 기준을 돌려줌. 장부 금액은 그대로
+- [ ] 4. 화면: 순자산 옆에 '실거래 · 10.20' 같은 기준 표시, 등록 시세로 떨어지면 '확인 필요'
+
+### PROP-SALE-TAX · P1 · 다주택 매도 순서 시나리오와 양도세 (2026-11-24 결정, §6-H)
+- [ ] 1. `/wiki-research`로 주택 양도소득세 규칙 조사(1세대1주택 비과세·고가주택, 장기보유특별공제, 다주택·일시적 2주택, 세율·지방소득세) → `TAX_RULES.md` 새 절 + `docs/wiki/sources/tax-rules-sources.md`, 조문·국세청 출처와 기준일. 기억으로 쓰지 않음
+- [ ] 2. `rules/property_tax.yaml`(항목마다 출처·기준일) + `tools/property_tax.py` 순수 함수 + pytest(국세청 사례로 검산)
+- [ ] 3. 시나리오 저장(팔 집·순서·매도 예정월·거주 기간·필요경비) API
+- [ ] 4. 화면: 시나리오 2~3개를 나란히(집마다 양도차익·세액·세후 매도 자금, 합계). 유리한 순서 판정 없음
+
+### PROP-AUTO · P2 [보류] · 호가 자동 수집
+세금 자동 계산은 PROP-SALE-TAX로 옮김(2026-11-24). 호가 자동 수집 보류 결정 유지. 요청형 후보 탐색은 2026-11-19 OpenAI 연결 완료: 실거래 선별 → AI 설명 → 직접 관심 추가.
 
 ## 6. 홈·화면 공통
 
